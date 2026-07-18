@@ -80,15 +80,10 @@
   #knob{position:absolute;left:36px;top:36px;width:48px;height:48px;border-radius:50%;
     background:rgba(62,201,232,.3);border:1px solid #4ce0ff;
     box-shadow:0 0 12px rgba(60,200,255,.3);pointer-events:none;}
-  #btnJump{position:fixed;left:calc(22px + env(safe-area-inset-left));
-    bottom:calc(44px + env(safe-area-inset-bottom));z-index:31;
-    width:64px;height:64px;border-radius:50%;display:none;touch-action:none;
-    font:inherit;font-size:11px;letter-spacing:1px;color:#4ce0ff;
-    background:rgba(10,18,26,.5);border:1px solid var(--line);cursor:pointer;}
-  #btnJump:active{background:rgba(30,90,120,.7);}
-  body.mobile #stick,body.mobile #btnJump{display:block;}
+  body.mobile #stick{display:block;}
   body.mobile #game{box-shadow:none;}
   body.mobile #hint{bottom:calc(160px + env(safe-area-inset-bottom));}
+  body.mobile #banner{display:none;}  /* tertutup analog — buka tool: ketuk mejanya lagi */
 
   /* ---------- menu overlay ---------- */
   #menu{position:fixed;inset:0;z-index:40;display:none;
@@ -136,7 +131,6 @@
 </div>
 
 <div id="stick"><div id="knob"></div></div>
-<button id="btnJump" type="button">JUMP</button>
 
 <div id="menu">
   <div class="panel">
@@ -347,8 +341,8 @@ const rnd=(x,y)=>((x*73856093)^(y*19349663))>>>0;
   P(g,'#2ee0ff',rx+rw-6,ry,6,2);P(g,'#2ee0ff',rx+rw-2,ry,2,6);
   P(g,'#2ee0ff',rx,ry+rh-2,6,2);P(g,'#2ee0ff',rx,ry+rh-6,2,6);
   P(g,'#2ee0ff',rx+rw-6,ry+rh-2,6,2);P(g,'#2ee0ff',rx+rw-2,ry+rh-6,2,6);
-  P(g,'#e8c05a',rx+Math.floor(rw/2)-4,ry+Math.floor(rh/2)-1,8,2);  // marka +
-  P(g,'#e8c05a',rx+Math.floor(rw/2)-1,ry+Math.floor(rh/2)-4,2,8);
+  g.imageSmoothingEnabled=false;                                   // emblem kepala dino
+  g.drawImage(SPR.down[0],0,0,12,7,rx+Math.floor(rw/2)-12,ry+Math.floor(rh/2)-7,24,14);
   /* --- dekor dinding --- */
   /* panel status (kolom 1) — LED dianimasikan */
   P(g,'#10141c',T+2,5,12,15);P(g,'#2e3542',T+2,5,12,2);
@@ -682,24 +676,31 @@ addEventListener('keyup',e=>{if(KEYMAP[e.key])keys.delete(KEYMAP[e.key]);});
 /* analog stick sentuh (kanan) */
 const joy={on:false,x:0,y:0};
 const stick=document.getElementById('stick'),knob=document.getElementById('knob');
-let joyId=null;
+let joyId=null,joyT0=0,joyMax=0;
 function setKnob(dx,dy){knob.style.left=(36+dx)+'px';knob.style.top=(36+dy)+'px';}
 function joyMove(e){
   const r=stick.getBoundingClientRect();
   let dx=e.clientX-(r.left+r.width/2), dy=e.clientY-(r.top+r.height/2);
   const m=Math.hypot(dx,dy),max=42;
+  joyMax=Math.max(joyMax,m);
   if(m>max){dx*=max/m;dy*=max/m;}
   setKnob(dx,dy);
   if(m<10){joy.on=false;joy.x=joy.y=0;}
   else{joy.on=true;joy.x=dx/max;joy.y=dy/max;}
 }
 stick.addEventListener('pointerdown',e=>{
-  joyId=e.pointerId;stick.setPointerCapture(joyId);
+  joyId=e.pointerId;joyT0=performance.now();joyMax=0;
+  try{stick.setPointerCapture(joyId);}catch(err){}
   player.path=null;player.pendTool=null;hint.classList.add('gone');
   joyMove(e);e.preventDefault();
 });
 stick.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e);});
-const joyEnd=e=>{if(e.pointerId!==joyId)return;joyId=null;joy.on=false;joy.x=joy.y=0;setKnob(0,0);};
+const joyEnd=e=>{
+  if(e.pointerId!==joyId)return;
+  joyId=null;joy.on=false;joy.x=joy.y=0;setKnob(0,0);
+  /* ketukan singkat di tengah analog = lompat */
+  if(performance.now()-joyT0<300&&joyMax<12)doJump();
+};
 stick.addEventListener('pointerup',joyEnd);stick.addEventListener('pointercancel',joyEnd);
 
 /* lompat */
@@ -708,7 +709,6 @@ function doJump(){
   player.jumpT=JUMP_DUR;
   beep(300,.06,.05);beep(520,.1,.04,'square',.05);
 }
-document.getElementById('btnJump').addEventListener('pointerdown',e=>{e.preventDefault();doJump();});
 
 /* ketuk kanvas: menuju meja / berjalan ke titik */
 cv.addEventListener('pointerdown',e=>{
