@@ -72,16 +72,23 @@
     transition:opacity .6s;white-space:nowrap;}
   #hint.gone{opacity:0;pointer-events:none;}
 
-  /* ---------- D-pad (layar sentuh) ---------- */
-  #dpad{position:fixed;left:calc(14px + env(safe-area-inset-left));
-    bottom:calc(14px + env(safe-area-inset-bottom));z-index:31;
-    width:132px;height:132px;display:none;opacity:.85;}
-  @media (pointer:coarse){ #dpad{display:block;} }
-  #dpad button{position:absolute;width:44px;height:44px;font:inherit;font-size:16px;
-    color:#4ce0ff;background:rgba(10,18,26,.85);border:1px solid var(--line);cursor:pointer;}
-  #dpad button:active{background:rgba(30,90,120,.8);}
-  #dpad .u{left:44px;top:0;} #dpad .d{left:44px;top:88px;}
-  #dpad .l{left:0;top:44px;} #dpad .r{left:88px;top:44px;}
+  /* ---------- analog stick & lompat (layar sentuh) ---------- */
+  #stick{position:fixed;right:calc(22px + env(safe-area-inset-right));
+    bottom:calc(26px + env(safe-area-inset-bottom));z-index:31;
+    width:120px;height:120px;border-radius:50%;display:none;touch-action:none;
+    background:rgba(10,18,26,.5);border:1px solid var(--line);}
+  #knob{position:absolute;left:36px;top:36px;width:48px;height:48px;border-radius:50%;
+    background:rgba(62,201,232,.3);border:1px solid #4ce0ff;
+    box-shadow:0 0 12px rgba(60,200,255,.3);pointer-events:none;}
+  #btnJump{position:fixed;left:calc(22px + env(safe-area-inset-left));
+    bottom:calc(44px + env(safe-area-inset-bottom));z-index:31;
+    width:64px;height:64px;border-radius:50%;display:none;touch-action:none;
+    font:inherit;font-size:11px;letter-spacing:1px;color:#4ce0ff;
+    background:rgba(10,18,26,.5);border:1px solid var(--line);cursor:pointer;}
+  #btnJump:active{background:rgba(30,90,120,.7);}
+  body.mobile #stick,body.mobile #btnJump{display:block;}
+  body.mobile #game{box-shadow:none;}
+  body.mobile #hint{bottom:calc(160px + env(safe-area-inset-bottom));}
 
   /* ---------- menu overlay ---------- */
   #menu{position:fixed;inset:0;z-index:40;display:none;
@@ -116,7 +123,7 @@
 <div id="stage"><canvas id="game" width="240" height="240"></canvas></div>
 <div id="crt"></div>
 
-<div id="hint">PANAH / WASD BERJALAN &middot; KETUK MEJA UNTUK MENUJU &middot; ENTER MEMBUKA</div>
+<div id="hint">PANAH/WASD JALAN &middot; SPASI LOMPAT &middot; KETUK MEJA &middot; ENTER MEMBUKA</div>
 
 <div id="banner">
   <div class="swatch"></div>
@@ -128,12 +135,8 @@
   <button type="button" id="btnOpen">BUKA &#9656;</button>
 </div>
 
-<div id="dpad">
-  <button class="u" data-k="ArrowUp">&#9650;</button>
-  <button class="l" data-k="ArrowLeft">&#9664;</button>
-  <button class="r" data-k="ArrowRight">&#9654;</button>
-  <button class="d" data-k="ArrowDown">&#9660;</button>
-</div>
+<div id="stick"><div id="knob"></div></div>
+<button id="btnJump" type="button">JUMP</button>
 
 <div id="menu">
   <div class="panel">
@@ -151,16 +154,18 @@
    Semua link tools dikumpulkan di sini; ganti URL cukup di daftar ini.
    ========================================================================= */
 const TOOLS = [
-  { id:'harian', name:'LAPORAN HARIAN V2', desc:'LTT harian, rekap komoditas, analisis usaha tani',
+  { id:'harian', name:'DAYDAYREPORT',     desc:'LTT harian, rekap komoditas, analisis usaha tani',
     url:'https://hari-hari-laporan-v2.vercel.app/',      color:'#7ee06a', rect:{x:2, y:2, w:3, h:1} },
-  { id:'lcs',    name:'EVIDEN LCS',        desc:'Dokumentasi eviden kunjungan LCS',
+  { id:'lcs',    name:'EVIDENCE',         desc:'Dokumentasi eviden kunjungan LCS',
     url:'https://pawpfus.github.io/eviden_lcs/',         color:'#4cc9e0', rect:{x:6, y:2, w:3, h:1} },
-  { id:'disem',  name:'LAPORAN DISEMINASI',desc:'Rangkuman diseminasi media sosial',
+  { id:'disem',  name:'DIFFUSION REPORT', desc:'Rangkuman diseminasi media sosial',
     url:'https://pawpfus.github.io/laporan-diseminasi/', color:'#e07ad0', rect:{x:10,y:2, w:3, h:1} },
-  { id:'ksa',    name:'LAPORAN KSA',       desc:'Pendampingan Kerangka Sampel Area',
+  { id:'ksa',    name:'AREA SAMPLING',    desc:'Pendampingan Kerangka Sampel Area',
     url:'https://pawpfus.github.io/laporan-ksa-2026/',   color:'#e8c05a', rect:{x:1, y:6, w:3, h:2} },
-  { id:'forge',  name:'SKP FORGE',         desc:'Generator laporan bulanan SKP',
+  { id:'forge',  name:'ESC FORGE',        desc:'Generator laporan bulanan SKP',
     url:'https://pawpfus.github.io/skp-forge/', color:'#ff8c4a', rect:{x:11,y:6, w:3, h:2} },
+  { id:'farm',   name:'COOPERSTOWN',      desc:'FARM AXIS — peta poktan interaktif',
+    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', rect:{x:1, y:10,w:3, h:2} },
 ];
 
 const T=16, COLS=15, ROWS=15, W=COLS*T, H=ROWS*T;
@@ -258,9 +263,9 @@ const TOP_SIDE=[            // profil hadap kanan (moncong + ekor)
 '....kgggggk.',
 '....kgkkkkk.',
 '.....kggk...',
-'.....kggk...',
-'.kGGgggggk..',
-'..kkgggggk..',
+'kk...kggk...',
+'kGGGgggggk..',
+'.kkGgggggk..',
 '..kgggglgk..',
 '..kggggllk..',
 '...kggggk...'];
@@ -283,16 +288,10 @@ const SPR={
   left :LEGS_SIDE.map(l=>frameCanvas([...TOP_SIDE,...l],true)),
 };
 
-/* favicon: potret kepala dino (crop wajah sprite depan) berbingkai HQ */
+/* favicon: potret kepala dino saja (crop wajah sprite depan) */
 (function(){
   const c=document.createElement('canvas');c.width=48;c.height=48;
   const g=c.getContext('2d');g.imageSmoothingEnabled=false;
-  g.fillStyle='#0d1118';g.fillRect(0,0,48,48);
-  g.fillStyle='#2ee0ff';                                  // siku sudut cyan
-  g.fillRect(0,0,10,3);g.fillRect(0,0,3,10);
-  g.fillRect(38,0,10,3);g.fillRect(45,0,3,10);
-  g.fillRect(0,45,10,3);g.fillRect(0,38,3,10);
-  g.fillRect(38,45,10,3);g.fillRect(45,38,3,10);
   g.drawImage(SPR.down[0],0,0,12,7,0,10,48,28);           // kepala, skala 4x
   document.querySelector('link[rel=icon]').href=c.toDataURL();
 })();
@@ -487,6 +486,28 @@ anims.push({f:FURN[4],fn:(g,t)=>{                              // api + bara + a
   P(g,'rgba(200,200,210,.18)',f.px+f.canvas.width-11-(sm?2:0),f.py-11,9,5);
 }});
 
+/* --- MEJA NAVIGASI FARM AXIS : COOPERSTOWN --- */
+const navT=furn(TOOLS[5].rect,4,(g,w,h)=>{
+  P(g,'#242b38',0,4,w,h-8);P(g,'#1c212b',1,h-4,4,4);P(g,'#1c212b',w-5,h-4,4,4);
+  P(g,'#1a7f99',0,4,w,2);
+  P(g,'#0d2030',3,7,w-6,h-15);                                  // layar peta satelit
+  for(let i=6;i<w-12;i+=8)P(g,'#12405a',3+i,7,1,h-15);          // grid
+  for(let j=4;j<h-15;j+=6)P(g,'#12405a',3,7+j,w-6,1);
+  P(g,'#2f7a4a',6,10,10,6);P(g,'#2f7a4a',24,15,11,5);           // blok lahan
+  P(g,'#4cc9e0',3,13,w-6,1);                                    // saluran
+  P(g,'#e8c05a',19,9,3,3);                                      // pin poktan
+  P(g,'#10141c',34,8,10,10);P(g,'#1a7f99',34,8,10,1);           // dok kompas
+});
+FURN.push(navT);
+anims.push({f:navT,fn:(g,t)=>{                                  // jarum kompas berputar
+  const DIRS=[[3,0],[2,2],[0,3],[-2,2],[-3,0],[-2,-2],[0,-3],[2,-2]];
+  const fr=Math.floor(t/300)%8,d=DIRS[fr],cxp=navT.px+39,cyp=navT.py+13;
+  P(g,'#5ee8c8',cxp,cyp,1,1);
+  P(g,'#5ee8c8',cxp+d[0],cyp+d[1],1,1);
+  P(g,'#2a8f78',cxp-d[0],cyp-d[1],1,1);
+  if(Math.floor(t/550)%2)P(g,'#ffd75e',navT.px+20,navT.py+10,1,1);  // pin berkedip
+}});
+
 /* --- dekor berdiri: rak server & peti logam --- */
 const rackPaint=(g)=>{
   P(g,'#1d232e',3,0,10,20);P(g,'#39414f',3,0,10,2);
@@ -528,8 +549,9 @@ anims.push({fn:(g,t)=>{
 /* =========================================================================
    PEMAIN
    ========================================================================= */
-const player={x:7.5*T,y:13*T+12,dir:'down',frame:0,animT:0,moving:false,path:null,pendTool:null};
-const SPEED=62;
+const player={x:7.5*T,y:13*T+12,dir:'down',frame:0,animT:0,moving:false,path:null,pendTool:null,jumpT:0};
+const SPEED=62, JUMP_DUR=.45;
+const cam={x:0,y:0};
 const keys=new Set();
 const KEYMAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
               w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
@@ -651,25 +673,48 @@ addEventListener('keydown',e=>{
   if(menu.classList.contains('open'))return;
   if(KEYMAP[e.key]){keys.add(KEYMAP[e.key]);player.path=null;player.pendTool=null;
     hint.classList.add('gone');e.preventDefault();}
-  if((e.key==='Enter'||e.key===' '||e.key==='e'||e.key==='E')&&activeTool){
+  if(e.key===' '||e.key==='z'||e.key==='Z'){e.preventDefault();doJump();return;}
+  if((e.key==='Enter'||e.key==='e'||e.key==='E')&&activeTool){
     e.preventDefault();openTool(activeTool);}
 });
 addEventListener('keyup',e=>{if(KEYMAP[e.key])keys.delete(KEYMAP[e.key]);});
 
-/* D-pad sentuh */
-document.querySelectorAll('#dpad button').forEach(b=>{
-  const dir=KEYMAP[b.dataset.k];
-  const on=e=>{e.preventDefault();keys.add(dir);player.path=null;player.pendTool=null;hint.classList.add('gone');};
-  const off=e=>{e.preventDefault();keys.delete(dir);};
-  b.addEventListener('pointerdown',on);
-  b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('pointerleave',off);
+/* analog stick sentuh (kanan) */
+const joy={on:false,x:0,y:0};
+const stick=document.getElementById('stick'),knob=document.getElementById('knob');
+let joyId=null;
+function setKnob(dx,dy){knob.style.left=(36+dx)+'px';knob.style.top=(36+dy)+'px';}
+function joyMove(e){
+  const r=stick.getBoundingClientRect();
+  let dx=e.clientX-(r.left+r.width/2), dy=e.clientY-(r.top+r.height/2);
+  const m=Math.hypot(dx,dy),max=42;
+  if(m>max){dx*=max/m;dy*=max/m;}
+  setKnob(dx,dy);
+  if(m<10){joy.on=false;joy.x=joy.y=0;}
+  else{joy.on=true;joy.x=dx/max;joy.y=dy/max;}
+}
+stick.addEventListener('pointerdown',e=>{
+  joyId=e.pointerId;stick.setPointerCapture(joyId);
+  player.path=null;player.pendTool=null;hint.classList.add('gone');
+  joyMove(e);e.preventDefault();
 });
+stick.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e);});
+const joyEnd=e=>{if(e.pointerId!==joyId)return;joyId=null;joy.on=false;joy.x=joy.y=0;setKnob(0,0);};
+stick.addEventListener('pointerup',joyEnd);stick.addEventListener('pointercancel',joyEnd);
+
+/* lompat */
+function doJump(){
+  if(player.jumpT>0)return;
+  player.jumpT=JUMP_DUR;
+  beep(300,.06,.05);beep(520,.1,.04,'square',.05);
+}
+document.getElementById('btnJump').addEventListener('pointerdown',e=>{e.preventDefault();doJump();});
 
 /* ketuk kanvas: menuju meja / berjalan ke titik */
 cv.addEventListener('pointerdown',e=>{
   hint.classList.add('gone');
   const r=cv.getBoundingClientRect();
-  const mx=(e.clientX-r.left)/r.width*W, my=(e.clientY-r.top)/r.height*H;
+  const mx=(e.clientX-r.left)/r.width*cv.width+cam.x, my=(e.clientY-r.top)/r.height*cv.height+cam.y;
   const tx=Math.floor(mx/T),ty=Math.floor(my/T);
   /* kena furnitur tool (toleransi 1 tile utk label/overhang)? */
   for(const t of TOOLS){
@@ -694,6 +739,8 @@ function update(dt){
     if(keys.has('left'))vx=-1;else if(keys.has('right'))vx=1;
     if(keys.has('up'))vy=-1;else if(keys.has('down'))vy=1;
     if(vx&&vy)vy=0;                                            // 4 arah klasik
+  }else if(joy.on){
+    vx=joy.x;vy=joy.y;                                         // analog bebas arah
   }else if(player.path&&player.path.length){
     const [gx,gy]=player.path[0];
     const dx=gx-player.x,dy=gy-player.y;
@@ -709,14 +756,22 @@ function update(dt){
       if(Math.abs(dx)>Math.abs(dy))vx=Math.sign(dx);else vy=Math.sign(dy);
     }
   }
-  player.moving=!!(vx||vy);
+  const mag=Math.hypot(vx,vy);
+  player.moving=mag>.15;
   if(player.moving){
-    if(vx<0)player.dir='left';else if(vx>0)player.dir='right';
-    else if(vy<0)player.dir='up';else if(vy>0)player.dir='down';
+    if(Math.abs(vx)>=Math.abs(vy))player.dir=vx<0?'left':'right';
+    else player.dir=vy<0?'up':'down';
     const step=SPEED*dt;
     tryMove(vx*step,vy*step);
-    player.animT+=dt;
+    player.animT+=dt*Math.min(1.2,mag+.2);
   }else player.animT=0;
+  if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
+
+  /* kamera mengikuti dino (rapat saat kanvas lebih kecil dari ruangan) */
+  const tcx=cv.width>=W?(W-cv.width)/2:Math.max(0,Math.min(W-cv.width,player.x-cv.width/2));
+  const tcy=cv.height>=H?(H-cv.height)/2:Math.max(0,Math.min(H-cv.height,player.y-8-cv.height/2));
+  const ck=Math.min(1,dt*8);
+  cam.x+=(tcx-cam.x)*ck;cam.y+=(tcy-cam.y)*ck;
 
   /* zona interaksi */
   const [tx,ty]=ptile();
@@ -725,6 +780,9 @@ function update(dt){
 }
 
 function render(t){
+  cx.setTransform(1,0,0,1,0,0);
+  cx.fillStyle='#080b11';cx.fillRect(0,0,cv.width,cv.height);
+  cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   cx.drawImage(bg,0,0);
   /* label nama di atas tiap furnitur */
   for(const tool of TOOLS){
@@ -733,7 +791,7 @@ function render(t){
     let lx=Math.round((rc.x+rc.w/2)*T-wpx/2);
     lx=Math.max(2,Math.min(W-wpx-2,lx));
     const bob=near?(Math.floor(t/280)%2):0;
-    const ly=rc.y*T-([18,16,20,4,22][TOOLS.indexOf(tool)]||12)-9-bob;
+    const ly=rc.y*T-([18,16,20,4,22,4][TOOLS.indexOf(tool)]||12)-9-bob;
     cx.fillStyle=near?'rgba(6,14,20,.92)':'rgba(5,9,14,.62)';
     cx.fillRect(lx,ly,wpx,9);
     if(near){cx.fillStyle=tool.color;cx.fillRect(lx,ly+8,wpx,1);}
@@ -742,17 +800,20 @@ function render(t){
   /* gambar furnitur & pemain urut kedalaman */
   const items=FURN.map(f=>({y:f.baseY,draw:()=>cx.drawImage(f.canvas,f.px,f.py)}));
   items.push({y:player.y,draw:()=>{
-    cx.fillStyle='rgba(0,0,0,.28)';                            // bayangan
-    cx.fillRect(Math.round(player.x)-5,Math.round(player.y)-2,10,3);
-    const fr=player.moving?[1,0,2,0][Math.floor(player.animT*8)%4]:0;
-    cx.drawImage(SPR[player.dir][fr],Math.round(player.x)-6,Math.round(player.y)-16);
+    const jp=player.jumpT>0?Math.sin(Math.PI*(1-player.jumpT/JUMP_DUR))*10:0;
+    const sw2=jp>2?6:10;                                       // bayangan mengecil di udara
+    cx.fillStyle='rgba(0,0,0,.28)';
+    cx.fillRect(Math.round(player.x)-sw2/2,Math.round(player.y)-2,sw2,3);
+    const fr=jp>0?0:(player.moving?[1,0,2,0][Math.floor(player.animT*8)%4]:0);
+    cx.drawImage(SPR[player.dir][fr],Math.round(player.x)-6,Math.round(player.y)-16-Math.round(jp));
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
   /* overlay animasi furnitur (layar, api, dll) */
   for(const a of anims)a.fn(cx,t);
   /* penanda zona aktif: panah kecil di atas kepala */
   if(activeTool){
-    const yy=Math.round(player.y)-22+(Math.floor(t/240)%2);
+    const jpNow=player.jumpT>0?Math.sin(Math.PI*(1-player.jumpT/JUMP_DUR))*10:0;
+    const yy=Math.round(player.y)-22-Math.round(jpNow)+(Math.floor(t/240)%2);
     cx.fillStyle=activeTool.color;
     cx.fillRect(Math.round(player.x)-1,yy,2,2);
   }
@@ -766,12 +827,26 @@ function loop(ts){
 }
 requestAnimationFrame(loop);
 
-/* ---------- skala kanvas ---------- */
+/* ---------- skala kanvas ----------
+   Desktop : seluruh ruangan tampak, kanvas di-skala ke jendela.
+   Mobile  : fullscreen + zoom, kamera mengikuti dino (scene bergeser). */
+function isMobile(){
+  return matchMedia('(pointer:coarse)').matches||Math.min(innerWidth,innerHeight)<520;
+}
 function fit(){
   const vw=innerWidth,vh=innerHeight;
-  let s=Math.min((vw-12)/W,(vh-150)/H);
-  s=s>=2?Math.floor(s):Math.max(.8,Math.floor(s*4)/4);
-  cv.style.width=(W*s)+'px';cv.style.height=(H*s)+'px';
+  document.body.classList.toggle('mobile',isMobile());
+  if(isMobile()){
+    const Z=Math.max(2,Math.round(Math.min(vw,vh)/110));
+    cv.width=Math.ceil(vw/Z);cv.height=Math.ceil(vh/Z);
+    cv.style.width=vw+'px';cv.style.height=vh+'px';
+  }else{
+    cv.width=W;cv.height=H;
+    let s=Math.min((vw-12)/W,(vh-150)/H);
+    s=s>=2?Math.floor(s):Math.max(.8,Math.floor(s*4)/4);
+    cv.style.width=(W*s)+'px';cv.style.height=(H*s)+'px';
+  }
+  cx.imageSmoothingEnabled=false;
 }
 addEventListener('resize',fit);fit();
 
