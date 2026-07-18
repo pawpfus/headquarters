@@ -278,11 +278,17 @@ const SPR={
   left :LEGS_SIDE.map(l=>frameCanvas([...TOP_SIDE,...l],true)),
 };
 
-/* favicon dari sprite dino — tanpa file ikon terpisah */
+/* favicon: potret kepala dino (crop wajah sprite depan) berbingkai HQ */
 (function(){
   const c=document.createElement('canvas');c.width=48;c.height=48;
   const g=c.getContext('2d');g.imageSmoothingEnabled=false;
-  g.drawImage(SPR.down[0],0,0,12,16,6,0,36,48);
+  g.fillStyle='#0d1118';g.fillRect(0,0,48,48);
+  g.fillStyle='#2ee0ff';                                  // siku sudut cyan
+  g.fillRect(0,0,10,3);g.fillRect(0,0,3,10);
+  g.fillRect(38,0,10,3);g.fillRect(45,0,3,10);
+  g.fillRect(0,45,10,3);g.fillRect(0,38,3,10);
+  g.fillRect(38,45,10,3);g.fillRect(45,38,3,10);
+  g.drawImage(SPR.down[0],0,0,12,7,0,10,48,28);           // kepala, skala 4x
   document.querySelector('link[rel=icon]').href=c.toDataURL();
 })();
 
