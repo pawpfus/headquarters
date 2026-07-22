@@ -215,6 +215,17 @@ TOOLS.forEach(t=>{
   }
 });
 
+/* ---------- kabut perang (mobile): tiap wilayah gelap sampai dimasuki ----------
+   Empat petak menutup peta tanpa celah; lorong tengah sudah terbuka karena
+   dino memulai dari pintu masuk di sana. */
+const ROOMS=[
+  {x:0, y:0,w:10,h:19,seen:false},   // kamar kiri
+  {x:10,y:0,w:5, h:19,seen:true },   // lorong tengah (titik mulai)
+  {x:15,y:0,w:10,h:9, seen:false},   // kamar kanan-atas
+  {x:15,y:9,w:10,h:10,seen:false},   // kamar kanan-bawah
+];
+let fogOn=false;
+
 /* =========================================================================
    FONT BITMAP 3x5 — label pixel-perfect di kanvas
    ========================================================================= */
@@ -1044,6 +1055,10 @@ function update(dt){
   const [tx,ty]=ptile();
   const z=zoneOf[tx+','+ty]||null;
   if(z!==lastZone){lastZone=z;setBanner(z);}
+
+  /* kabut perang: wilayah terbuka begitu dino menginjaknya */
+  if(fogOn)for(const r of ROOMS)
+    if(!r.seen&&tx>=r.x&&tx<r.x+r.w&&ty>=r.y&&ty<r.y+r.h){r.seen=true;beep(700,.06,.03);}
 }
 
 function render(t){
@@ -1105,6 +1120,11 @@ function render(t){
   }
   /* overlay animasi furnitur (layar, api, dll) */
   for(const a of anims)a.fn(cx,t);
+  /* kabut perang: wilayah yang belum dimasuki ditutup gelap (mobile saja) */
+  if(fogOn){
+    cx.fillStyle='#080b11';
+    for(const r of ROOMS)if(!r.seen)cx.fillRect(r.x*T,r.y*T,r.w*T,r.h*T);
+  }
   /* penanda zona aktif: panah kecil di atas kepala */
   if(activeTool){
     const jpNow=player.jumpT>0?Math.sin(Math.PI*(1-player.jumpT/JUMP_DUR))*10:0;
@@ -1131,6 +1151,7 @@ function isMobile(){
 function fit(){
   const vw=innerWidth,vh=innerHeight;
   document.body.classList.toggle('mobile',isMobile());
+  fogOn=isMobile();                        // kabut perang hanya di layar sentuh/zoom
   if(isMobile()){
     const Z=Math.max(2,Math.round(Math.min(vw,vh)/110));
     cv.width=Math.ceil(vw/Z);cv.height=Math.ceil(vh/Z);
@@ -1146,7 +1167,8 @@ function fit(){
 addEventListener('resize',fit);fit();
 
 /* akses debug (dipakai pengujian otomatis; tidak memengaruhi game) */
-window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot};
+window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS,
+              fog:()=>fogOn};
 
 /* ---------- service worker (offline / PWA) ---------- */
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'))
