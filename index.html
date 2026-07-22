@@ -68,18 +68,32 @@
     transition:opacity .6s;white-space:nowrap;}
   #hint.gone{opacity:0;pointer-events:none;}
 
-  /* ---------- analog stick & lompat (layar sentuh) ---------- */
-  #stick{position:fixed;right:calc(22px + env(safe-area-inset-right));
-    bottom:calc(26px + env(safe-area-inset-bottom));z-index:31;
-    width:120px;height:120px;border-radius:50%;display:none;touch-action:none;
-    background:rgba(10,18,26,.5);border:1px solid var(--line);}
-  #knob{position:absolute;left:36px;top:36px;width:48px;height:48px;border-radius:50%;
-    background:rgba(62,201,232,.3);border:1px solid #4ce0ff;
-    box-shadow:0 0 12px rgba(60,200,255,.3);pointer-events:none;}
-  body.mobile #stick{display:block;}
+  /* ---------- d-pad + tombol A & lompat (layar sentuh) ---------- */
+  #dpad{position:fixed;right:calc(16px + env(safe-area-inset-right));
+    bottom:calc(20px + env(safe-area-inset-bottom));z-index:31;display:none;
+    grid-template-columns:repeat(3,50px);grid-template-rows:repeat(3,50px);
+    gap:2px;touch-action:none;}
+  #dpad button{font:inherit;font-size:15px;padding:0;color:#4ce0ff;
+    background:rgba(12,20,28,.72);border:1px solid var(--line);touch-action:none;
+    display:flex;align-items:center;justify-content:center;
+    -webkit-tap-highlight-color:transparent;}
+  #dpad button:active{background:rgba(40,90,120,.6);}
+  #dpad .blank{visibility:hidden;}
+  #dpadA{font-size:13px;letter-spacing:1px;color:#06131a;background:#3ec9e8;
+    box-shadow:0 3px 0 #1a7f99;}
+  #dpadA:active{background:#5ad8f2;}
+  #btnJump{position:fixed;left:calc(22px + env(safe-area-inset-left));
+    bottom:calc(36px + env(safe-area-inset-bottom));z-index:31;display:none;
+    width:66px;height:66px;border-radius:50%;font:inherit;font-size:10px;
+    letter-spacing:1px;color:#4ce0ff;background:rgba(12,20,28,.72);
+    border:1px solid var(--line);touch-action:none;
+    -webkit-tap-highlight-color:transparent;}
+  #btnJump:active{background:rgba(40,90,120,.6);transform:translateY(1px);}
+  body.mobile #dpad{display:grid;}
+  body.mobile #btnJump{display:block;}
   body.mobile #game{box-shadow:none;}
-  body.mobile #hint{bottom:calc(160px + env(safe-area-inset-bottom));}
-  body.mobile #banner{display:none;}  /* tertutup analog — buka tool: ketuk mejanya lagi */
+  body.mobile #hint{bottom:calc(190px + env(safe-area-inset-bottom));}
+  body.mobile #banner{display:none;}  /* tertutup d-pad — buka tool: tombol A */
 
   /* ---------- menu overlay ---------- */
   #menu{position:fixed;inset:0;z-index:40;display:none;
@@ -125,7 +139,12 @@
   <button type="button" id="btnOpen">BUKA &#9656;</button>
 </div>
 
-<div id="stick"><div id="knob"></div></div>
+<div id="dpad">
+  <button class="blank" tabindex="-1"></button><button type="button" data-d="up">&#9650;</button><button class="blank" tabindex="-1"></button>
+  <button type="button" data-d="left">&#9664;</button><button type="button" id="dpadA">A</button><button type="button" data-d="right">&#9654;</button>
+  <button class="blank" tabindex="-1"></button><button type="button" data-d="down">&#9660;</button><button class="blank" tabindex="-1"></button>
+</div>
+<button id="btnJump" type="button">JUMP</button>
 
 <div id="menu">
   <div class="panel">
@@ -144,30 +163,55 @@
    ========================================================================= */
 const TOOLS = [
   { id:'harian', name:'DAYDAYREPORT',     desc:'LTT harian, rekap komoditas, analisis usaha tani',
-    url:'https://hari-hari-laporan-v2.vercel.app/',      color:'#7ee06a', rect:{x:2, y:2, w:3, h:1} },
+    url:'https://hari-hari-laporan-v2.vercel.app/',      color:'#7ee06a', rect:{x:3, y:2, w:3, h:1} },
   { id:'lcs',    name:'EVIDENCE',         desc:'Dokumentasi eviden kunjungan LCS',
-    url:'https://pawpfus.github.io/eviden_lcs/',         color:'#4cc9e0', rect:{x:6, y:2, w:3, h:1} },
+    url:'https://pawpfus.github.io/eviden_lcs/',         color:'#4cc9e0', rect:{x:11,y:2, w:3, h:1} },
   { id:'disem',  name:'DIFFUSION REPORT', desc:'Rangkuman diseminasi media sosial',
-    url:'https://pawpfus.github.io/laporan-diseminasi/', color:'#e07ad0', rect:{x:10,y:2, w:3, h:1} },
+    url:'https://pawpfus.github.io/laporan-diseminasi/', color:'#e07ad0', rect:{x:19,y:2, w:3, h:1} },
   { id:'ksa',    name:'AREA SAMPLING',    desc:'Pendampingan Kerangka Sampel Area',
-    url:'https://pawpfus.github.io/laporan-ksa-2026/',   color:'#e8c05a', rect:{x:1, y:6, w:3, h:2} },
+    url:'https://pawpfus.github.io/laporan-ksa-2026/',   color:'#e8c05a', rect:{x:3, y:11,w:3, h:2} },
   { id:'forge',  name:'ESC FORGE',        desc:'Generator laporan bulanan SKP',
-    url:'https://pawpfus.github.io/skp-forge/', color:'#ff8c4a', rect:{x:11,y:6, w:3, h:2} },
+    url:'https://pawpfus.github.io/skp-forge/', color:'#ff8c4a', rect:{x:17,y:10,w:3, h:2} },
   { id:'farm',   name:'COOPERSTOWN',      desc:'FARM AXIS — peta poktan interaktif',
-    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', rect:{x:1, y:10,w:3, h:2} },
+    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', rect:{x:2, y:15,w:3, h:2} },
 ];
 
-const T=16, COLS=15, ROWS=15, W=COLS*T, H=ROWS*T;
+const T=16, COLS=25, ROWS=19, W=COLS*T, H=ROWS*T;
 const cv=document.getElementById('game'), cx=cv.getContext('2d');
 cx.imageSmoothingEnabled=false;
 
+/* ---------- denah markas: '#' dinding, '.' lantai ----------
+   Tiga kamar atas — koridor — dua kamar samping + hub tengah — aula bawah.
+   Celah di dinding = pintu/lorong menuju tiap stasiun. */
+const MAP=[
+'#########################',
+'#########################',
+'#.......#.......#.......#',
+'#.......#.......#.......#',
+'#.......#.......#.......#',
+'#.......#.......#.......#',
+'####.#######.#######.####',
+'#.......................#',
+'#.......................#',
+'####.#######.#######.####',
+'#.......#.......#.......#',
+'#.......#.......#.......#',
+'#.......#.......#.......#',
+'#.......#.......#.......#',
+'####.#######.#######.####',
+'#.......................#',
+'#.......................#',
+'#.......................#',
+'#########################',
+];
+
 /* ---------- peta kepadatan (collision) ---------- */
-const DECOR_SOLID=[{x:1,y:2,w:1,h:1},{x:13,y:2,w:1,h:1},{x:12,y:12,w:2,h:1}]; // pot, pot, karung
+const DECOR_SOLID=[{x:1,y:2,w:1,h:1},{x:23,y:2,w:1,h:1},{x:20,y:16,w:2,h:1}]; // rak, rak, peti
 const solid=new Uint8Array(COLS*ROWS);
 const S=(x,y)=>solid[y*COLS+x];
 (function buildSolid(){
-  for(let x=0;x<COLS;x++){solid[0*COLS+x]=1;solid[1*COLS+x]=1;solid[14*COLS+x]=1;}
-  for(let y=0;y<ROWS;y++){solid[y*COLS+0]=1;solid[y*COLS+14]=1;}
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+    if(MAP[y][x]==='#')solid[y*COLS+x]=1;
   const mark=r=>{for(let y=r.y;y<r.y+r.h;y++)for(let x=r.x;x<r.x+r.w;x++)solid[y*COLS+x]=1;};
   TOOLS.forEach(t=>mark(t.rect)); DECOR_SOLID.forEach(mark);
 })();
@@ -295,8 +339,10 @@ const rnd=(x,y)=>((x*73856093)^(y*19349663))>>>0;
 
 (function drawBG(){
   const g=bgc;
-  /* lantai pelat logam */
-  for(let ty=2;ty<14;ty++)for(let tx=1;tx<14;tx++){
+  P(g,'#0c1016',0,0,W,H);
+  /* lantai pelat logam (tile '.') */
+  for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
+    if(MAP[ty][tx]!=='.')continue;
     const px=tx*T,py=ty*T,alt=((tx+ty)%2);
     P(g,alt?'#2b323f':'#2f3745',px,py,T,T);
     P(g,'#1e2430',px,py+T-1,T,1);                        // sambungan pelat
@@ -305,27 +351,33 @@ const rnd=(x,y)=>((x*73856093)^(y*19349663))>>>0;
     P(g,'#454f61',px+1,py+T-3,1,1);P(g,'#454f61',px+T-3,py+T-3,1,1);
     if(rnd(tx,ty)%9===0)P(g,'#232935',px+4,py+7,8,2);    // kisi ventilasi
   }
-  /* dinding belakang baja (baris 0-1) */
-  P(g,'#232a36',0,0,W,2*T);
-  for(let x=0;x<W;x+=6)P(g,'#1d2430',x,0,1,2*T);
-  P(g,'#10141c',0,2*T-4,W,4);                            // list bawah dinding
-  P(g,'#2ee0ff',0,2*T-5,W,1);                            // strip cahaya cyan
-  P(g,'#141922',0,0,W,3);                                // trim atas
-  /* bayangan dinding jatuh ke lantai */
-  P(g,'rgba(0,0,0,.25)',T,2*T,13*T,4);
-  /* dinding samping + bawah */
-  P(g,'#161b24',0,0,T,H);P(g,'#161b24',14*T,0,T,H);
-  P(g,'#121620',0,14*T,W,T);
-  for(let y=0;y<H;y+=8){P(g,'#1a2029',0,y,T,1);P(g,'#1a2029',14*T,y,T,1);}
-  /* pintu geser bawah tengah (kolom 7) */
-  P(g,'#07090d',7*T-2,14*T,T+4,T);
-  P(g,'#2e3542',7*T-4,14*T,2,T);P(g,'#2e3542',8*T+2,14*T,2,T);
-  P(g,'#4ce0ff',7*T+2,14*T+2,12,2);                      // cahaya lorong
+  /* dinding (tile '#'): muka baja bila ada lantai tepat di bawahnya,
+     selain itu pelat gelap berlist — denah kamar & lorong terbaca dari sini */
+  for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
+    if(MAP[ty][tx]!=='#')continue;
+    const px=tx*T,py=ty*T;
+    const face=ty+1<ROWS&&MAP[ty+1][tx]==='.';
+    if(face){
+      P(g,'#232a36',px,py,T,T);
+      for(let x=0;x<T;x+=6)P(g,'#1d2430',px+x,py,1,T);
+      P(g,'#10141c',px,py+T-4,T,4);                      // list bawah dinding
+      P(g,'#2ee0ff',px,py+T-5,T,1);                      // strip cahaya cyan
+      P(g,'rgba(0,0,0,.25)',px,py+T,T,4);                // bayangan jatuh ke lantai
+    }else{
+      P(g,'#161b24',px,py,T,T);
+      for(let y=0;y<T;y+=8)P(g,'#1a2029',px,py+y,T,1);
+    }
+    if(ty===0)P(g,'#141922',px,0,T,3);                   // trim atas
+  }
+  /* pintu geser keluar (bawah, kolom 12) */
+  P(g,'#07090d',12*T-2,18*T,T+4,T);
+  P(g,'#2e3542',12*T-4,18*T,2,T);P(g,'#2e3542',13*T+2,18*T,2,T);
+  P(g,'#4ce0ff',12*T+2,18*T+2,12,2);                     // cahaya lorong
   /* pad sensor pintu */
-  P(g,'#1a212c',7*T+1,13*T+3,14,10);P(g,'#2ee0ff',7*T+1,13*T+3,14,1);
-  P(g,'#1a7f99',7*T+4,13*T+7,8,2);
-  /* holo-pad tengah */
-  const rx=5*T+2,ry=8*T+2,rw=5*T-4,rh=4*T-4;
+  P(g,'#1a212c',12*T+1,17*T+3,14,10);P(g,'#2ee0ff',12*T+1,17*T+3,14,1);
+  P(g,'#1a7f99',12*T+4,17*T+7,8,2);
+  /* holo-pad hub tengah */
+  const rx=10*T+2,ry=10*T+2,rw=5*T-4,rh=3*T-4;
   P(g,'#10151d',rx-2,ry-2,rw+4,rh+4);
   P(g,'#171d28',rx,ry,rw,rh);
   for(let i=8;i<rw-4;i+=8)P(g,'#1f2836',rx+i,ry+2,1,rh-4);   // grid halus
@@ -342,17 +394,17 @@ const rnd=(x,y)=>((x*73856093)^(y*19349663))>>>0;
   /* panel status (kolom 1) — LED dianimasikan */
   P(g,'#10141c',T+2,5,12,15);P(g,'#2e3542',T+2,5,12,2);
   P(g,'#1a7f99',T+4,15,8,1);P(g,'#1a7f99',T+4,17,6,1);
-  /* emblem HQ (kolom 5) */
-  P(g,'#2e3542',5*T+2,4,12,16);P(g,'#0c1118',5*T+3,5,10,14);
-  drawText(g,'HQ',5*T+4,8,'#4ce0ff');
-  P(g,'#e8c05a',5*T+4,15,8,1);
-  /* radar (kolom 9) — sapuan dianimasikan */
-  P(g,'#10141c',9*T+2,4,12,12);P(g,'#2e3542',9*T+2,4,12,1);
-  P(g,'#0d2418',9*T+3,6,10,9);
-  P(g,'#1d4a30',9*T+5,8,6,5);P(g,'#0d2418',9*T+6,9,4,3);
-  /* rak trofi logam (kolom 13) */
-  P(g,'#2e3542',13*T+1,14,14,3);
-  P(g,'#e8c05a',13*T+5,6,6,5);P(g,'#c89a3a',13*T+7,11,2,2);P(g,'#39414f',13*T+5,13,6,2);
+  /* emblem HQ (kolom 9) */
+  P(g,'#2e3542',9*T+2,4,12,16);P(g,'#0c1118',9*T+3,5,10,14);
+  drawText(g,'HQ',9*T+4,8,'#4ce0ff');
+  P(g,'#e8c05a',9*T+4,15,8,1);
+  /* radar (kolom 15) — sapuan dianimasikan */
+  P(g,'#10141c',15*T+2,4,12,12);P(g,'#2e3542',15*T+2,4,12,1);
+  P(g,'#0d2418',15*T+3,6,10,9);
+  P(g,'#1d4a30',15*T+5,8,6,5);P(g,'#0d2418',15*T+6,9,4,3);
+  /* rak trofi logam (kolom 23) */
+  P(g,'#2e3542',23*T+1,14,14,3);
+  P(g,'#e8c05a',23*T+5,6,6,5);P(g,'#c89a3a',23*T+7,11,2,2);P(g,'#39414f',23*T+5,13,6,2);
 })();
 
 /* =========================================================================
@@ -503,8 +555,8 @@ const rackPaint=(g)=>{
   P(g,'#10141c',5,4,6,3);P(g,'#10141c',5,9,6,3);P(g,'#10141c',5,14,6,3);
   P(g,'#454f61',4,3,1,16);};
 const rackA=furn({x:1,y:2,w:1,h:1},4,g=>{rackPaint(g);});
-const rackB=furn({x:13,y:2,w:1,h:1},4,g=>{rackPaint(g);});
-const crates=furn({x:12,y:12,w:2,h:1},8,(g)=>{
+const rackB=furn({x:23,y:2,w:1,h:1},4,g=>{rackPaint(g);});
+const crates=furn({x:20,y:16,w:2,h:1},8,(g)=>{
   P(g,'#2e3542',2,8,13,15);P(g,'#39414f',2,8,13,2);P(g,'#10141c',2,22,13,1);
   P(g,'#e8c05a',3,16,4,2);P(g,'#454f61',8,12,5,4);
   P(g,'#39414f',16,12,13,11);P(g,'#454f61',16,12,13,2);
@@ -523,13 +575,13 @@ anims.push({fn:(g,t)=>{
     P(g,(bl^(i&1))?'#ff5a5a':'#4a1616',r.px+6,r.py+15,1,1);
   });
   const DIRS=[[3,0],[2,2],[0,3],[-2,2],[-3,0],[-2,-2],[0,-3],[2,-2]];
-  const fr=Math.floor(t/240)%8,d=DIRS[fr],cxr=9*T+8,cyr=10;
+  const fr=Math.floor(t/240)%8,d=DIRS[fr],cxr=15*T+8,cyr=10;
   P(g,'#46d160',cxr,cyr,1,1);
   P(g,'#2f9b53',cxr+(d[0]>>1),cyr+(d[1]>>1),1,1);
   P(g,'#46d160',cxr+d[0],cyr+d[1],1,1);
   if(fr===5)P(g,'#e8c05a',cxr-2,cyr+2,1,1);
   if(Math.floor(t/800)%2){
-    const rx=5*T+2,ry=8*T+2,rw=5*T-4,rh=4*T-4;
+    const rx=10*T+2,ry=10*T+2,rw=5*T-4,rh=3*T-4;
     P(g,'rgba(46,224,255,.45)',rx,ry,rw,1);P(g,'rgba(46,224,255,.45)',rx,ry+rh-1,rw,1);
     P(g,'rgba(46,224,255,.45)',rx,ry,1,rh);P(g,'rgba(46,224,255,.45)',rx+rw-1,ry,1,rh);
   }
@@ -538,7 +590,7 @@ anims.push({fn:(g,t)=>{
 /* =========================================================================
    PEMAIN
    ========================================================================= */
-const player={x:7.5*T,y:13*T+12,dir:'down',frame:0,animT:0,moving:false,path:null,pendTool:null,jumpT:0};
+const player={x:12.5*T,y:17*T+12,dir:'down',frame:0,animT:0,moving:false,path:null,pendTool:null,jumpT:0};
 const SPEED=62, JUMP_DUR=.45;
 const cam={x:0,y:0};
 const keys=new Set();
@@ -667,35 +719,27 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>{if(KEYMAP[e.key])keys.delete(KEYMAP[e.key]);});
 
-/* analog stick sentuh (kanan) */
-const joy={on:false,x:0,y:0};
-const stick=document.getElementById('stick'),knob=document.getElementById('knob');
-let joyId=null,joyT0=0,joyMax=0;
-function setKnob(dx,dy){knob.style.left=(36+dx)+'px';knob.style.top=(36+dy)+'px';}
-function joyMove(e){
-  const r=stick.getBoundingClientRect();
-  let dx=e.clientX-(r.left+r.width/2), dy=e.clientY-(r.top+r.height/2);
-  const m=Math.hypot(dx,dy),max=42;
-  joyMax=Math.max(joyMax,m);
-  if(m>max){dx*=max/m;dy*=max/m;}
-  setKnob(dx,dy);
-  if(m<10){joy.on=false;joy.x=joy.y=0;}
-  else{joy.on=true;joy.x=dx/max;joy.y=dy/max;}
-}
-stick.addEventListener('pointerdown',e=>{
-  joyId=e.pointerId;joyT0=performance.now();joyMax=0;
-  try{stick.setPointerCapture(joyId);}catch(err){}
-  player.path=null;player.pendTool=null;hint.classList.add('gone');
-  joyMove(e);e.preventDefault();
+/* d-pad sentuh (kanan): 4 arah, tahan untuk berjalan */
+document.querySelectorAll('#dpad button[data-d]').forEach(b=>{
+  const d=b.dataset.d;
+  const on=e=>{e.preventDefault();keys.add(d);
+    player.path=null;player.pendTool=null;hint.classList.add('gone');};
+  const off=e=>{e.preventDefault();keys.delete(d);};
+  b.addEventListener('pointerdown',on);
+  b.addEventListener('pointerup',off);
+  b.addEventListener('pointercancel',off);
+  b.addEventListener('pointerleave',off);
+  b.addEventListener('contextmenu',e=>e.preventDefault());
 });
-stick.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e);});
-const joyEnd=e=>{
-  if(e.pointerId!==joyId)return;
-  joyId=null;joy.on=false;joy.x=joy.y=0;setKnob(0,0);
-  /* ketukan singkat di tengah analog = lompat */
-  if(performance.now()-joyT0<300&&joyMax<12)doJump();
-};
-stick.addEventListener('pointerup',joyEnd);stick.addEventListener('pointercancel',joyEnd);
+/* tombol A tengah d-pad = klik/buka objek yang sedang didekati */
+document.getElementById('dpadA').addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  if(activeTool)openTool(activeTool);else beep(220,.05,.03);
+});
+/* tombol lompat terpisah (kiri) */
+document.getElementById('btnJump').addEventListener('pointerdown',e=>{
+  e.preventDefault();doJump();
+});
 
 /* lompat */
 function doJump(){
@@ -732,9 +776,7 @@ function update(dt){
   if(keys.size){
     if(keys.has('left'))vx=-1;else if(keys.has('right'))vx=1;
     if(keys.has('up'))vy=-1;else if(keys.has('down'))vy=1;
-    if(vx&&vy){vx*=Math.SQRT1_2;vy*=Math.SQRT1_2;}             // diagonal: kecepatan tetap
-  }else if(joy.on){
-    vx=joy.x;vy=joy.y;                                         // analog bebas arah
+    if(vx&&vy)vy=0;                                            // 4 arah klasik, tanpa diagonal
   }else if(player.path&&player.path.length){
     const [gx,gy]=player.path[0];
     const dx=gx-player.x,dy=gy-player.y;
@@ -747,7 +789,7 @@ function update(dt){
         player.pendTool=null;beep(600,.05,.04);
       }
     }else{
-      const m=Math.hypot(dx,dy);vx=dx/m;vy=dy/m;               // langsung ke simpul, tanpa zigzag
+      if(Math.abs(dx)>Math.abs(dy))vx=Math.sign(dx);else vy=Math.sign(dy);
     }
   }
   const mag=Math.hypot(vx,vy);
@@ -843,6 +885,9 @@ function fit(){
   cx.imageSmoothingEnabled=false;
 }
 addEventListener('resize',fit);fit();
+
+/* akses debug (dipakai pengujian otomatis; tidak memengaruhi game) */
+window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile};
 
 /* ---------- service worker (offline / PWA) ---------- */
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'))
