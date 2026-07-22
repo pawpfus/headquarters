@@ -188,7 +188,12 @@ const MAP=[
 ];
 
 /* ---------- peta kepadatan (collision) ---------- */
-const DECOR_SOLID=[{x:1,y:2,w:1,h:1},{x:23,y:2,w:1,h:1},{x:19,y:15,w:2,h:1}]; // rak, rak, peti
+const DECOR_SOLID=[
+  {x:1, y:2, w:1,h:1},{x:23,y:2, w:1,h:1},{x:19,y:15,w:2,h:1},  // rak, rak, peti
+  {x:1, y:5, w:1,h:1},{x:9, y:10,w:1,h:1},{x:23,y:6, w:1,h:1},  // pot tanaman
+  {x:4, y:5, w:2,h:1},{x:3, y:15,w:1,h:1},                      // bangku, drum
+  {x:15,y:2, w:1,h:1},{x:20,y:9, w:1,h:1},{x:15,y:15,w:2,h:1},  // kabinet, rak alat, tong
+];
 const solid=new Uint8Array(COLS*ROWS);
 const S=(x,y)=>solid[y*COLS+x];
 (function buildSolid(){
@@ -358,18 +363,25 @@ const rnd=(x,y)=>((x*73856093)^(y*19349663))>>>0;
   /* pad sensor pintu */
   P(g,'#1a212c',12*T+1,17*T+3,14,10);P(g,'#2ee0ff',12*T+1,17*T+3,14,1);
   P(g,'#1a7f99',12*T+4,17*T+7,8,2);
+  /* --- aksen lantai: garis pandu, strip bahaya, keset, noda oli --- */
+  for(let y=2*T;y<17*T;y+=12)P(g,'#173441',12*T+7,y,2,6);            // garis pandu lorong
+  for(let i=0;i<6;i++)P(g,i%2?'#e8c05a':'#1a1a1a',11*T+i*8,17*T,8,3); // strip bahaya pintu
+  P(g,'#1d3a30',6*T+2,6*T+2,28,12);P(g,'#2a4d3f',6*T+4,6*T+4,24,8);   // keset hijau
+  P(g,'#1d3a30',6*T+8,6*T+6,16,4);
+  const stain=(sx,sy)=>{P(g,'rgba(8,10,14,.55)',sx,sy,10,5);
+    P(g,'rgba(8,10,14,.55)',sx+3,sy-3,5,11);P(g,'rgba(8,10,14,.35)',sx-3,sy+2,16,3);};
+  stain(6*T+4,9*T+8);stain(18*T+2,13*T+8);stain(12*T+4,5*T+6);        // noda oli
+  /* pipa di dinding pembatas + ventilasi besar */
+  P(g,'#4a4a52',10*T+6,6*T,4,3*T);P(g,'#3a3a42',10*T+6,6*T,1,3*T);
+  P(g,'#55555f',10*T+4,6*T+6,8,3);P(g,'#55555f',10*T+4,8*T+6,8,3);    // klem pipa
+  P(g,'#10141c',21*T+2,8*T+3,24,8);
+  for(let i=0;i<5;i++)P(g,'#39414f',21*T+5+i*4,8*T+4,2,6);            // kisi ventilasi
   /* holo-pad di lorong tengah */
   const rx=11*T+2,ry=8*T+2,rw=3*T-4,rh=3*T-4;
   P(g,'#10151d',rx-2,ry-2,rw+4,rh+4);
   P(g,'#171d28',rx,ry,rw,rh);
   for(let i=8;i<rw-4;i+=8)P(g,'#1f2836',rx+i,ry+2,1,rh-4);   // grid halus
   for(let j=8;j<rh-4;j+=8)P(g,'#1f2836',rx+2,ry+j,rw-4,1);
-  P(g,'#1a7f99',rx,ry,rw,1);P(g,'#1a7f99',rx,ry+rh-1,rw,1);  // bingkai
-  P(g,'#1a7f99',rx,ry,1,rh);P(g,'#1a7f99',rx+rw-1,ry,1,rh);
-  P(g,'#2ee0ff',rx,ry,6,2);P(g,'#2ee0ff',rx,ry,2,6);          // siku sudut
-  P(g,'#2ee0ff',rx+rw-6,ry,6,2);P(g,'#2ee0ff',rx+rw-2,ry,2,6);
-  P(g,'#2ee0ff',rx,ry+rh-2,6,2);P(g,'#2ee0ff',rx,ry+rh-6,2,6);
-  P(g,'#2ee0ff',rx+rw-6,ry+rh-2,6,2);P(g,'#2ee0ff',rx+rw-2,ry+rh-6,2,6);
   g.imageSmoothingEnabled=false;                                   // emblem kepala dino
   g.drawImage(SPR.down[0],0,0,12,7,rx+Math.floor(rw/2)-12,ry+Math.floor(rh/2)-7,24,14);
   /* --- dekor dinding --- */
@@ -545,6 +557,43 @@ const crates=furn({x:19,y:15,w:2,h:1},8,(g)=>{
   P(g,'#e8c05a',18,17,6,2);P(g,'#10141c',16,22,13,1);});
 FURN.push(rackA,rackB,crates);
 
+/* --- dekor pengisi ruangan: pot, bangku, drum, kabinet, rak alat, tong --- */
+const potPaint=g=>{
+  P(g,'#5f2d20',4,13,8,6);P(g,'#7a3a2a',4,13,8,2);P(g,'#3f1e15',4,18,8,1);   // pot tanah liat
+  P(g,'#2f7a4a',7,7,2,6);                                                    // batang
+  P(g,'#46a14e',3,4,4,4);P(g,'#46a14e',9,3,4,4);P(g,'#2f7a4a',6,2,4,3);      // daun
+  P(g,'#7ee06a',7,4,2,2);P(g,'#7ee06a',4,5,2,1);
+};
+const potA=furn({x:1, y:5, w:1,h:1},4,potPaint);
+const potB=furn({x:9, y:10,w:1,h:1},4,potPaint);
+const potC=furn({x:23,y:6, w:1,h:1},4,potPaint);
+const bench=furn({x:4,y:5,w:2,h:1},6,(g,w,h)=>{
+  P(g,'#39414f',2,8,w-4,5);P(g,'#4a5468',2,8,w-4,2);                         // dudukan logam
+  P(g,'#2a303c',3,13,3,h-14);P(g,'#2a303c',w-6,13,3,h-14);                   // kaki
+});
+const drum=furn({x:3,y:15,w:1,h:1},6,(g)=>{
+  P(g,'#3a5a8a',3,4,10,17);P(g,'#4a6f9f',3,4,10,2);                          // drum baja biru
+  P(g,'#2a4568',3,10,10,2);P(g,'#2a4568',3,16,10,2);P(g,'#151a22',3,20,10,1);
+});
+const kabinet=furn({x:15,y:2,w:1,h:1},10,(g)=>{
+  P(g,'#4a5468',3,2,10,23);P(g,'#39414f',3,2,10,2);                          // kabinet arsip
+  P(g,'#2a303c',4,6,8,4);P(g,'#2a303c',4,12,8,4);P(g,'#2a303c',4,18,8,4);    // laci
+  P(g,'#e8c05a',7,7,2,1);P(g,'#e8c05a',7,13,2,1);P(g,'#e8c05a',7,19,2,1);    // pegangan
+});
+const toolRack=furn({x:20,y:9,w:1,h:1},12,(g)=>{
+  P(g,'#39414f',2,2,12,16);P(g,'#26262e',3,3,10,14);                         // papan alat
+  P(g,'#8a6a42',5,5,1,6);P(g,'#55555f',4,3,3,3);                             // palu
+  P(g,'#8a6a42',10,5,1,7);P(g,'#c9c9d2',9,3,3,2);                            // kunci
+  P(g,'#2a303c',2,18,12,10);                                                 // meja bawah
+});
+const barrels=furn({x:15,y:15,w:2,h:1},6,(g)=>{
+  P(g,'#6e4a2a',2,4,12,17);P(g,'#815a36',2,4,12,2);                          // tong kayu
+  P(g,'#573a20',2,10,12,2);P(g,'#573a20',2,16,12,2);
+  P(g,'#3a5a8a',17,6,12,15);P(g,'#4a6f9f',17,6,12,2);                        // drum baja
+  P(g,'#2a4568',17,12,12,2);P(g,'#151a22',17,20,12,1);
+});
+FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,barrels);
+
 /* --- animasi ambience HQ: LED panel, rak server, radar, holo-pad --- */
 anims.push({fn:(g,t)=>{
   const LC=['#46d160','#e8c05a','#ff5a5a','#2ee0ff'];
@@ -562,11 +611,6 @@ anims.push({fn:(g,t)=>{
   P(g,'#2f9b53',cxr+(d[0]>>1),cyr+(d[1]>>1),1,1);
   P(g,'#46d160',cxr+d[0],cyr+d[1],1,1);
   if(fr===5)P(g,'#e8c05a',cxr-2,cyr+2,1,1);
-  if(Math.floor(t/800)%2){
-    const rx=11*T+2,ry=8*T+2,rw=3*T-4,rh=3*T-4;
-    P(g,'rgba(46,224,255,.45)',rx,ry,rw,1);P(g,'rgba(46,224,255,.45)',rx,ry+rh-1,rw,1);
-    P(g,'rgba(46,224,255,.45)',rx,ry,1,rh);P(g,'rgba(46,224,255,.45)',rx+rw-1,ry,1,rh);
-  }
 }});
 
 /* =========================================================================
@@ -702,19 +746,20 @@ addEventListener('keyup',e=>{if(KEYMAP[e.key])keys.delete(KEYMAP[e.key]);});
 /* analog stick sentuh (kanan) — arah dipetakan ke 4 arah (sumbu dominan) */
 const joy={on:false,x:0,y:0};
 const stick=document.getElementById('stick'),knob=document.getElementById('knob');
-let joyId=null;
+let joyId=null,joyT0=0,joyMax=0;
 function setKnob(dx,dy){knob.style.left=(36+dx)+'px';knob.style.top=(36+dy)+'px';}
 function joyMove(e){
   const r=stick.getBoundingClientRect();
   let dx=e.clientX-(r.left+r.width/2), dy=e.clientY-(r.top+r.height/2);
   const m=Math.hypot(dx,dy),max=42;
+  joyMax=Math.max(joyMax,m);
   if(m>max){dx*=max/m;dy*=max/m;}
   setKnob(dx,dy);
   if(m<10){joy.on=false;joy.x=joy.y=0;}
   else{joy.on=true;joy.x=dx/max;joy.y=dy/max;}
 }
 stick.addEventListener('pointerdown',e=>{
-  joyId=e.pointerId;
+  joyId=e.pointerId;joyT0=performance.now();joyMax=0;
   try{stick.setPointerCapture(joyId);}catch(err){}
   player.path=null;player.pendTool=null;
   joyMove(e);e.preventDefault();
@@ -723,6 +768,8 @@ stick.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e);});
 const joyEnd=e=>{
   if(e.pointerId!==joyId)return;
   joyId=null;joy.on=false;joy.x=joy.y=0;setKnob(0,0);
+  /* ketukan singkat di analog = interaksi/buka objek yang sedang didekati */
+  if(performance.now()-joyT0<300&&joyMax<12&&activeTool)openTool(activeTool);
 };
 stick.addEventListener('pointerup',joyEnd);stick.addEventListener('pointercancel',joyEnd);
 /* tombol lompat terpisah (kiri) */
