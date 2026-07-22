@@ -215,16 +215,18 @@ TOOLS.forEach(t=>{
   }
 });
 
-/* ---------- kabut perang (mobile): tiap wilayah gelap sampai dimasuki ----------
-   Empat petak menutup peta tanpa celah; lorong tengah sudah terbuka karena
-   dino memulai dari pintu masuk di sana. */
+/* ---------- kabut perang (mobile): cahaya mengikuti dino ----------
+   Empat petak menutup peta tanpa celah. Tiap petak punya kadar gelap `a`
+   (1 = pekat) yang bergerak halus ke 0 saat dino di dalamnya, dan kembali
+   ke 1 setelah ia pergi — jadi meredup/menggelap bertahap, bukan seketika. */
 const ROOMS=[
-  {x:0, y:0,w:10,h:19,seen:false},   // kamar kiri
-  {x:10,y:0,w:5, h:19,seen:true },   // lorong tengah (titik mulai)
-  {x:15,y:0,w:10,h:9, seen:false},   // kamar kanan-atas
-  {x:15,y:9,w:10,h:10,seen:false},   // kamar kanan-bawah
+  {x:0, y:0,w:10,h:19,a:1},   // kamar kiri
+  {x:10,y:0,w:5, h:19,a:1},   // lorong tengah
+  {x:15,y:0,w:10,h:9, a:1},   // kamar kanan-atas
+  {x:15,y:9,w:10,h:10,a:1},   // kamar kanan-bawah
 ];
 let fogOn=false;
+const fogCv=document.createElement('canvas');   // lapisan gelap + lubang halo dino
 
 /* =========================================================================
    FONT BITMAP 3x5 — label pixel-perfect di kanvas
@@ -1056,9 +1058,14 @@ function update(dt){
   const z=zoneOf[tx+','+ty]||null;
   if(z!==lastZone){lastZone=z;setBanner(z);}
 
-  /* kabut perang: wilayah terbuka begitu dino menginjaknya */
-  if(fogOn)for(const r of ROOMS)
-    if(!r.seen&&tx>=r.x&&tx<r.x+r.w&&ty>=r.y&&ty<r.y+r.h){r.seen=true;beep(700,.06,.03);}
+  /* kabut perang: petak yang ditempati dino meredup, sisanya menggelap lagi */
+  if(fogOn){
+    const k=Math.min(1,dt*2.6);                       // ~0,4 dtk transisi
+    for(const r of ROOMS){
+      const di=tx>=r.x&&tx<r.x+r.w&&ty>=r.y&&ty<r.y+r.h;
+      r.a+=((di?0:1)-r.a)*k;
+    }
+  }
 }
 
 function render(t){
@@ -1120,17 +1127,33 @@ function render(t){
   }
   /* overlay animasi furnitur (layar, api, dll) */
   for(const a of anims)a.fn(cx,t);
-  /* kabut perang: wilayah yang belum dimasuki ditutup gelap (mobile saja) */
-  if(fogOn){
-    cx.fillStyle='#080b11';
-    for(const r of ROOMS)if(!r.seen)cx.fillRect(r.x*T,r.y*T,r.w*T,r.h*T);
-  }
   /* penanda zona aktif: panah kecil di atas kepala */
   if(activeTool){
     const jpNow=player.jumpT>0?Math.sin(Math.PI*(1-player.jumpT/JUMP_DUR))*10:0;
     const yy=Math.round(player.y)-22-Math.round(jpNow)+(Math.floor(t/240)%2);
     cx.fillStyle=activeTool.color;
     cx.fillRect(Math.round(player.x)-1,yy,2,2);
+  }
+
+  /* kabut perang paling akhir: petak gelap dilubangi halo di sekitar dino */
+  if(fogOn){
+    const g=fogCv.getContext('2d'),ox=Math.round(cam.x),oy=Math.round(cam.y);
+    g.setTransform(1,0,0,1,0,0);
+    g.clearRect(0,0,fogCv.width,fogCv.height);
+    g.globalCompositeOperation='source-over';
+    for(const r of ROOMS){
+      if(r.a<=.004)continue;
+      g.fillStyle=`rgba(8,11,17,${r.a.toFixed(3)})`;
+      g.fillRect(r.x*T-ox,r.y*T-oy,r.w*T,r.h*T);
+    }
+    const hx=Math.round(player.x)-ox,hy=Math.round(player.y)-8-oy,R=34;
+    const grd=g.createRadialGradient(hx,hy,6,hx,hy,R);   // halo ikut ke mana dino pergi
+    grd.addColorStop(0,'rgba(0,0,0,1)');
+    grd.addColorStop(1,'rgba(0,0,0,0)');
+    g.globalCompositeOperation='destination-out';
+    g.fillStyle=grd;g.fillRect(hx-R,hy-R,R*2,R*2);
+    cx.setTransform(1,0,0,1,0,0);
+    cx.drawImage(fogCv,0,0);
   }
 }
 
@@ -1162,6 +1185,7 @@ function fit(){
     s=s>=2?Math.floor(s):Math.max(.8,Math.floor(s*4)/4);
     cv.style.width=(W*s)+'px';cv.style.height=(H*s)+'px';
   }
+  fogCv.width=cv.width;fogCv.height=cv.height;   // lapisan kabut seukuran kanvas
   cx.imageSmoothingEnabled=false;
 }
 addEventListener('resize',fit);fit();
