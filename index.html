@@ -727,16 +727,49 @@ const KEYMAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
               w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
 
 /* anak dino peliharaan — berkeliaran acak antar tile bebas */
-const pet={x:6*T+8,y:15*T+12,tx:null,ty:null,timer:1,dir:1,frame:0,hopT:0,reactCd:0};
+const pet={x:6*T+8,y:15*T+12,tx:null,ty:null,timer:1,dir:1,frame:0,hopT:0,reactCd:0,
+           mode:'wander',followT:0,repathT:0,path:null,moving:false};
 function petUpdate(dt){
   pet.reactCd=Math.max(0,pet.reactCd-dt);
   if(pet.hopT>0)pet.hopT=Math.max(0,pet.hopT-dt);
-  const pdx=player.x-pet.x,pdy=player.y-pet.y;                   // reaksi saat dino utama dekat
-  if(pdx*pdx+pdy*pdy<20*20&&pet.reactCd<=0){
+  pet.moving=false;
+  const pdx=player.x-pet.x,pdy=player.y-pet.y,pd2=pdx*pdx+pdy*pdy;
+  /* dino utama mendekat → menyapa, dan sesekali memutuskan ikut berkeliling */
+  if(pd2<20*20&&pet.reactCd<=0){
     pet.hopT=.4;pet.reactCd=1.6;
     if(Math.abs(pdx)>2)pet.dir=pdx>0?1:-1;
     beep(1050,.05,.04,'square',.03);beep(1450,.06,.03,'square',.09);
+    if(pet.mode==='wander'&&Math.random()<.55){
+      pet.mode='follow';pet.followT=10+Math.random()*10;
+      pet.path=null;pet.repathT=0;pet.tx=null;
+    }
   }
+  /* --- mode teman: membuntuti, lalu menunggu saat pemain berhenti --- */
+  if(pet.mode==='follow'){
+    pet.followT-=dt;
+    if(pet.followT<=0){pet.mode='wander';pet.path=null;pet.timer=.6;return;}
+    if(pd2<26*26){                     // sudah di samping → berhenti & hadap pemain
+      pet.path=null;
+      if(Math.abs(pdx)>2)pet.dir=pdx>0?1:-1;
+      return;
+    }
+    pet.repathT-=dt;                   // hitung ulang jalur berkala agar tak nyangkut dinding
+    if(pet.repathT<=0||!pet.path||!pet.path.length){
+      pet.repathT=.45;
+      const [gx0,gy0]=ptile();
+      pet.path=pathFrom(Math.floor(pet.x/T),Math.floor(pet.y/T),gx0,gy0);
+      if(!pet.path){pet.mode='wander';pet.timer=.8;return;}  // tak terjangkau → jangan membeku
+    }
+    if(pet.path&&pet.path.length){
+      const [gx,gy]=pet.path[0];
+      const dx=gx-pet.x,dy=gy-pet.y,m=Math.hypot(dx,dy);
+      if(m<1.5)pet.path.shift();
+      else{const sp=46*dt;pet.x+=dx/m*sp;pet.y+=dy/m*sp;   // sedikit lebih lambat dari dino utama
+        if(Math.abs(dx)>.5)pet.dir=dx>0?1:-1;pet.frame+=dt*7;pet.moving=true;}
+    }
+    return;
+  }
+  /* --- mode berkeliaran acak --- */
   if(pet.tx===null){
     pet.timer-=dt;
     if(pet.timer<=0){
@@ -753,7 +786,7 @@ function petUpdate(dt){
   const dx=pet.tx-pet.x,dy=pet.ty-pet.y,m=Math.hypot(dx,dy);
   if(m<1){pet.x=pet.tx;pet.y=pet.ty;pet.tx=null;pet.timer=1+Math.random()*2.5;}
   else{const sp=26*dt;pet.x+=dx/m*sp;pet.y+=dy/m*sp;
-    if(Math.abs(dx)>.5)pet.dir=dx>0?1:-1;pet.frame+=dt*6;}
+    if(Math.abs(dx)>.5)pet.dir=dx>0?1:-1;pet.frame+=dt*6;pet.moving=true;}
 }
 
 /* robot pembersih — meluncur lurus, belok acak saat menabrak */
@@ -802,6 +835,17 @@ function bfs(sx,sy){
 }
 function pathTo(tx,ty){
   const [sx,sy]=ptile();
+  const {dist,prev}=bfs(sx,sy);
+  let n=ty*COLS+tx;
+  if(dist[n]<0)return null;
+  const out=[];
+  while(n!==sy*COLS+sx){out.push([(n%COLS)*T+8,((n/COLS)|0)*T+12]);n=prev[n];}
+  return out.reverse();
+}
+/* jalur dari tile mana pun ke tile tujuan (dipakai peliharaan saat membuntuti) */
+function pathFrom(sx,sy,tx,ty){
+  if(sx<0||sy<0||sx>=COLS||sy>=ROWS||tx<0||ty<0||tx>=COLS||ty>=ROWS)return null;
+  if(S(sx,sy)||S(tx,ty))return null;
   const {dist,prev}=bfs(sx,sy);
   let n=ty*COLS+tx;
   if(dist[n]<0)return null;
@@ -1054,7 +1098,7 @@ function render(t){
     const hop=pet.hopT>0?Math.sin(Math.PI*(1-pet.hopT/.4))*6:0;
     cx.fillStyle='rgba(0,0,0,.25)';
     cx.fillRect(Math.round(pet.x)-(hop>2?2:3),Math.round(pet.y)-1,hop>2?4:6,2);
-    const pf=pet.tx!==null?Math.floor(pet.frame)%2:0;
+    const pf=pet.moving?Math.floor(pet.frame)%2:0;
     cx.drawImage(pet.dir>0?PETSPR.r[pf]:PETSPR.l[pf],Math.round(pet.x)-4,Math.round(pet.y)-8-Math.round(hop));
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
