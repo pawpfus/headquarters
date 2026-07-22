@@ -190,9 +190,9 @@ const MAP=[
 /* ---------- peta kepadatan (collision) ---------- */
 const DECOR_SOLID=[
   {x:1, y:2, w:1,h:1},{x:23,y:2, w:1,h:1},{x:19,y:15,w:2,h:1},  // rak, rak, peti
-  {x:1, y:5, w:1,h:1},{x:9, y:10,w:1,h:1},{x:23,y:6, w:1,h:1},  // pot tanaman
-  {x:4, y:5, w:2,h:1},{x:3, y:15,w:1,h:1},                      // bangku, drum
-  {x:15,y:2, w:1,h:1},{x:20,y:9, w:1,h:1},{x:15,y:15,w:2,h:1},  // kabinet, rak alat, tong
+  {x:7, y:2, w:1,h:1},{x:1, y:7, w:1,h:1},{x:19,y:2, w:1,h:1},  // pot (samping stasiun)
+  {x:1, y:3, w:2,h:1},{x:5, y:14,w:1,h:1},                      // bangku, drum
+  {x:15,y:2, w:1,h:1},{x:20,y:9, w:1,h:1},{x:19,y:11,w:2,h:1},  // kabinet, rak alat, tong
 ];
 const solid=new Uint8Array(COLS*ROWS);
 const S=(x,y)=>solid[y*COLS+x];
@@ -365,9 +365,8 @@ const rnd=(x,y)=>((x*73856093)^(y*19349663))>>>0;
   P(g,'#1a7f99',12*T+4,17*T+7,8,2);
   /* --- aksen lantai: garis pandu, strip bahaya, keset, noda oli --- */
   for(let y=2*T;y<17*T;y+=12)P(g,'#173441',12*T+7,y,2,6);            // garis pandu lorong
-  for(let i=0;i<6;i++)P(g,i%2?'#e8c05a':'#1a1a1a',11*T+i*8,17*T,8,3); // strip bahaya pintu
-  P(g,'#1d3a30',6*T+2,6*T+2,28,12);P(g,'#2a4d3f',6*T+4,6*T+4,24,8);   // keset hijau
-  P(g,'#1d3a30',6*T+8,6*T+6,16,4);
+  P(g,'#1d3a30',4*T+2,3*T+2,28,12);P(g,'#2a4d3f',4*T+4,3*T+4,24,8);   // keset depan EVIDENCE
+  P(g,'#1d3a30',4*T+8,3*T+6,16,4);
   const stain=(sx,sy)=>{P(g,'rgba(8,10,14,.55)',sx,sy,10,5);
     P(g,'rgba(8,10,14,.55)',sx+3,sy-3,5,11);P(g,'rgba(8,10,14,.35)',sx-3,sy+2,16,3);};
   stain(6*T+4,9*T+8);stain(18*T+2,13*T+8);stain(12*T+4,5*T+6);        // noda oli
@@ -564,14 +563,14 @@ const potPaint=g=>{
   P(g,'#46a14e',3,4,4,4);P(g,'#46a14e',9,3,4,4);P(g,'#2f7a4a',6,2,4,3);      // daun
   P(g,'#7ee06a',7,4,2,2);P(g,'#7ee06a',4,5,2,1);
 };
-const potA=furn({x:1, y:5, w:1,h:1},4,potPaint);
-const potB=furn({x:9, y:10,w:1,h:1},4,potPaint);
-const potC=furn({x:23,y:6, w:1,h:1},4,potPaint);
-const bench=furn({x:4,y:5,w:2,h:1},6,(g,w,h)=>{
+const potA=furn({x:7, y:2, w:1,h:1},4,potPaint);
+const potB=furn({x:1, y:7, w:1,h:1},4,potPaint);
+const potC=furn({x:19,y:2, w:1,h:1},4,potPaint);
+const bench=furn({x:1,y:3,w:2,h:1},6,(g,w,h)=>{
   P(g,'#39414f',2,8,w-4,5);P(g,'#4a5468',2,8,w-4,2);                         // dudukan logam
   P(g,'#2a303c',3,13,3,h-14);P(g,'#2a303c',w-6,13,3,h-14);                   // kaki
 });
-const drum=furn({x:3,y:15,w:1,h:1},6,(g)=>{
+const drum=furn({x:5,y:14,w:1,h:1},6,(g)=>{
   P(g,'#3a5a8a',3,4,10,17);P(g,'#4a6f9f',3,4,10,2);                          // drum baja biru
   P(g,'#2a4568',3,10,10,2);P(g,'#2a4568',3,16,10,2);P(g,'#151a22',3,20,10,1);
 });
@@ -586,7 +585,7 @@ const toolRack=furn({x:20,y:9,w:1,h:1},12,(g)=>{
   P(g,'#8a6a42',10,5,1,7);P(g,'#c9c9d2',9,3,3,2);                            // kunci
   P(g,'#2a303c',2,18,12,10);                                                 // meja bawah
 });
-const barrels=furn({x:15,y:15,w:2,h:1},6,(g)=>{
+const barrels=furn({x:19,y:11,w:2,h:1},6,(g)=>{
   P(g,'#6e4a2a',2,4,12,17);P(g,'#815a36',2,4,12,2);                          // tong kayu
   P(g,'#573a20',2,10,12,2);P(g,'#573a20',2,16,12,2);
   P(g,'#3a5a8a',17,6,12,15);P(g,'#4a6f9f',17,6,12,2);                        // drum baja
