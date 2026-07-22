@@ -193,6 +193,7 @@ const DECOR_SOLID=[
   {x:7, y:2, w:1,h:1},{x:1, y:7, w:1,h:1},{x:19,y:2, w:1,h:1},  // pot (samping stasiun)
   {x:1, y:3, w:2,h:1},{x:5, y:12,w:1,h:1},                      // bangku, drum
   {x:15,y:2, w:1,h:1},{x:20,y:9, w:1,h:1},{x:20,y:10,w:2,h:1},  // kabinet, rak alat, tong
+  {x:3, y:5, w:3,h:1},{x:3, y:14,w:2,h:1},{x:3, y:16,w:2,h:1},  // hidroponik, TV, sofa
 ];
 const solid=new Uint8Array(COLS*ROWS);
 const S=(x,y)=>solid[y*COLS+x];
@@ -309,6 +310,28 @@ const SPR={
   left :LEGS_SIDE.map(l=>frameCanvas([...TOP_SIDE,...l],true)),
 };
 
+/* --- anak dino peliharaan: sprite mini 8x8, 2 frame --- */
+function miniCanvas(rows,flip){
+  const w=rows[0].length,c=document.createElement('canvas');
+  c.width=w;c.height=rows.length;
+  const g=c.getContext('2d');
+  rows.forEach((row,y)=>{for(let x=0;x<w;x++){
+    const col=SPAL[row[x]];if(col){g.fillStyle=col;g.fillRect(flip?w-1-x:x,y,1,1);}}});
+  return c;
+}
+const PET_TOP=[
+'..kkkk..',
+'.kggggk.',
+'.kgeggkk',
+'.kggggk.',
+'kkgggk..',
+'kGgggk..'];
+const PET_LEGS=[['.kg.gk..','.kk.kk..'],['..kgk...','..kkk...']];
+const PETSPR={
+  r:PET_LEGS.map(l=>miniCanvas([...PET_TOP,...l],false)),
+  l:PET_LEGS.map(l=>miniCanvas([...PET_TOP,...l],true)),
+};
+
 /* favicon: potret kepala dino saja (crop wajah sprite depan) */
 (function(){
   const c=document.createElement('canvas');c.width=48;c.height=48;
@@ -371,6 +394,8 @@ const rnd=(x,y)=>((x*73856093)^(y*19349663))>>>0;
   const stain=(sx,sy)=>{P(g,'rgba(8,10,14,.55)',sx,sy,10,5);
     P(g,'rgba(8,10,14,.55)',sx+3,sy-3,5,11);P(g,'rgba(8,10,14,.35)',sx-3,sy+2,16,3);};
   stain(6*T+4,9*T+8);stain(18*T+2,13*T+8);stain(12*T+4,5*T+6);        // noda oli
+  P(g,'#5a2431',3*T-2,15*T+1,2*T+4,14);P(g,'#7a3444',3*T+1,15*T+4,2*T-2,8); // karpet santai
+  P(g,'#5a2431',3*T+6,15*T+6,2*T-12,4);
   /* pipa di dinding pembatas + ventilasi besar */
   P(g,'#4a4a52',10*T+6,6*T,4,3*T);P(g,'#3a3a42',10*T+6,6*T,1,3*T);
   P(g,'#55555f',10*T+4,6*T+6,8,3);P(g,'#55555f',10*T+4,8*T+6,8,3);    // klem pipa
@@ -594,6 +619,40 @@ const barrels=furn({x:20,y:10,w:2,h:1},6,(g)=>{
 });
 FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,barrels);
 
+/* --- kebun hidroponik: rak tanam 2 tingkat + lampu tumbuh + tandon air --- */
+const hydro=furn({x:3,y:5,w:3,h:1},14,(g,w,h)=>{
+  P(g,'#2a303c',2,0,2,h-4);P(g,'#2a303c',w-4,0,2,h-4);          // tiang rangka
+  P(g,'#39414f',2,4,w-4,2);P(g,'#39414f',2,14,w-4,2);           // ambalan 2 tingkat
+  for(let i=6;i<w-6;i+=7){P(g,'#46a14e',i,0,3,4);P(g,'#2f7a4a',i+1,2,2,2);}   // bibit atas
+  for(let i=6;i<w-6;i+=7){P(g,'#7ee06a',i,10,3,4);P(g,'#46a14e',i+1,12,2,2);} // bibit bawah
+  P(g,'#10141c',2,h-8,w-4,6);P(g,'#3a5a8a',4,h-6,w-8,3);        // tandon air
+});
+anims.push({fn:(g,t)=>{                                          // pendar lampu tumbuh + tetes
+  const gl=Math.floor(t/700)%2;
+  P(g,gl?'rgba(160,90,224,.20)':'rgba(160,90,224,.10)',hydro.px+3,hydro.py+4,hydro.canvas.width-6,11);
+  P(g,'#4cc9e0',hydro.px+9,hydro.py+16+(Math.floor(t/300)%4)*2,1,2);
+}});
+
+/* --- pojok santai: TV menghadap sofa ungu --- */
+const tvset=furn({x:3,y:14,w:2,h:1},8,(g,w,h)=>{
+  P(g,'#39414f',2,16,w-4,6);                                     // meja rendah
+  P(g,'#2b2b33',4,2,w-8,14);P(g,'#101014',6,4,w-12,9);           // TV CRT + layar
+  P(g,'#55555f',11,0,1,3);P(g,'#55555f',19,0,1,3);               // antena
+});
+anims.push({fn:(g,t)=>{                                          // layar TV berganti warna
+  const x=tvset.px+6,y=tvset.py+4;
+  P(g,'#101014',x,y,20,9);
+  P(g,['#3a5a8a','#46a14e','#e07ad0'][Math.floor(t/600)%3],x+2,y+2,16,5);
+  P(g,'rgba(255,255,255,.15)',x+2,y+2+(Math.floor(t/120)%5),16,1);
+}});
+const sofa=furn({x:3,y:16,w:2,h:1},6,(g,w,h)=>{
+  P(g,'#6b36a8',1,2,w-2,6);                                      // sandaran
+  P(g,'#a05ae0',3,8,w-6,8);                                      // bantalan duduk
+  P(g,'#6b36a8',1,8,3,10);P(g,'#6b36a8',w-4,8,3,10);             // lengan
+  P(g,'#4a2578',1,18,w-2,3);                                     // alas
+});
+FURN.push(hydro,tvset,sofa);
+
 /* --- animasi ambience HQ: LED panel, rak server, radar, holo-pad --- */
 anims.push({fn:(g,t)=>{
   const LC=['#46d160','#e8c05a','#ff5a5a','#2ee0ff'];
@@ -622,6 +681,43 @@ const cam={x:0,y:0};
 const keys=new Set();
 const KEYMAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
               w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
+
+/* anak dino peliharaan — berkeliaran acak antar tile bebas */
+const pet={x:6*T+8,y:15*T+12,tx:null,ty:null,timer:1,dir:1,frame:0};
+function petUpdate(dt){
+  if(pet.tx===null){
+    pet.timer-=dt;
+    if(pet.timer<=0){
+      const ptx=Math.floor(pet.x/T),pty=Math.floor(pet.y/T);
+      const opts=[[1,0],[-1,0],[0,1],[0,-1]]
+        .map(d=>[ptx+d[0],pty+d[1]])
+        .filter(([nx,ny])=>nx>0&&ny>0&&nx<COLS-1&&ny<ROWS-1&&!S(nx,ny));
+      if(opts.length){const o=opts[(Math.random()*opts.length)|0];
+        pet.tx=o[0]*T+8;pet.ty=o[1]*T+12;}
+      else pet.timer=1;
+    }
+    return;
+  }
+  const dx=pet.tx-pet.x,dy=pet.ty-pet.y,m=Math.hypot(dx,dy);
+  if(m<1){pet.x=pet.tx;pet.y=pet.ty;pet.tx=null;pet.timer=1+Math.random()*2.5;}
+  else{const sp=26*dt;pet.x+=dx/m*sp;pet.y+=dy/m*sp;
+    if(Math.abs(dx)>.5)pet.dir=dx>0?1:-1;pet.frame+=dt*6;}
+}
+
+/* robot pembersih — meluncur lurus, belok acak saat menabrak */
+const bot={x:18*T+8,y:14*T+8,a:Math.random()*6.28};
+function botFree(px,py){
+  const x0=Math.floor((px-5)/T),y0=Math.floor((py-3)/T),
+        x1=Math.floor((px+4)/T),y1=Math.floor((py+2)/T);
+  if(x0<0||y0<0||x1>=COLS||y1>=ROWS)return false;
+  return !(S(x0,y0)||S(x1,y0)||S(x0,y1)||S(x1,y1));
+}
+function botUpdate(dt){
+  const sp=22*dt;
+  const nx=bot.x+Math.cos(bot.a)*sp,ny=bot.y+Math.sin(bot.a)*sp;
+  if(botFree(nx,ny)){bot.x=nx;bot.y=ny;}
+  else bot.a=Math.random()*6.28;
+}
 
 function boxFree(cxp,cyp){
   const x0=cxp-5,x1=cxp+4,y0=cyp-6,y1=cyp-1;
@@ -840,6 +936,7 @@ function update(dt){
     player.animT+=dt*Math.min(1.2,mag+.2);
   }else player.animT=0;
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
+  petUpdate(dt);botUpdate(dt);
 
   /* kamera mengikuti dino (rapat saat kanvas lebih kecil dari ruangan) */
   const tcx=cv.width>=W?(W-cv.width)/2:Math.max(0,Math.min(W-cv.width,player.x-cv.width/2));
@@ -858,6 +955,12 @@ function render(t){
   cx.fillStyle='#080b11';cx.fillRect(0,0,cv.width,cv.height);
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   cx.drawImage(bg,0,0);
+  /* robot pembersih (rata lantai, di bawah furnitur) */
+  const bx=Math.round(bot.x),by=Math.round(bot.y);
+  cx.fillStyle='rgba(0,0,0,.25)';cx.fillRect(bx-5,by+3,10,2);
+  cx.fillStyle='#26303c';cx.fillRect(bx-5,by-3,10,6);
+  cx.fillStyle='#39414f';cx.fillRect(bx-5,by-3,10,2);
+  cx.fillStyle=Math.floor(t/400)%2?'#2ee0ff':'#1a7f99';cx.fillRect(bx+2,by-1,2,2);
   /* label nama di atas tiap furnitur */
   for(const tool of TOOLS){
     const rc=tool.rect,near=(activeTool===tool);
@@ -881,6 +984,12 @@ function render(t){
     const fr=jp>0?0:(player.moving?[1,0,2,0][Math.floor(player.animT*8)%4]:0);
     const spr=SPR[player.dir][fr];
     cx.drawImage(spr,Math.round(player.x)-(spr.width>>1),Math.round(player.y)-16-Math.round(jp));
+  }});
+  items.push({y:pet.y,draw:()=>{
+    cx.fillStyle='rgba(0,0,0,.25)';
+    cx.fillRect(Math.round(pet.x)-3,Math.round(pet.y)-1,6,2);
+    const pf=pet.tx!==null?Math.floor(pet.frame)%2:0;
+    cx.drawImage(pet.dir>0?PETSPR.r[pf]:PETSPR.l[pf],Math.round(pet.x)-4,Math.round(pet.y)-8);
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
   /* overlay animasi furnitur (layar, api, dll) */
@@ -926,7 +1035,7 @@ function fit(){
 addEventListener('resize',fit);fit();
 
 /* akses debug (dipakai pengujian otomatis; tidak memengaruhi game) */
-window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR};
+window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot};
 
 /* ---------- service worker (offline / PWA) ---------- */
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'))
