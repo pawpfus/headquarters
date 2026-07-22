@@ -60,14 +60,6 @@
   #banner .key{display:inline-block;font-size:9px;color:var(--dim);margin-top:3px;letter-spacing:1px;}
   @media (pointer:coarse){ #banner .key{display:none;} }
 
-  /* ---------- petunjuk ---------- */
-  #hint{position:fixed;left:50%;transform:translateX(-50%);z-index:29;
-    bottom:calc(84px + env(safe-area-inset-bottom));
-    font-size:10px;letter-spacing:2px;color:var(--dim);text-align:center;
-    background:rgba(5,7,12,.7);padding:6px 12px;border:1px solid rgba(90,190,230,.12);
-    transition:opacity .6s;white-space:nowrap;}
-  #hint.gone{opacity:0;pointer-events:none;}
-
   /* ---------- analog stick & tombol lompat (layar sentuh) ---------- */
   #stick{position:fixed;right:calc(22px + env(safe-area-inset-right));
     bottom:calc(26px + env(safe-area-inset-bottom));z-index:31;
@@ -86,7 +78,6 @@
   body.mobile #stick{display:block;}
   body.mobile #btnJump{display:block;}
   body.mobile #game{box-shadow:none;}
-  body.mobile #hint{bottom:calc(160px + env(safe-area-inset-bottom));}
   body.mobile #banner{display:none;}  /* tertutup analog — buka tool: ketuk mejanya lagi */
 
   /* ---------- menu overlay ---------- */
@@ -120,8 +111,6 @@
 
 <div id="stage"><canvas id="game" width="240" height="240"></canvas></div>
 <div id="crt"></div>
-
-<div id="hint">PANAH/WASD JALAN &middot; SPASI LOMPAT &middot; KETUK MEJA &middot; ENTER MEMBUKA</div>
 
 <div id="banner">
   <div class="swatch"></div>
@@ -660,13 +649,12 @@ function beep(freq,dur=.08,vol=.05,type='square',delay=0){
 }
 
 /* =========================================================================
-   HUD DOM: banner, menu, hint
+   HUD DOM: banner, menu
    ========================================================================= */
 const banner=document.getElementById('banner'),
       bName=banner.querySelector('.name'),bDesc=banner.querySelector('.desc'),
       bSw=banner.querySelector('.swatch'),btnOpen=document.getElementById('btnOpen'),
-      hint=document.getElementById('hint'),menu=document.getElementById('menu'),
-      menuList=document.getElementById('menuList');
+      menu=document.getElementById('menu'),menuList=document.getElementById('menuList');
 let activeTool=null,lastZone=null;
 
 function setBanner(tool){
@@ -695,7 +683,6 @@ TOOLS.forEach(t=>{
 const toggleMenu=(on)=>{menu.classList.toggle('open',on);if(on)beep(660,.05,.04);};
 menu.querySelector('.close').addEventListener('click',()=>toggleMenu(false));
 menu.addEventListener('click',e=>{if(e.target===menu)toggleMenu(false);});
-setTimeout(()=>hint.classList.add('gone'),8000);
 
 /* =========================================================================
    INPUT
@@ -705,7 +692,7 @@ addEventListener('keydown',e=>{
   if(e.key==='m'||e.key==='M'){toggleMenu(!menu.classList.contains('open'));return;}
   if(menu.classList.contains('open'))return;
   if(KEYMAP[e.key]){keys.add(KEYMAP[e.key]);player.path=null;player.pendTool=null;
-    hint.classList.add('gone');e.preventDefault();}
+    e.preventDefault();}
   if(e.key===' '||e.key==='z'||e.key==='Z'){e.preventDefault();doJump();return;}
   if((e.key==='Enter'||e.key==='e'||e.key==='E')&&activeTool){
     e.preventDefault();openTool(activeTool);}
@@ -729,7 +716,7 @@ function joyMove(e){
 stick.addEventListener('pointerdown',e=>{
   joyId=e.pointerId;
   try{stick.setPointerCapture(joyId);}catch(err){}
-  player.path=null;player.pendTool=null;hint.classList.add('gone');
+  player.path=null;player.pendTool=null;
   joyMove(e);e.preventDefault();
 });
 stick.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e);});
@@ -752,7 +739,6 @@ function doJump(){
 
 /* ketuk kanvas: menuju meja / berjalan ke titik */
 cv.addEventListener('pointerdown',e=>{
-  hint.classList.add('gone');
   const r=cv.getBoundingClientRect();
   const mx=(e.clientX-r.left)/r.width*cv.width+cam.x, my=(e.clientY-r.top)/r.height*cv.height+cam.y;
   const tx=Math.floor(mx/T),ty=Math.floor(my/T);
