@@ -3,7 +3,7 @@
    - Navigasi: network-first, fallback cache saat offline
    - Aset lain same-origin: stale-while-revalidate
    - Link keluar ke tools (origin lain) tidak disentuh */
-const VERSION = 'v1.5.5';
+const VERSION = 'v1.5.6';
 const CACHE = `hq-${VERSION}`;
 
 const ASSETS = [

@@ -275,30 +275,31 @@ const LEGS_UP=[
  ['..kggGGggk..','..kgg..ggk..','..kkk..kkk..'],
  ['..kggGGggk..','..kgg..gk...','..kkk...kk..'],
  ['..kggGGggk..','...kg..ggk..','..kk...kkk..']];
-const TOP_SIDE=[            // profil hadap kanan, proporsi sama dgn tampak depan:
-'..kkkkkk....',             // kepala besar bulat + moncong, pita mulut gelap,
-'.kggggggkk..',             // badan mungil berperut terang, ekor pendek gemuk
-'.kggggggggk.',
-'.kgggggeggkk',
-'.kggggggggkk',
-'.kgGkkkkkkk.',
-'..kggggggk..',
-'..kgggllgk..',
-'kGggggllggk.',
-'.kkgggllgk..',
-'..kgggllgk..',
-'..kggggggk..',
-'...kggggk...'];
+const TOP_SIDE=[            // profil hadap kanan (14px), proporsi tampak depan:
+'....kkkkkk....',           // kepala besar bulat + moncong, pita mulut gelap,
+'...kggggggkk..',           // badan mungil berperut terang, ekor panjang
+'...kggggggggk.',
+'...kgggggeggkk',
+'...kggggggggkk',
+'...kgGkkkkkkk.',
+'....kggggggk..',
+'kk..kgggllgk..',
+'kGGgggggllggk.',
+'.kkkggggllgk..',
+'....kgggllgk..',
+'....kggggggk..',
+'.....kggggk...'];
 const LEGS_SIDE=[
- ['....kgggk...','....kg.gk...','....kk.kk...'],
- ['....kgggk...','...kg...gk..','...kk...kk..'],
- ['....kgggk...','.....kgk....','.....kkk....']];
+ ['......kgggk...','......kg.gk...','......kk.kk...'],
+ ['......kgggk...','.....kg...gk..','.....kk...kk..'],
+ ['......kgggk...','.......kgk....','.......kkk....']];
 
 function frameCanvas(rows,flip){
-  const c=document.createElement('canvas');c.width=12;c.height=16;
+  const w=rows[0].length;                      // 12 (depan/belakang) atau 14 (samping)
+  const c=document.createElement('canvas');c.width=w;c.height=16;
   const g=c.getContext('2d');
-  rows.forEach((row,y)=>{for(let x=0;x<12;x++){
-    const col=SPAL[row[x]];if(col){g.fillStyle=col;g.fillRect(flip?11-x:x,y,1,1);}}});
+  rows.forEach((row,y)=>{for(let x=0;x<w;x++){
+    const col=SPAL[row[x]];if(col){g.fillStyle=col;g.fillRect(flip?w-1-x:x,y,1,1);}}});
   return c;
 }
 const SPR={
@@ -878,7 +879,8 @@ function render(t){
     cx.fillStyle='rgba(0,0,0,.28)';
     cx.fillRect(Math.round(player.x)-sw2/2,Math.round(player.y)-2,sw2,3);
     const fr=jp>0?0:(player.moving?[1,0,2,0][Math.floor(player.animT*8)%4]:0);
-    cx.drawImage(SPR[player.dir][fr],Math.round(player.x)-6,Math.round(player.y)-16-Math.round(jp));
+    const spr=SPR[player.dir][fr];
+    cx.drawImage(spr,Math.round(player.x)-(spr.width>>1),Math.round(player.y)-16-Math.round(jp));
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
   /* overlay animasi furnitur (layar, api, dll) */
