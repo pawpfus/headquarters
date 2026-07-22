@@ -169,8 +169,8 @@ const MAP=[
 '#########################',
 '#########################',
 '#.......###...#.........#',
-'#.......###.............#',
 '#.......###...#.........#',
+'#.......###.............#',
 '#.............#.........#',
 '#.........#...###.......#',
 '#.........#...###.......#',
@@ -193,7 +193,7 @@ const DECOR_SOLID=[
   {x:7, y:2, w:1,h:1},{x:1, y:7, w:1,h:1},{x:19,y:2, w:1,h:1},  // pot (samping stasiun)
   {x:1, y:3, w:2,h:1},{x:5, y:12,w:1,h:1},                      // bangku, drum
   {x:15,y:2, w:1,h:1},{x:20,y:9, w:1,h:1},{x:20,y:10,w:2,h:1},  // kabinet, rak alat, tong
-  {x:3, y:5, w:3,h:1},{x:3, y:14,w:2,h:1},{x:3, y:16,w:2,h:1},  // hidroponik, TV, sofa
+  {x:11,y:2, w:3,h:1},{x:3, y:14,w:2,h:1},{x:3, y:16,w:2,h:1},  // hidroponik (lorong), TV, sofa
 ];
 const solid=new Uint8Array(COLS*ROWS);
 const S=(x,y)=>solid[y*COLS+x];
@@ -620,7 +620,7 @@ const barrels=furn({x:20,y:10,w:2,h:1},6,(g)=>{
 FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,barrels);
 
 /* --- kebun hidroponik: rak tanam 2 tingkat + lampu tumbuh + tandon air --- */
-const hydro=furn({x:3,y:5,w:3,h:1},14,(g,w,h)=>{
+const hydro=furn({x:11,y:2,w:3,h:1},12,(g,w,h)=>{
   P(g,'#2a303c',2,0,2,h-4);P(g,'#2a303c',w-4,0,2,h-4);          // tiang rangka
   P(g,'#39414f',2,4,w-4,2);P(g,'#39414f',2,14,w-4,2);           // ambalan 2 tingkat
   for(let i=6;i<w-6;i+=7){P(g,'#46a14e',i,0,3,4);P(g,'#2f7a4a',i+1,2,2,2);}   // bibit atas
