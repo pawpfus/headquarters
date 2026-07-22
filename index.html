@@ -191,7 +191,7 @@ const MAP=[
 const DECOR_SOLID=[
   {x:1, y:2, w:1,h:1},{x:23,y:2, w:1,h:1},{x:19,y:15,w:2,h:1},  // rak, rak, peti
   {x:7, y:2, w:1,h:1},{x:1, y:7, w:1,h:1},{x:19,y:2, w:1,h:1},  // pot (samping stasiun)
-  {x:1, y:3, w:2,h:1},{x:5, y:10,w:1,h:1},                      // bangku, drum
+  {x:6, y:16,w:2,h:1},{x:5, y:10,w:1,h:1},                      // bangku (pojok santai), drum
   {x:15,y:2, w:1,h:1},{x:20,y:9, w:1,h:1},{x:20,y:10,w:2,h:1},  // kabinet, rak alat, tong
   {x:11,y:2, w:3,h:1},{x:3, y:14,w:2,h:1},{x:3, y:16,w:2,h:1},  // hidroponik (lorong), TV, sofa
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
@@ -423,10 +423,10 @@ function pool(g,x,y,w,h,rgb,peak){
   P(g,'#2e3542',12*T+2,4,12,16);P(g,'#0c1118',12*T+3,5,10,14);
   drawText(g,'HQ',12*T+4,8,'#4ce0ff');
   P(g,'#e8c05a',12*T+4,15,8,1);
-  /* radar (kolom 8) — sapuan dianimasikan */
-  P(g,'#10141c',8*T+2,4,12,12);P(g,'#2e3542',8*T+2,4,12,1);
-  P(g,'#0d2418',8*T+3,6,10,9);
-  P(g,'#1d4a30',8*T+5,8,6,5);P(g,'#0d2418',8*T+6,9,4,3);
+  /* radar (kolom 3, dinding berlantai dekat EVIDENCE) — sapuan dianimasikan */
+  P(g,'#10141c',3*T+2,4,12,12);P(g,'#2e3542',3*T+2,4,12,1);
+  P(g,'#0d2418',3*T+3,6,10,9);
+  P(g,'#1d4a30',3*T+5,8,6,5);P(g,'#0d2418',3*T+6,9,4,3);
   /* rak trofi logam (kolom 15) */
   P(g,'#2e3542',15*T+1,14,14,3);
   P(g,'#e8c05a',15*T+5,6,6,5);P(g,'#c89a3a',15*T+7,11,2,2);P(g,'#39414f',15*T+5,13,6,2);
@@ -605,7 +605,7 @@ const potPaint=g=>{
 const potA=furn({x:7, y:2, w:1,h:1},4,potPaint);
 const potB=furn({x:1, y:7, w:1,h:1},4,potPaint);
 const potC=furn({x:19,y:2, w:1,h:1},4,potPaint);
-const bench=furn({x:1,y:3,w:2,h:1},6,(g,w,h)=>{
+const bench=furn({x:6,y:16,w:2,h:1},6,(g,w,h)=>{
   P(g,'#39414f',2,8,w-4,5);P(g,'#4a5468',2,8,w-4,2);                         // dudukan logam
   P(g,'#2a303c',3,13,3,h-14);P(g,'#2a303c',w-6,13,3,h-14);                   // kaki
 });
@@ -697,7 +697,7 @@ anims.push({fn:(g,t)=>{
     P(g,(bl^(i&1))?'#ff5a5a':'#4a1616',r.px+6,r.py+15,1,1);
   });
   const DIRS=[[3,0],[2,2],[0,3],[-2,2],[-3,0],[-2,-2],[0,-3],[2,-2]];
-  const fr=Math.floor(t/240)%8,d=DIRS[fr],cxr=8*T+8,cyr=10;
+  const fr=Math.floor(t/240)%8,d=DIRS[fr],cxr=3*T+8,cyr=10;
   P(g,'#46d160',cxr,cyr,1,1);
   P(g,'#2f9b53',cxr+(d[0]>>1),cyr+(d[1]>>1),1,1);
   P(g,'#46d160',cxr+d[0],cyr+d[1],1,1);
