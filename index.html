@@ -80,11 +80,6 @@
   body.mobile #game{box-shadow:none;}
   body.mobile #banner{display:none;}  /* tertutup analog — buka tool: ketuk mejanya lagi */
 
-  /* ---------- kilat transisi buka tool ---------- */
-  #flash{position:fixed;inset:0;z-index:50;background:#2ee0ff;opacity:0;
-    pointer-events:none;transition:opacity .3s ease-in;}
-  #flash.on{opacity:1;}
-
   /* ---------- menu overlay ---------- */
   #menu{position:fixed;inset:0;z-index:40;display:none;
     background:rgba(3,5,9,.88);backdrop-filter:blur(3px);
@@ -116,7 +111,6 @@
 
 <div id="stage"><canvas id="game" width="240" height="240"></canvas></div>
 <div id="crt"></div>
-<div id="flash"></div>
 
 <div id="banner">
   <div class="swatch"></div>
@@ -394,11 +388,6 @@ const rnd=(x,y)=>((x*73856093)^(y*19349663))>>>0;
   /* pad sensor pintu */
   P(g,'#1a212c',12*T+1,17*T+3,14,10);P(g,'#2ee0ff',12*T+1,17*T+3,14,1);
   P(g,'#1a7f99',12*T+4,17*T+7,8,2);
-  /* pad pendaratan drone kargo (lorong bawah) */
-  P(g,'#10151d',11*T+4,14*T+3,3*T-8,T-4);
-  P(g,'#1a7f99',11*T+4,14*T+3,3*T-8,1);P(g,'#1a7f99',11*T+4,15*T-2,3*T-8,1);
-  P(g,'#2ee0ff',11*T+4,14*T+3,4,2);P(g,'#2ee0ff',14*T-8,14*T+3,4,2);
-  drawText(g,'H',12*T+6,14*T+7,'#1a7f99');
   /* --- aksen lantai: garis pandu, strip bahaya, keset, noda oli --- */
   for(let y=2*T;y<17*T;y+=12)P(g,'#173441',12*T+7,y,2,6);            // garis pandu lorong
   P(g,'#1d3a30',4*T+2,3*T+2,28,12);P(g,'#2a4d3f',4*T+4,3*T+4,24,8);   // keset depan EVIDENCE
@@ -847,9 +836,7 @@ function setBanner(tool){
 }
 function openTool(tool){
   beep(880,.07,.06);beep(1320,.1,.06,'square',.08);
-  const fl=document.getElementById('flash');
-  fl.style.background=tool.color;fl.classList.add('on');       // kilat warna tool lalu pindah
-  setTimeout(()=>{window.location.href=tool.url;},330);
+  setTimeout(()=>{window.location.href=tool.url;},180);
 }
 btnOpen.addEventListener('click',()=>{if(activeTool)openTool(activeTool);});
 
@@ -996,10 +983,10 @@ function render(t){
   cx.fillStyle='#080b11';cx.fillRect(0,0,cv.width,cv.height);
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   cx.drawImage(bg,0,0);
-  /* drone kargo melayang di atas pad (lorong bawah) */
+  /* drone kargo melayang di atas holo-pad (led panel = padnya) */
   {
-    const cxp=12*T+8,dy=13*T+8+Math.round(Math.sin(t/380)*3);
-    cx.fillStyle='rgba(0,0,0,.22)';cx.fillRect(cxp-5,14*T+9,10,2);   // bayangan di pad
+    const cxp=12*T+8,dy=8*T+10+Math.round(Math.sin(t/380)*3);
+    cx.fillStyle='rgba(0,0,0,.22)';cx.fillRect(cxp-5,10*T-4,10,2);   // bayangan di led panel
     const rf=Math.floor(t/50)%2;
     cx.fillStyle=rf?'#8fa3b8':'#5a6b7d';cx.fillRect(cxp-9,dy-1,5,1);
     cx.fillStyle=rf?'#5a6b7d':'#8fa3b8';cx.fillRect(cxp+4,dy-1,5,1);
