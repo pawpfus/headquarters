@@ -1051,19 +1051,8 @@ function render(t){
   cx.fillStyle='#080b11';cx.fillRect(0,0,cv.width,cv.height);
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   cx.drawImage(bg,0,0);
-  /* drone kargo melayang di atas holo-pad (led panel = padnya) */
-  {
-    const cxp=12*T+8,dy=8*T+10+Math.round(Math.sin(t/380)*3);
-    cx.fillStyle='rgba(0,0,0,.22)';cx.fillRect(cxp-5,10*T-4,10,2);   // bayangan di led panel
-    const rf=Math.floor(t/50)%2;
-    cx.fillStyle=rf?'#8fa3b8':'#5a6b7d';cx.fillRect(cxp-9,dy-1,5,1);
-    cx.fillStyle=rf?'#5a6b7d':'#8fa3b8';cx.fillRect(cxp+4,dy-1,5,1);
-    cx.fillStyle='#26303c';cx.fillRect(cxp-5,dy,10,4);
-    cx.fillStyle='#39414f';cx.fillRect(cxp-5,dy,10,1);
-    cx.fillStyle=Math.floor(t/300)%2?'#2ee0ff':'#1a7f99';cx.fillRect(cxp-1,dy+1,2,2);
-    cx.fillStyle='#8a6a42';cx.fillRect(cxp-2,dy+4,4,3);            // paket tergantung
-    cx.fillStyle='#6e4a2a';cx.fillRect(cxp-2,dy+4,4,1);
-  }
+  /* bayangan drone — menempel lantai, jadi tetap di bawah semua objek */
+  cx.fillStyle='rgba(0,0,0,.22)';cx.fillRect(12*T+3,10*T-4,10,2);
   /* robot pembersih (rata lantai, di bawah furnitur) */
   const bx=Math.round(bot.x),by=Math.round(bot.y);
   cx.fillStyle='rgba(0,0,0,.25)';cx.fillRect(bx-5,by+3,10,2);
@@ -1102,6 +1091,18 @@ function render(t){
     cx.drawImage(pet.dir>0?PETSPR.r[pf]:PETSPR.l[pf],Math.round(pet.x)-4,Math.round(pet.y)-8-Math.round(hop));
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
+  /* drone kargo — digambar setelah pemain karena sedang terbang di atas kepala */
+  {
+    const cxp=12*T+8,dy=8*T+2+Math.round(Math.sin(t/380)*3);
+    const rf=Math.floor(t/50)%2;
+    cx.fillStyle=rf?'#8fa3b8':'#5a6b7d';cx.fillRect(cxp-9,dy-1,5,1);
+    cx.fillStyle=rf?'#5a6b7d':'#8fa3b8';cx.fillRect(cxp+4,dy-1,5,1);
+    cx.fillStyle='#26303c';cx.fillRect(cxp-5,dy,10,4);
+    cx.fillStyle='#39414f';cx.fillRect(cxp-5,dy,10,1);
+    cx.fillStyle=Math.floor(t/300)%2?'#2ee0ff':'#1a7f99';cx.fillRect(cxp-1,dy+1,2,2);
+    cx.fillStyle='#8a6a42';cx.fillRect(cxp-2,dy+4,4,3);            // paket tergantung
+    cx.fillStyle='#6e4a2a';cx.fillRect(cxp-2,dy+4,4,1);
+  }
   /* overlay animasi furnitur (layar, api, dll) */
   for(const a of anims)a.fn(cx,t);
   /* penanda zona aktif: panah kecil di atas kepala */
