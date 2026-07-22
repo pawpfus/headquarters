@@ -679,6 +679,18 @@ const sofa=furn({x:3,y:16,w:2,h:1},6,(g,w,h)=>{
 });
 FURN.push(hydro,tvset,sofa);
 
+/* --- kursi yang bisa diduduki: sofa & bangku di pojok santai ---
+   sy sengaja 1px di bawah alas kursi supaya dino tergambar DI ATAS kursinya. */
+const SEATS=[{rect:{x:3,y:16,w:2,h:1}},{rect:{x:6,y:16,w:2,h:1}}];
+const seatFront={};                       // tile berdiri di depan kursi → kursinya
+SEATS.forEach(s=>{
+  const r=s.rect;
+  s.sx=(r.x+r.w/2)*T; s.sy=(r.y+r.h)*T+1;
+  const ty=r.y-1;
+  for(let x=r.x;x<r.x+r.w;x++)
+    if(ty>=0&&!S(x,ty))seatFront[x+','+ty]=s;
+});
+
 /* --- meja rapat + proyektor hologram (kamar kanan-atas) --- */
 const meetTable=furn({x:18,y:5,w:3,h:1},4,(g,w,h)=>{
   P(g,'#39414f',3,7,w-6,h-11);P(g,'#4a5468',3,7,w-6,2);        // permukaan meja
@@ -732,7 +744,8 @@ anims.push({fn:(g,t)=>{
 /* =========================================================================
    PEMAIN
    ========================================================================= */
-const player={x:12.5*T,y:17*T+12,dir:'down',frame:0,animT:0,moving:false,path:null,pendTool:null,jumpT:0};
+const player={x:12.5*T,y:17*T+12,dir:'down',frame:0,animT:0,moving:false,path:null,
+              pendTool:null,jumpT:0,sitting:null,pendSeat:null};
 const SPEED=62, JUMP_DUR=.45;
 const cam={x:0,y:0};
 const keys=new Set();
@@ -881,6 +894,33 @@ function goToTool(tool){
   player.pendTool=tool;
 }
 
+/* ---------- duduk di kursi ---------- */
+const seatAtFront=()=>{const [tx,ty]=ptile();return seatFront[tx+','+ty]||null;};
+function sitDown(seat){
+  player.sitting=seat;player.path=null;player.pendSeat=null;player.pendTool=null;
+  player.x=seat.sx;player.y=seat.sy;player.dir='down';player.moving=false;player.animT=0;
+  beep(520,.08,.04);beep(680,.1,.03,'square',.07);
+}
+function standUp(){
+  if(!player.sitting)return;
+  const r=player.sitting.rect;player.sitting=null;
+  player.x=(r.x+r.w/2)*T;player.y=(r.y-1)*T+12;      // kembali berdiri di tile depan kursi
+  beep(430,.06,.03);
+}
+function goToSeat(seat){
+  if(player.sitting)standUp();
+  const r=seat.rect,[sx,sy]=ptile(),{dist}=bfs(sx,sy),ty=r.y-1;
+  let best=null,bd=1e9;
+  for(let x=r.x;x<r.x+r.w;x++){
+    if(ty<0||S(x,ty))continue;
+    const d=dist[ty*COLS+x];
+    if(d>=0&&d<bd){bd=d;best=[x,ty];}
+  }
+  if(!best)return;
+  if(bd===0){sitDown(seat);return;}                  // sudah berdiri tepat di depannya
+  player.path=pathTo(best[0],best[1]);player.pendSeat=seat;player.pendTool=null;
+}
+
 /* =========================================================================
    AUDIO — bip WebAudio kecil
    ========================================================================= */
@@ -941,10 +981,14 @@ addEventListener('keydown',e=>{
   if(e.key==='m'||e.key==='M'){toggleMenu(!menu.classList.contains('open'));return;}
   if(menu.classList.contains('open'))return;
   if(KEYMAP[e.key]){keys.add(KEYMAP[e.key]);player.path=null;player.pendTool=null;
-    e.preventDefault();}
+    player.pendSeat=null;e.preventDefault();}
   if(e.key===' '||e.key==='z'||e.key==='Z'){e.preventDefault();doJump();return;}
-  if((e.key==='Enter'||e.key==='e'||e.key==='E')&&activeTool){
-    e.preventDefault();openTool(activeTool);}
+  if(e.key==='Enter'||e.key==='e'||e.key==='E'){
+    e.preventDefault();
+    if(player.sitting){standUp();return;}
+    if(activeTool){openTool(activeTool);return;}
+    const st=seatAtFront();if(st)sitDown(st);         // berdiri di depan kursi → duduk
+  }
 });
 addEventListener('keyup',e=>{if(KEYMAP[e.key])keys.delete(KEYMAP[e.key]);});
 
@@ -966,15 +1010,19 @@ function joyMove(e){
 stick.addEventListener('pointerdown',e=>{
   joyId=e.pointerId;joyT0=performance.now();joyMax=0;
   try{stick.setPointerCapture(joyId);}catch(err){}
-  player.path=null;player.pendTool=null;
+  player.path=null;player.pendTool=null;player.pendSeat=null;
   joyMove(e);e.preventDefault();
 });
 stick.addEventListener('pointermove',e=>{if(e.pointerId===joyId)joyMove(e);});
 const joyEnd=e=>{
   if(e.pointerId!==joyId)return;
   joyId=null;joy.on=false;joy.x=joy.y=0;setKnob(0,0);
-  /* ketukan singkat di analog = interaksi/buka objek yang sedang didekati */
-  if(performance.now()-joyT0<300&&joyMax<12&&activeTool)openTool(activeTool);
+  /* ketukan singkat di analog = interaksi: buka tool, atau duduk/bangkit dari kursi */
+  if(performance.now()-joyT0<300&&joyMax<12){
+    if(player.sitting)standUp();
+    else if(activeTool)openTool(activeTool);
+    else{const st=seatAtFront();if(st)sitDown(st);}
+  }
 };
 stick.addEventListener('pointerup',joyEnd);stick.addEventListener('pointercancel',joyEnd);
 /* tombol lompat terpisah (kiri) */
@@ -984,6 +1032,7 @@ document.getElementById('btnJump').addEventListener('pointerdown',e=>{
 
 /* lompat */
 function doJump(){
+  if(player.sitting){standUp();return;}
   if(player.jumpT>0)return;
   player.jumpT=JUMP_DUR;
   beep(300,.06,.05);beep(520,.1,.04,'square',.05);
@@ -1002,9 +1051,17 @@ cv.addEventListener('pointerdown',e=>{
       goToTool(t);beep(440,.04,.03);return;
     }
   }
+  /* kena kursi? hampiri lalu duduk */
+  for(const s of SEATS){
+    const rc=s.rect;
+    if(tx>=rc.x&&tx<rc.x+rc.w&&ty>=rc.y&&ty<rc.y+rc.h){
+      goToSeat(s);beep(440,.04,.03);return;
+    }
+  }
   if(tx>=0&&ty>=0&&tx<COLS&&ty<ROWS&&!S(tx,ty)){
     const p=pathTo(tx,ty);
-    if(p){player.path=p;player.pendTool=null;beep(330,.03,.02);}
+    if(p){if(player.sitting)standUp();
+      player.path=pathTo(tx,ty);player.pendTool=null;player.pendSeat=null;beep(330,.03,.02);}
   }
 });
 
@@ -1012,8 +1069,10 @@ cv.addEventListener('pointerdown',e=>{
    LOOP UTAMA
    ========================================================================= */
 function update(dt){
+  if(player.sitting&&(keys.size||joy.on))standUp();   // input gerak apa pun = bangkit
   let vx=0,vy=0;
-  if(keys.size){
+  if(player.sitting){/* diam di kursi */}
+  else if(keys.size){
     if(keys.has('left'))vx=-1;else if(keys.has('right'))vx=1;
     if(keys.has('up'))vy=-1;else if(keys.has('down'))vy=1;
     if(vx&&vy)vy=0;                                            // 4 arah klasik, tanpa diagonal
@@ -1031,6 +1090,7 @@ function update(dt){
         player.dir=Math.abs(fx)>Math.abs(fy)?(fx>0?'right':'left'):(fy>0?'down':'up');
         player.pendTool=null;beep(600,.05,.04);
       }
+      if(!player.path.length&&player.pendSeat)sitDown(player.pendSeat);
     }else{
       if(Math.abs(dx)>Math.abs(dy))vx=Math.sign(dx);else vy=Math.sign(dy);
     }
@@ -1097,6 +1157,12 @@ function render(t){
   /* gambar furnitur & pemain urut kedalaman */
   const items=FURN.map(f=>({y:f.baseY,draw:()=>cx.drawImage(f.canvas,f.px,f.py)}));
   items.push({y:player.y,draw:()=>{
+    if(player.sitting){                       // duduk: kaki disembunyikan di balik bantalan
+      const spr=SPR.down[0];
+      cx.drawImage(spr,0,0,spr.width,13,
+        Math.round(player.x)-(spr.width>>1),Math.round(player.y)-19,spr.width,13);
+      return;
+    }
     const jp=player.jumpT>0?Math.sin(Math.PI*(1-player.jumpT/JUMP_DUR))*10:0;
     const sw2=jp>2?6:10;                                       // bayangan mengecil di udara
     cx.fillStyle='rgba(0,0,0,.28)';
@@ -1192,7 +1258,7 @@ addEventListener('resize',fit);fit();
 
 /* akses debug (dipakai pengujian otomatis; tidak memengaruhi game) */
 window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS,
-              fog:()=>fogOn};
+              fog:()=>fogOn,SEATS,goToSeat,sitDown,standUp,seatAtFront};
 
 /* ---------- service worker (offline / PWA) ---------- */
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost'))
