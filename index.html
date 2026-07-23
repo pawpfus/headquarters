@@ -193,9 +193,9 @@ const MAP=[
 const DECOR_SOLID=[
   {x:1, y:2, w:1,h:1},{x:23,y:2, w:1,h:1},{x:19,y:15,w:2,h:1},  // rak, rak, peti
   {x:7, y:2, w:1,h:1},{x:1, y:7, w:1,h:1},{x:19,y:2, w:1,h:1},  // pot (samping stasiun)
-  {x:6, y:16,w:2,h:1},{x:5, y:10,w:1,h:1},                      // bangku (pojok santai), drum
+  {x:8, y:16,w:2,h:1},{x:5, y:10,w:1,h:1},                      // bangku (pojok santai), drum
   {x:15,y:2, w:1,h:1},{x:20,y:9, w:1,h:1},{x:20,y:10,w:2,h:1},  // kabinet, rak alat, tong
-  {x:11,y:2, w:3,h:1},{x:3, y:14,w:2,h:1},{x:3, y:16,w:2,h:1},  // hidroponik (lorong), TV, sofa
+  {x:11,y:2, w:3,h:1},{x:5, y:14,w:2,h:1},{x:5, y:16,w:2,h:1},  // hidroponik (lorong), TV, sofa
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
 ];
 const solid=new Uint8Array(COLS*ROWS);
@@ -415,8 +415,6 @@ function pool(g,x,y,w,h,rgb,peak){
   const stain=(sx,sy)=>{P(g,'rgba(8,10,14,.55)',sx,sy,10,5);
     P(g,'rgba(8,10,14,.55)',sx+3,sy-3,5,11);P(g,'rgba(8,10,14,.35)',sx-3,sy+2,16,3);};
   stain(6*T+4,9*T+8);stain(18*T+2,13*T+8);stain(12*T+4,5*T+6);        // noda oli
-  P(g,'#5a2431',3*T-2,15*T+1,2*T+4,14);P(g,'#7a3444',3*T+1,15*T+4,2*T-2,8); // karpet santai
-  P(g,'#5a2431',3*T+6,15*T+6,2*T-12,4);
   /* pipa di dinding pembatas + ventilasi besar */
   P(g,'#4a4a52',10*T+6,6*T,4,3*T);P(g,'#3a3a42',10*T+6,6*T,1,3*T);
   P(g,'#55555f',10*T+4,6*T+6,8,3);P(g,'#55555f',10*T+4,8*T+6,8,3);    // klem pipa
@@ -643,7 +641,7 @@ const potPaint=g=>{
 const potA=furn({x:7, y:2, w:1,h:1},4,potPaint);
 const potB=furn({x:1, y:7, w:1,h:1},4,potPaint);
 const potC=furn({x:19,y:2, w:1,h:1},4,potPaint);
-const bench=furn({x:6,y:16,w:2,h:1},6,(g,w,h)=>{
+const bench=furn({x:8,y:16,w:2,h:1},6,(g,w,h)=>{
   P(g,'#39414f',2,8,w-4,5);P(g,'#4a5468',2,8,w-4,2);                         // dudukan logam
   P(g,'#2a303c',3,13,3,h-14);P(g,'#2a303c',w-6,13,3,h-14);                   // kaki
 });
@@ -685,7 +683,7 @@ anims.push({fn:(g,t)=>{                                          // pendar lampu
 }});
 
 /* --- pojok santai: TV menghadap sofa ungu --- */
-const tvset=furn({x:3,y:14,w:2,h:1},8,(g,w,h)=>{
+const tvset=furn({x:5,y:14,w:2,h:1},8,(g,w,h)=>{
   P(g,'#39414f',2,16,w-4,6);                                     // meja rendah
   P(g,'#2b2b33',4,2,w-8,14);P(g,'#101014',6,4,w-12,9);           // TV CRT + layar
   P(g,'#55555f',11,0,1,3);P(g,'#55555f',19,0,1,3);               // antena
@@ -696,17 +694,21 @@ anims.push({fn:(g,t)=>{                                          // layar TV ber
   P(g,['#3a5a8a','#46a14e','#e07ad0'][Math.floor(t/600)%3],x+2,y+2,16,5);
   P(g,'rgba(255,255,255,.15)',x+2,y+2+(Math.floor(t/120)%5),16,1);
 }});
-const sofa=furn({x:3,y:16,w:2,h:1},6,(g,w,h)=>{
-  P(g,'#6b36a8',1,2,w-2,6);                                      // sandaran
-  P(g,'#a05ae0',3,8,w-6,8);                                      // bantalan duduk
-  P(g,'#6b36a8',1,8,3,10);P(g,'#6b36a8',w-4,8,3,10);             // lengan
-  P(g,'#4a2578',1,18,w-2,3);                                     // alas
+const sofa=furn({x:5,y:16,w:2,h:1},12,(g,w,h)=>{                 // sofa tampak depan, sandaran tinggi
+  P(g,'#4a2578',1,2,w-2,13);                                     // blok sandaran (gelap)
+  P(g,'#6b36a8',2,3,w-4,11);                                     // sandaran ungu
+  P(g,'#7d45c0',2,3,w-4,2);                                      // kilau atas sandaran
+  P(g,'#6b36a8',0,12,4,14);P(g,'#6b36a8',w-4,12,4,14);           // lengan kiri & kanan
+  P(g,'#7d45c0',0,12,4,2);P(g,'#7d45c0',w-4,12,4,2);             // kilau lengan
+  P(g,'#a05ae0',5,16,w-10,8);                                    // bantalan duduk
+  P(g,'#8548c8',5,22,w-10,2);                                    // bibir depan bantalan
+  P(g,'#4a2578',1,25,w-2,3);                                     // alas
 });
 FURN.push(hydro,tvset,sofa);
 
 /* --- kursi yang bisa diduduki: sofa & bangku di pojok santai ---
    sy sengaja 1px di bawah alas kursi supaya dino tergambar DI ATAS kursinya. */
-const SEATS=[{rect:{x:3,y:16,w:2,h:1}},{rect:{x:6,y:16,w:2,h:1}}];
+const SEATS=[{rect:{x:5,y:16,w:2,h:1}},{rect:{x:8,y:16,w:2,h:1}}];
 const seatFront={};                       // tile berdiri di depan kursi → kursinya
 SEATS.forEach(s=>{
   const r=s.rect;
