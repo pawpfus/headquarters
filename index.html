@@ -694,25 +694,27 @@ anims.push({fn:(g,t)=>{                                          // layar TV ber
   P(g,['#3a5a8a','#46a14e','#e07ad0'][Math.floor(t/600)%3],x+2,y+2,16,5);
   P(g,'rgba(255,255,255,.15)',x+2,y+2+(Math.floor(t/120)%5),16,1);
 }});
-const sofa=furn({x:5,y:16,w:2,h:1},12,(g,w,h)=>{                 // sofa tampak depan, sandaran tinggi
-  P(g,'#4a2578',1,2,w-2,13);                                     // blok sandaran (gelap)
-  P(g,'#6b36a8',2,3,w-4,11);                                     // sandaran ungu
-  P(g,'#7d45c0',2,3,w-4,2);                                      // kilau atas sandaran
-  P(g,'#6b36a8',0,12,4,14);P(g,'#6b36a8',w-4,12,4,14);           // lengan kiri & kanan
-  P(g,'#7d45c0',0,12,4,2);P(g,'#7d45c0',w-4,12,4,2);             // kilau lengan
-  P(g,'#a05ae0',5,16,w-10,8);                                    // bantalan duduk
-  P(g,'#8548c8',5,22,w-10,2);                                    // bibir depan bantalan
-  P(g,'#4a2578',1,25,w-2,3);                                     // alas
+const sofa=furn({x:5,y:16,w:2,h:1},10,(g,w,h)=>{                 // sofa menghadap UTARA (ke TV), tampak dari belakang
+  P(g,'#3a1e60',1,20,w-2,6);                                     // dasar/bayangan
+  P(g,'#6b36a8',0,6,6,18);P(g,'#6b36a8',w-6,6,6,18);             // bantalan lengan kiri & kanan
+  P(g,'#7d45c0',0,6,6,3);P(g,'#7d45c0',w-6,6,6,3);               // kilau atas lengan
+  P(g,'#5a2c90',0,21,6,3);P(g,'#5a2c90',w-6,21,6,3);             // bayangan bawah lengan
+  P(g,'#8548c8',6,13,w-12,12);                                   // sandaran punggung (menghadap kita)
+  P(g,'#9a5ad8',6,13,w-12,3);                                    // kilau atas sandaran
+  P(g,'#6b36a8',6,22,w-12,3);                                    // dasar sandaran (gelap)
 });
+sofa.baseY=1e6;                                                  // selalu di DEPAN dino: dino menghadap TV, punggung ke kita
 FURN.push(hydro,tvset,sofa);
 
 /* --- kursi yang bisa diduduki: sofa & bangku di pojok santai ---
-   sy sengaja 1px di bawah alas kursi supaya dino tergambar DI ATAS kursinya. */
-const SEATS=[{rect:{x:5,y:16,w:2,h:1}},{rect:{x:8,y:16,w:2,h:1}}];
+   sofa: dino menghadap UTARA (ke TV), punggung ke kita, badan bawah ketutup sofa.
+   bangku: dino menghadap kita, kaki disembunyikan di balik dudukan. */
+const SEATS=[{rect:{x:5,y:16,w:2,h:1},dir:'up'},{rect:{x:8,y:16,w:2,h:1},dir:'down'}];
 const seatFront={};                       // tile berdiri di depan kursi → kursinya
 SEATS.forEach(s=>{
   const r=s.rect;
-  s.sx=(r.x+r.w/2)*T; s.sy=(r.y+r.h)*T+1;
+  s.sx=(r.x+r.w/2)*T;
+  s.sy = s.dir==='up' ? r.y*T+6 : (r.y+r.h)*T+1;   // hadap utara: duduk lebih tinggi, kepala nyembul
   const ty=r.y-1;
   for(let x=r.x;x<r.x+r.w;x++)
     if(ty>=0&&!S(x,ty))seatFront[x+','+ty]=s;
@@ -925,7 +927,7 @@ function goToTool(tool){
 const seatAtFront=()=>{const [tx,ty]=ptile();return seatFront[tx+','+ty]||null;};
 function sitDown(seat){
   player.sitting=seat;player.path=null;player.pendSeat=null;player.pendTool=null;
-  player.x=seat.sx;player.y=seat.sy;player.dir='down';player.moving=false;player.animT=0;
+  player.x=seat.sx;player.y=seat.sy;player.dir=seat.dir||'down';player.moving=false;player.animT=0;
   beep(520,.08,.04);beep(680,.1,.03,'square',.07);
 }
 function standUp(){
@@ -1184,10 +1186,15 @@ function render(t){
   /* gambar furnitur & pemain urut kedalaman */
   const items=FURN.map(f=>({y:f.baseY,draw:()=>cx.drawImage(f.canvas,f.px,f.py)}));
   items.push({y:player.y,draw:()=>{
-    if(player.sitting){                       // duduk: kaki disembunyikan di balik bantalan
-      const spr=SPR.down[0];
-      cx.drawImage(spr,0,0,spr.width,13,
-        Math.round(player.x)-(spr.width>>1),Math.round(player.y)-19,spr.width,13);
+    if(player.sitting){
+      if(player.sitting.dir==='up'){          // hadap TV: punggung ke kita, badan bawah ketutup sofa
+        const spr=SPR.up[0];
+        cx.drawImage(spr,Math.round(player.x)-(spr.width>>1),Math.round(player.y)-16);
+      }else{                                   // hadap kita: kaki disembunyikan di balik dudukan
+        const spr=SPR.down[0];
+        cx.drawImage(spr,0,0,spr.width,13,
+          Math.round(player.x)-(spr.width>>1),Math.round(player.y)-19,spr.width,13);
+      }
       return;
     }
     const jp=player.jumpT>0?Math.sin(Math.PI*(1-player.jumpT/JUMP_DUR))*10:0;
