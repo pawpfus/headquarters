@@ -197,6 +197,8 @@ const DECOR_SOLID=[
   {x:15,y:2, w:1,h:1},{x:20,y:9, w:1,h:1},{x:20,y:10,w:2,h:1},  // kabinet, rak alat, tong
   {x:11,y:2, w:3,h:1},{x:5, y:14,w:2,h:1},{x:5, y:16,w:2,h:1},  // hidroponik (lorong), TV, sofa
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
+  {x:7, y:16,w:1,h:1},{x:1, y:4, w:1,h:1},                      // lampu lantai, dispenser air
+  {x:1, y:12,w:1,h:1},{x:9, y:7, w:1,h:1},                      // peti, loker
 ];
 const solid=new Uint8Array(COLS*ROWS);
 const S=(x,y)=>solid[y*COLS+x];
@@ -403,11 +405,19 @@ function pool(g,x,y,w,h,rgb,peak){
   }
   /* pintu geser keluar (bawah, kolom 12) */
   P(g,'#07090d',12*T-2,18*T,T+4,T);
-  P(g,'#2e3542',12*T-4,18*T,2,T);P(g,'#2e3542',13*T+2,18*T,2,T);
-  P(g,'#4ce0ff',12*T+2,18*T+2,12,2);                     // cahaya lorong
+  P(g,'#2e3542',12*T-4,18*T,2,T);P(g,'#2e3542',13*T+2,18*T,2,T);       // kusen samping
+  P(g,'#46d160',12*T+2,18*T+2,12,2);                     // ambang pintu (hijau = keluar)
+  /* papan EXIT tergantung di atas pintu */
+  P(g,'#0a1410',12*T-4,16*T+7,22,9);P(g,'#123a26',12*T-4,16*T+7,22,1);
+  drawText(g,'EXIT',12*T,16*T+9,'#5ff08a');
+  P(g,'#123a26',12*T+2,16*T+6,1,1);P(g,'#123a26',13*T+1,16*T+6,1,1);   // gantungan
   /* pad sensor pintu */
   P(g,'#1a212c',12*T+1,17*T+3,14,10);P(g,'#2ee0ff',12*T+1,17*T+3,14,1);
   P(g,'#1a7f99',12*T+4,17*T+7,8,2);
+  /* chevron panduan menuju pintu (redup — versi terang dianimasikan) */
+  for(let i=0;i<3;i++){const cy=15*T-2+i*6,cxp=12*T+7;
+    P(g,'#173a28',cxp-4,cy,3,1);P(g,'#173a28',cxp+1,cy,3,1);
+    P(g,'#173a28',cxp-2,cy+1,1,1);P(g,'#173a28',cxp,cy+1,1,1);}
   /* --- aksen lantai: garis pandu, strip bahaya, keset, noda oli --- */
   for(let y=2*T;y<17*T;y+=12)P(g,'#173441',12*T+7,y,2,6);            // garis pandu lorong
   P(g,'#1d3a30',4*T+2,3*T+2,28,12);P(g,'#2a4d3f',4*T+4,3*T+4,24,8);   // keset depan EVIDENCE
@@ -415,6 +425,17 @@ function pool(g,x,y,w,h,rgb,peak){
   const stain=(sx,sy)=>{P(g,'rgba(8,10,14,.55)',sx,sy,10,5);
     P(g,'rgba(8,10,14,.55)',sx+3,sy-3,5,11);P(g,'rgba(8,10,14,.35)',sx-3,sy+2,16,3);};
   stain(6*T+4,9*T+8);stain(18*T+2,13*T+8);stain(12*T+4,5*T+6);        // noda oli
+  /* karpet lounge — menyatukan TV, sofa & bangku jadi satu ruang duduk */
+  (function(){
+    const rx=4*T, ry=14*T+2, rw=6*T-2, rh=3*T-5;
+    P(g,'#241f38',rx,ry,rw,rh);                                       // dasar karpet
+    P(g,'#38305c',rx,ry,rw,2);P(g,'#38305c',rx,ry+rh-2,rw,2);         // tepi atas/bawah
+    P(g,'#38305c',rx,ry,2,rh);P(g,'#38305c',rx+rw-2,ry,2,rh);         // tepi kiri/kanan
+    for(let yy=ry+7;yy<ry+rh-4;yy+=9)for(let xx=rx+9;xx<rx+rw-6;xx+=11)
+      P(g,'#2e2748',xx,yy,2,2);                                       // pola titik
+    P(g,'rgba(255,222,150,.09)',6*T+4,14*T+2,3*T-2,3*T-6);            // cahaya hangat lampu
+    P(g,'rgba(255,222,150,.06)',6*T,14*T,4*T-2,3*T-2);
+  })();
   /* pipa di dinding pembatas + ventilasi besar */
   P(g,'#4a4a52',10*T+6,6*T,4,3*T);P(g,'#3a3a42',10*T+6,6*T,1,3*T);
   P(g,'#55555f',10*T+4,6*T+6,8,3);P(g,'#55555f',10*T+4,8*T+6,8,3);    // klem pipa
@@ -539,8 +560,12 @@ FURN.push(furn(TOOLS[3].rect,4,(g,w,h)=>{
   P(g,'#c04a3a',37,9,2,2);P(g,'#f0ead8',20,20,9,3);             // pin + penggaris
   P(g,'#1a7f99',0,4,w,2);
 }));
-anims.push({f:FURN[3],fn:(g,t)=>{                              // bendera sampel kedip
-  const f=FURN[3];
+anims.push({f:FURN[3],fn:(g,t)=>{                              // peta sampel: garis pindai + titik
+  const f=FURN[3],mx=f.px+3,my=f.py+7,mw=f.canvas.width-6,mh=20;
+  const sy=my+Math.floor((t/40)%mh);
+  P(g,'rgba(150,225,120,.5)',mx,sy,mw,1);                     // garis pindai turun
+  [[8,4],[24,11],[34,6],[16,15]].forEach((d,i)=>{             // titik sampel berkedip
+    if(Math.floor(t/380+i)%2)P(g,'#eef06a',mx+d[0],my+d[1],2,2);});
   if(Math.floor(t/650)%2){P(g,'#e8c05a',f.px+12,f.py+6,3,2);P(g,'#8a6a42',f.px+11,f.py+6,1,5);}
 }});
 
@@ -593,6 +618,22 @@ anims.push({f:navT,fn:(g,t)=>{                                  // jarum kompas 
   P(g,'#5ee8c8',cxp+d[0],cyp+d[1],1,1);
   P(g,'#2a8f78',cxp-d[0],cyp-d[1],1,1);
   if(Math.floor(t/550)%2)P(g,'#ffd75e',navT.px+20,navT.py+10,1,1);  // pin berkedip
+  const bx=navT.px+4+Math.floor((t/110)%(navT.canvas.width-14));    // blip survei menyusuri saluran
+  P(g,'#7fffe0',bx,navT.py+13,2,1);
+  if(Math.floor(t/900)%2)P(g,'rgba(94,232,200,.35)',navT.px+6,navT.py+10,10,6);  // sapuan lahan
+}});
+
+/* --- panduan pintu keluar: chevron mengalir turun + papan EXIT berdenyut --- */
+anims.push({fn:(g,t)=>{
+  const cxp=12*T+7,act=Math.floor(t/260)%3;
+  for(let i=0;i<3;i++){
+    const cy=15*T-2+i*6;g.fillStyle=i===act?'#7bffab':'#2a5a3e';
+    g.fillRect(cxp-4,cy,3,1);g.fillRect(cxp+1,cy,3,1);
+    g.fillRect(cxp-2,cy+1,1,1);g.fillRect(cxp,cy+1,1,1);
+  }
+  const glow=(Math.sin(t/380)+1)/2;                                  // papan EXIT berdenyut
+  g.fillStyle=`rgba(95,240,138,${(0.25+glow*0.5).toFixed(2)})`;
+  g.fillRect(12*T-4,16*T+7,22,1);
 }});
 
 /* --- MEJA BENGKEL UMUM : WORKSHOP (isi menyusul, tak khusus drum seeder) --- */
@@ -666,7 +707,34 @@ const barrels=furn({x:20,y:10,w:2,h:1},6,(g)=>{
   P(g,'#3a5a8a',17,6,12,15);P(g,'#4a6f9f',17,6,12,2);                        // drum baja
   P(g,'#2a4568',17,12,12,2);P(g,'#151a22',17,20,12,1);
 });
-FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,barrels);
+/* lampu lantai — penyatu pojok santai, di antara sofa & bangku */
+const lamp=furn({x:7,y:16,w:1,h:1},20,(g,w,h)=>{
+  P(g,'#c89a3a',4,2,8,2);                                                     // rim kap
+  P(g,'#ffe6a0',3,4,10,6);P(g,'#fff3c0',5,6,6,3);                            // kap + cahaya
+  P(g,'#4a4a52',7,10,2,h-14);                                                 // tiang
+  P(g,'#3a3a42',5,h-4,6,2);P(g,'#2a2a32',4,h-2,8,2);                          // dasar
+});
+/* dispenser air (pengisi dinding kiri, bawah rak server) */
+const cooler=furn({x:1,y:4,w:1,h:1},6,(g,w,h)=>{
+  P(g,'#3a5a8a',5,2,6,5);P(g,'#8fc9e0',6,2,4,4);                              // galon air
+  P(g,'#dfe6ee',4,7,8,h-9);P(g,'#c2ccd6',4,7,8,2);                           // badan dispenser
+  P(g,'#2a303c',6,12,4,2);P(g,'#4cc9e0',7,12,1,1);                           // keran
+  P(g,'#9aa4b0',4,h-3,8,3);                                                   // dasar
+});
+/* tumpukan peti kayu (pengisi dinding kiri bawah) */
+const boxes=furn({x:1,y:12,w:1,h:1},7,(g,w,h)=>{
+  P(g,'#6e4a2a',2,6,11,10);P(g,'#815a36',2,6,11,2);P(g,'#573a20',2,11,11,1); // peti bawah
+  P(g,'#4a3018',7,6,1,10);
+  P(g,'#7a5330',4,0,8,6);P(g,'#8f6338',4,0,8,2);P(g,'#e8c05a',6,2,4,1);       // peti atas
+});
+/* loker dua pintu (pengisi dinding pembatas, dekat AREA SAMPLING) */
+const locker=furn({x:9,y:7,w:1,h:1},8,(g,w,h)=>{
+  P(g,'#455063',3,2,10,h-4);P(g,'#39414f',3,2,10,2);                          // badan loker
+  P(g,'#2a303c',4,4,4,h-8);P(g,'#2a303c',9,4,3,h-8);                          // dua pintu
+  P(g,'#1a2029',4,5,4,1);P(g,'#1a2029',9,5,3,1);                              // ventilasi
+  P(g,'#c9c9d2',6,9,1,2);P(g,'#c9c9d2',10,9,1,2);                             // gagang
+});
+FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,barrels,lamp,cooler,boxes,locker);
 
 /* --- kebun hidroponik: rak tanam 2 tingkat + lampu tumbuh + tandon air --- */
 const hydro=furn({x:11,y:2,w:3,h:1},12,(g,w,h)=>{
