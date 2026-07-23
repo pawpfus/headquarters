@@ -405,19 +405,11 @@ function pool(g,x,y,w,h,rgb,peak){
   }
   /* pintu geser keluar (bawah, kolom 12) */
   P(g,'#07090d',12*T-2,18*T,T+4,T);
-  P(g,'#2e3542',12*T-4,18*T,2,T);P(g,'#2e3542',13*T+2,18*T,2,T);       // kusen samping
-  P(g,'#46d160',12*T+2,18*T+2,12,2);                     // ambang pintu (hijau = keluar)
-  /* papan EXIT tergantung di atas pintu */
-  P(g,'#0a1410',12*T-4,16*T+7,22,9);P(g,'#123a26',12*T-4,16*T+7,22,1);
-  drawText(g,'EXIT',12*T,16*T+9,'#5ff08a');
-  P(g,'#123a26',12*T+2,16*T+6,1,1);P(g,'#123a26',13*T+1,16*T+6,1,1);   // gantungan
+  P(g,'#2e3542',12*T-4,18*T,2,T);P(g,'#2e3542',13*T+2,18*T,2,T);
+  P(g,'#4ce0ff',12*T+2,18*T+2,12,2);                     // cahaya lorong
   /* pad sensor pintu */
   P(g,'#1a212c',12*T+1,17*T+3,14,10);P(g,'#2ee0ff',12*T+1,17*T+3,14,1);
   P(g,'#1a7f99',12*T+4,17*T+7,8,2);
-  /* chevron panduan menuju pintu (redup — versi terang dianimasikan) */
-  for(let i=0;i<3;i++){const cy=15*T-2+i*6,cxp=12*T+7;
-    P(g,'#173a28',cxp-4,cy,3,1);P(g,'#173a28',cxp+1,cy,3,1);
-    P(g,'#173a28',cxp-2,cy+1,1,1);P(g,'#173a28',cxp,cy+1,1,1);}
   /* --- aksen lantai: garis pandu, strip bahaya, keset, noda oli --- */
   for(let y=2*T;y<17*T;y+=12)P(g,'#173441',12*T+7,y,2,6);            // garis pandu lorong
   P(g,'#1d3a30',4*T+2,3*T+2,28,12);P(g,'#2a4d3f',4*T+4,3*T+4,24,8);   // keset depan EVIDENCE
@@ -621,19 +613,6 @@ anims.push({f:navT,fn:(g,t)=>{                                  // jarum kompas 
   const bx=navT.px+4+Math.floor((t/110)%(navT.canvas.width-14));    // blip survei menyusuri saluran
   P(g,'#7fffe0',bx,navT.py+13,2,1);
   if(Math.floor(t/900)%2)P(g,'rgba(94,232,200,.35)',navT.px+6,navT.py+10,10,6);  // sapuan lahan
-}});
-
-/* --- panduan pintu keluar: chevron mengalir turun + papan EXIT berdenyut --- */
-anims.push({fn:(g,t)=>{
-  const cxp=12*T+7,act=Math.floor(t/260)%3;
-  for(let i=0;i<3;i++){
-    const cy=15*T-2+i*6;g.fillStyle=i===act?'#7bffab':'#2a5a3e';
-    g.fillRect(cxp-4,cy,3,1);g.fillRect(cxp+1,cy,3,1);
-    g.fillRect(cxp-2,cy+1,1,1);g.fillRect(cxp,cy+1,1,1);
-  }
-  const glow=(Math.sin(t/380)+1)/2;                                  // papan EXIT berdenyut
-  g.fillStyle=`rgba(95,240,138,${(0.25+glow*0.5).toFixed(2)})`;
-  g.fillRect(12*T-4,16*T+7,22,1);
 }});
 
 /* --- MEJA BENGKEL UMUM : WORKSHOP (isi menyusul, tak khusus drum seeder) --- */
