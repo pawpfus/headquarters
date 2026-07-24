@@ -152,7 +152,7 @@ const TOOLS = [
   { id:'forge',  name:'ESC FORGE',        desc:'Generator laporan bulanan SKP',
     url:'https://pawpfus.github.io/skp-forge/', color:'#ff8c4a', rect:{x:17,y:9, w:3, h:2} },
   { id:'farm',   name:'COOPERSTOWN',      desc:'FARM AXIS — peta poktan interaktif',
-    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', rect:{x:6, y:8, w:3, h:2} },
+    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', rect:{x:7, y:8, w:3, h:2} },
   { id:'workshop', name:'WORKSHOP',       desc:'Bengkel alat & blueprint (Drum Seeder, dll.)',
     url:'https://pawpfus.github.io/drum-seeder-pm-aas/', color:'#9fb8d0', rect:{x:17,y:14,w:3, h:2} },
 ];
@@ -198,7 +198,7 @@ const DECOR_SOLID=[
   {x:11,y:2, w:3,h:1},{x:5, y:14,w:2,h:1},{x:5, y:16,w:2,h:1},  // hidroponik (lorong), TV, sofa
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
   {x:7, y:16,w:1,h:1},{x:1, y:4, w:1,h:1},                      // lampu lantai, dispenser air
-  {x:1, y:12,w:1,h:1},{x:9, y:7, w:1,h:1},                      // peti, loker
+  {x:1, y:12,w:1,h:1},{x:9, y:6, w:1,h:1},                      // peti, loker
 ];
 const solid=new Uint8Array(COLS*ROWS);
 const S=(x,y)=>solid[y*COLS+x];
@@ -462,7 +462,7 @@ function pool(g,x,y,w,h,rgb,peak){
   pool(g,20*T+4,3*T, 40, 9,'224,122,208',.09);   // TV DIFFUSION (merah muda)
   pool(g,11*T+3,3*T, 42,10,'160,90,224', .12);   // lampu tumbuh hidroponik (ungu)
   pool(g, 2*T+4,10*T,40, 9,'232,192,90', .09);   // meja peta AREA SAMPLING (kuning)
-  pool(g, 6*T+4,10*T,40, 9,'94,232,200', .09);   // meja peta COOPERSTOWN (teal)
+  pool(g, 7*T+4,10*T,40, 9,'94,232,200', .09);   // meja peta COOPERSTOWN (teal)
   pool(g,17*T+4,11*T,40,12,'224,124,58', .16);   // bara tungku ESC FORGE (oranye)
   pool(g,17*T+4,14*T,40,12,'159,184,208', .12);   // meja bengkel WORKSHOP (netral)
 })();
@@ -708,7 +708,7 @@ const boxes=furn({x:1,y:12,w:1,h:1},7,(g,w,h)=>{
   P(g,'#7a5330',4,0,8,6);P(g,'#8f6338',4,0,8,2);P(g,'#e8c05a',6,2,4,1);       // peti atas
 });
 /* loker dua pintu (pengisi dinding pembatas, dekat AREA SAMPLING) */
-const locker=furn({x:9,y:7,w:1,h:1},8,(g,w,h)=>{
+const locker=furn({x:9,y:6,w:1,h:1},8,(g,w,h)=>{
   P(g,'#455063',3,2,10,h-4);P(g,'#39414f',3,2,10,2);                          // badan loker
   P(g,'#2a303c',4,4,4,h-8);P(g,'#2a303c',9,4,3,h-8);                          // dua pintu
   P(g,'#1a2029',4,5,4,1);P(g,'#1a2029',9,5,3,1);                              // ventilasi
