@@ -199,6 +199,8 @@ const DECOR_SOLID=[
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
   {x:7, y:16,w:1,h:1},{x:1, y:4, w:1,h:1},                      // lampu lantai, dispenser air
   {x:1, y:12,w:1,h:1},{x:9, y:6, w:1,h:1},                      // peti, loker
+  {x:22,y:7, w:1,h:1},{x:23,y:4, w:1,h:1},{x:17,y:7, w:1,h:1},  // lampu, rak data, tanaman (kanan-atas)
+  {x:23,y:10,w:1,h:1},{x:15,y:10,w:1,h:1},{x:15,y:16,w:1,h:1},{x:23,y:12,w:1,h:1}, // rak besi, tabung, ban, tanaman (kanan-bawah)
 ];
 const solid=new Uint8Array(COLS*ROWS);
 const S=(x,y)=>solid[y*COLS+x];
@@ -465,6 +467,8 @@ function pool(g,x,y,w,h,rgb,peak){
   pool(g, 7*T+4,10*T,40, 9,'94,232,200', .09);   // meja peta COOPERSTOWN (teal)
   pool(g,17*T+4,11*T,40,12,'224,124,58', .16);   // bara tungku ESC FORGE (oranye)
   pool(g,17*T+4,14*T,40,12,'159,184,208', .12);   // meja bengkel WORKSHOP (netral)
+  P(g,'rgba(255,222,150,.08)',21*T+2,6*T+4,3*T-2,2*T);   // cahaya hangat lampu kanan-atas
+  P(g,'rgba(255,222,150,.06)',21*T-2,6*T,3*T+2,3*T-4);
 })();
 
 /* =========================================================================
@@ -687,13 +691,15 @@ const barrels=furn({x:20,y:10,w:2,h:1},6,(g)=>{
   P(g,'#3a5a8a',17,6,12,15);P(g,'#4a6f9f',17,6,12,2);                        // drum baja
   P(g,'#2a4568',17,12,12,2);P(g,'#151a22',17,20,12,1);
 });
-/* lampu lantai — penyatu pojok santai, di antara sofa & bangku */
-const lamp=furn({x:7,y:16,w:1,h:1},20,(g,w,h)=>{
+/* lampu lantai — penyatu pojok santai + aksen hangat di kamar kanan */
+const lampPaint=(g,w,h)=>{
   P(g,'#c89a3a',4,2,8,2);                                                     // rim kap
   P(g,'#ffe6a0',3,4,10,6);P(g,'#fff3c0',5,6,6,3);                            // kap + cahaya
   P(g,'#4a4a52',7,10,2,h-14);                                                 // tiang
   P(g,'#3a3a42',5,h-4,6,2);P(g,'#2a2a32',4,h-2,8,2);                          // dasar
-});
+};
+const lamp=furn({x:7,y:16,w:1,h:1},20,lampPaint);
+const lamp2=furn({x:22,y:7,w:1,h:1},20,lampPaint);   // sudut ruang pelaporan (kanan-atas)
 /* dispenser air (pengisi dinding kiri, bawah rak server) */
 const cooler=furn({x:1,y:4,w:1,h:1},6,(g,w,h)=>{
   P(g,'#3a5a8a',5,2,6,5);P(g,'#8fc9e0',6,2,4,4);                              // galon air
@@ -714,7 +720,31 @@ const locker=furn({x:9,y:6,w:1,h:1},8,(g,w,h)=>{
   P(g,'#1a2029',4,5,4,1);P(g,'#1a2029',9,5,3,1);                              // ventilasi
   P(g,'#c9c9d2',6,9,1,2);P(g,'#c9c9d2',10,9,1,2);                             // gagang
 });
-FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,barrels,lamp,cooler,boxes,locker);
+/* --- pengisi kamar kanan-atas (pelaporan) --- */
+const rackC=furn({x:23,y:4,w:1,h:1},4,g=>{rackPaint(g);});   // rak data (dinding kanan)
+const potRA=furn({x:17,y:7,w:1,h:1},4,potPaint);             // tanaman sudut
+/* --- pengisi kamar kanan-bawah (bengkel) --- */
+const shelfR=furn({x:23,y:10,w:1,h:1},8,(g,w,h)=>{           // rak besi suku cadang
+  P(g,'#3a4250',2,2,12,h-4);P(g,'#2a303c',2,2,12,2);           // rangka
+  P(g,'#4a5468',3,7,10,1);P(g,'#4a5468',3,13,10,1);            // ambalan
+  P(g,'#7a7f88',4,3,3,2);P(g,'#9aa0aa',9,3,2,2);               // balok logam
+  P(g,'#c9a24a',5,9,2,3);P(g,'#5f6670',9,9,3,3);               // baut & roda gigi
+  P(g,'#8a6a42',4,15,6,2);                                     // kayu
+});
+const gasCyl=furn({x:15,y:10,w:1,h:1},8,(g,w,h)=>{           // tabung gas
+  P(g,'#55555f',6,1,4,5);P(g,'#3a3a42',6,1,4,2);               // katup
+  P(g,'#b5482f',4,5,8,h-7);P(g,'#c95a3a',4,5,8,2);             // tabung merah
+  P(g,'#8a3422',4,5,2,h-7);                                    // sisi gelap
+  P(g,'#e8c05a',5,11,6,1);                                     // strip label
+  P(g,'#151a22',4,h-3,8,1);                                    // dasar
+});
+const tires=furn({x:15,y:16,w:1,h:1},6,(g,w,h)=>{           // tumpukan ban
+  for(let i=0;i<2;i++){const yy=h-6-i*6;
+    P(g,'#1a1a1f',2,yy,12,5);P(g,'#26262e',3,yy+1,10,3);P(g,'#0e0e12',5,yy+2,6,1);}
+});
+const potRB=furn({x:23,y:12,w:1,h:1},4,potPaint);            // tanaman sudut bengkel
+FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,barrels,lamp,cooler,boxes,locker,
+          lamp2,rackC,potRA,shelfR,gasCyl,tires,potRB);
 
 /* --- kebun hidroponik: rak tanam 2 tingkat + lampu tumbuh + tandon air --- */
 const hydro=furn({x:11,y:2,w:3,h:1},12,(g,w,h)=>{
