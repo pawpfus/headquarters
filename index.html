@@ -148,13 +148,13 @@ const TOOLS = [
   { id:'disem',  name:'DIFFUSION REPORT', desc:'Rangkuman diseminasi media sosial',
     url:'https://pawpfus.github.io/laporan-diseminasi/', color:'#e07ad0', rect:{x:20,y:2, w:3, h:1} },
   { id:'ksa',    name:'AREA SAMPLING',    desc:'Pendampingan Kerangka Sampel Area',
-    url:'https://pawpfus.github.io/laporan-ksa-2026/',   color:'#e8c05a', rect:{x:2, y:7, w:3, h:2} },
+    url:'https://pawpfus.github.io/laporan-ksa-2026/',   color:'#e8c05a', rect:{x:2, y:8, w:3, h:2} },
   { id:'forge',  name:'ESC FORGE',        desc:'Generator laporan bulanan SKP',
     url:'https://pawpfus.github.io/skp-forge/', color:'#ff8c4a', rect:{x:17,y:9, w:3, h:2} },
   { id:'farm',   name:'COOPERSTOWN',      desc:'FARM AXIS — peta poktan interaktif',
-    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', rect:{x:6, y:10,w:3, h:2} },
+    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', rect:{x:6, y:8, w:3, h:2} },
   { id:'workshop', name:'WORKSHOP',       desc:'Bengkel alat & blueprint (Drum Seeder, dll.)',
-    url:'https://pawpfus.github.io/drum-seeder-pm-aas/', color:'#9fb8d0', rect:{x:16,y:14,w:3, h:2} },
+    url:'https://pawpfus.github.io/drum-seeder-pm-aas/', color:'#9fb8d0', rect:{x:17,y:14,w:3, h:2} },
 ];
 
 const T=16, COLS=25, ROWS=19, W=COLS*T, H=ROWS*T;
@@ -193,7 +193,7 @@ const MAP=[
 const DECOR_SOLID=[
   {x:1, y:2, w:1,h:1},{x:23,y:2, w:1,h:1},{x:19,y:15,w:2,h:1},  // rak, rak, peti
   {x:7, y:2, w:1,h:1},{x:1, y:7, w:1,h:1},{x:19,y:2, w:1,h:1},  // pot (samping stasiun)
-  {x:8, y:16,w:2,h:1},{x:5, y:10,w:1,h:1},                      // bangku (pojok santai), drum
+  {x:8, y:16,w:2,h:1},{x:9, y:11,w:1,h:1},                      // bangku (pojok santai), drum
   {x:15,y:2, w:1,h:1},{x:20,y:9, w:1,h:1},{x:20,y:10,w:2,h:1},  // kabinet, rak alat, tong
   {x:11,y:2, w:3,h:1},{x:5, y:14,w:2,h:1},{x:5, y:16,w:2,h:1},  // hidroponik (lorong), TV, sofa
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
@@ -461,9 +461,10 @@ function pool(g,x,y,w,h,rgb,peak){
   pool(g, 4*T+4,3*T, 40, 9,'76,201,224', .10);   // papan EVIDENCE (cyan)
   pool(g,20*T+4,3*T, 40, 9,'224,122,208',.09);   // TV DIFFUSION (merah muda)
   pool(g,11*T+3,3*T, 42,10,'160,90,224', .12);   // lampu tumbuh hidroponik (ungu)
+  pool(g, 2*T+4,10*T,40, 9,'232,192,90', .09);   // meja peta AREA SAMPLING (kuning)
+  pool(g, 6*T+4,10*T,40, 9,'94,232,200', .09);   // meja peta COOPERSTOWN (teal)
   pool(g,17*T+4,11*T,40,12,'224,124,58', .16);   // bara tungku ESC FORGE (oranye)
-  pool(g, 6*T+4,12*T,40, 9,'94,232,200', .09);   // meja peta COOPERSTOWN (teal)
-  pool(g,16*T+4,14*T,40,12,'159,184,208', .12);   // meja bengkel WORKSHOP (netral)
+  pool(g,17*T+4,14*T,40,12,'159,184,208', .12);   // meja bengkel WORKSHOP (netral)
 })();
 
 /* =========================================================================
@@ -665,7 +666,7 @@ const bench=furn({x:8,y:16,w:2,h:1},6,(g,w,h)=>{
   P(g,'#39414f',2,8,w-4,5);P(g,'#4a5468',2,8,w-4,2);                         // dudukan logam
   P(g,'#2a303c',3,13,3,h-14);P(g,'#2a303c',w-6,13,3,h-14);                   // kaki
 });
-const drum=furn({x:5,y:10,w:1,h:1},6,(g)=>{
+const drum=furn({x:9,y:11,w:1,h:1},6,(g)=>{
   P(g,'#3a5a8a',3,4,10,17);P(g,'#4a6f9f',3,4,10,2);                          // drum baja biru
   P(g,'#2a4568',3,10,10,2);P(g,'#2a4568',3,16,10,2);P(g,'#151a22',3,20,10,1);
 });
