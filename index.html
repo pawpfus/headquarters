@@ -201,6 +201,7 @@ const DECOR_SOLID=[
   {x:1, y:12,w:1,h:1},{x:9, y:6, w:1,h:1},                      // peti, loker
   {x:22,y:7, w:1,h:1},{x:23,y:4, w:1,h:1},{x:17,y:7, w:1,h:1},  // lampu, rak data, tanaman (kanan-atas)
   {x:23,y:10,w:1,h:1},{x:15,y:10,w:1,h:1},{x:15,y:16,w:1,h:1},{x:23,y:12,w:1,h:1}, // rak besi, tabung, ban, tanaman (kanan-bawah)
+  {x:4, y:16,w:1,h:1},                                          // jukebox (lounge)
 ];
 const solid=new Uint8Array(COLS*ROWS);
 const S=(x,y)=>solid[y*COLS+x];
@@ -743,8 +744,32 @@ const tires=furn({x:15,y:16,w:1,h:1},6,(g,w,h)=>{           // tumpukan ban
     P(g,'#1a1a1f',2,yy,12,5);P(g,'#26262e',3,yy+1,10,3);P(g,'#0e0e12',5,yy+2,6,1);}
 });
 const potRB=furn({x:23,y:12,w:1,h:1},4,potPaint);            // tanaman sudut bengkel
+/* --- jukebox (lounge, samping sofa) --- */
+const jukebox=furn({x:4,y:16,w:1,h:1},14,(g,w,h)=>{          // h=30
+  P(g,'#4a2f1c',2,5,12,h-5);P(g,'#6e4a2a',3,6,10,h-8);        // badan kayu
+  P(g,'#e07ad0',3,2,10,2);P(g,'#4cc9e0',4,1,8,1);            // busur neon
+  P(g,'#08131c',4,6,8,4);                                     // layar (diisi anim)
+  P(g,'#241610',4,13,8,7);                                    // kisi speaker
+  P(g,'#160d07',5,14,6,1);P(g,'#160d07',5,16,6,1);P(g,'#160d07',5,18,6,1);
+  P(g,'#e8c05a',5,22,2,2);P(g,'#7ee06a',8,22,2,2);P(g,'#4cc9e0',11,22,1,2); // tombol
+  P(g,'#2a1810',2,h-3,12,3);                                  // dasar
+});
 FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,barrels,lamp,cooler,boxes,locker,
-          lamp2,rackC,potRA,shelfR,gasCyl,tires,potRB);
+          lamp2,rackC,potRA,shelfR,gasCyl,tires,potRB,jukebox);
+anims.push({fn:(g,t)=>{                                       // layar & equalizer jukebox
+  const jx=jukebox.px,jy=jukebox.py,dx=jx+4,dy=jy+6;
+  if(music.on){
+    g.fillStyle='#04121a';g.fillRect(dx,dy,8,4);
+    const cols=['#4cc9e0','#7ee06a','#e8c05a','#e07ad0','#7ec8ff','#ffa0d8'];
+    for(let i=0;i<6;i++){let bh=1+Math.round((Math.sin(t/80+i*1.3)+Math.sin(t/47+i)+2)*.85);
+      bh=Math.max(1,Math.min(4,bh));g.fillStyle=cols[i];g.fillRect(dx+1+i,dy+4-bh,1,bh);}
+    const gl=(Math.sin(t/220)+1)/2;                            // busur neon berdenyut
+    g.fillStyle='rgba(224,122,208,'+(0.25+gl*0.4).toFixed(2)+')';g.fillRect(jx+3,jy+1,10,2);
+    for(let k=0;k<2;k++){const p=((t/750)+k*.5)%1,ny=jy-1-p*16,nx=jx+11+Math.round(Math.sin(t/140+k*3)*3);
+      g.fillStyle='rgba(126,224,106,'+(1-p).toFixed(2)+')';g.fillRect(nx,ny,2,2);g.fillRect(nx+1,ny+2,1,2);}
+  }else{g.fillStyle='#06171f';g.fillRect(dx,dy,8,4);
+    if(Math.floor(t/700)%2){g.fillStyle='#0a3a2a';g.fillRect(dx+1,dy+3,2,1);}}
+}});
 
 /* --- kebun hidroponik: rak tanam 2 tingkat + lampu tumbuh + tandon air --- */
 const hydro=furn({x:11,y:2,w:3,h:1},12,(g,w,h)=>{
@@ -852,7 +877,7 @@ anims.push({fn:(g,t)=>{
    PEMAIN
    ========================================================================= */
 const player={x:12.5*T,y:17*T+12,dir:'down',frame:0,animT:0,moving:false,path:null,
-              pendTool:null,jumpT:0,sitting:null,pendSeat:null};
+              pendTool:null,jumpT:0,sitting:null,pendSeat:null,pendJuke:null};
 const SPEED=62, JUMP_DUR=.45;
 const cam={x:0,y:0};
 const keys=new Set();
@@ -998,7 +1023,7 @@ function goToTool(tool){
   }
   if(!best)return;
   player.path=pathTo(best[0],best[1]);
-  player.pendTool=tool;
+  player.pendTool=tool;player.pendSeat=null;player.pendJuke=null;
 }
 
 /* ---------- duduk di kursi ---------- */
@@ -1025,7 +1050,25 @@ function goToSeat(seat){
   }
   if(!best)return;
   if(bd===0){sitDown(seat);return;}                  // sudah berdiri tepat di depannya
-  player.path=pathTo(best[0],best[1]);player.pendSeat=seat;player.pendTool=null;
+  player.path=pathTo(best[0],best[1]);player.pendSeat=seat;player.pendTool=null;player.pendJuke=null;
+}
+
+/* ---------- jukebox ---------- */
+const jukeFront={};
+{const r=jukebox.rect,ty=r.y-1;
+ for(let x=r.x;x<r.x+r.w;x++)if(ty>=0&&!S(x,ty))jukeFront[x+','+ty]=jukebox;}
+const jukeAtFront=()=>{const [tx,ty]=ptile();return jukeFront[tx+','+ty]?jukebox:null;};
+function goToJuke(){
+  if(player.sitting)standUp();
+  const r=jukebox.rect,[sx,sy]=ptile(),{dist}=bfs(sx,sy),ty=r.y-1;
+  let best=null,bd=1e9;
+  for(let x=r.x;x<r.x+r.w;x++){
+    if(ty<0||S(x,ty))continue;const d=dist[ty*COLS+x];
+    if(d>=0&&d<bd){bd=d;best=[x,ty];}
+  }
+  if(!best)return;
+  if(bd===0){jukeCycle();return;}
+  player.path=pathTo(best[0],best[1]);player.pendJuke=true;player.pendTool=null;player.pendSeat=null;
 }
 
 /* =========================================================================
@@ -1043,6 +1086,56 @@ function beep(freq,dur=.08,vol=.05,type='square',delay=0){
     o.start(AC.currentTime+delay);o.stop(AC.currentTime+delay+dur+.02);
   }catch(e){}
 }
+
+/* --- JUKEBOX: musik chiptune prosedural (tanpa file, offline) --- */
+const HZ=n=>{const M={C:0,'C#':1,D:2,'D#':3,E:4,F:5,'F#':6,G:7,'G#':8,A:9,'A#':10,B:11};
+  if(!n||n==='-')return 0;const o=+n.slice(-1),nm=n.slice(0,-1);
+  return 440*Math.pow(2,((M[nm]+(o+1)*12)-69)/12);};
+const TRACKS=[
+  {name:'CHILL', bpm:84, lead:'triangle',
+   bass:['A2','-','A2','-','F2','-','F2','-','C3','-','C3','-','G2','-','E2','-'],
+   mel :['E4','-','C4','-','F4','-','A4','G4','E4','-','C4','-','D4','-','G4','-'],
+   perc:[]},
+  {name:'LO-FI', bpm:74, lead:'triangle',
+   bass:['D2','-','D2','A2','G2','-','G2','-','C3','-','C3','G2','A2','-','A2','-'],
+   mel :['F4','-','A4','-','C5','-','A4','G4','E4','-','G4','-','F4','-','-','-'],
+   perc:['k','-','h','-','k','-','h','-','k','-','h','-','k','-','h','-']},
+  {name:'UPBEAT',bpm:118,lead:'square',
+   bass:['C3','C3','G2','G2','A2','A2','E2','E2','F2','F2','C3','C3','G2','G2','G2','B2'],
+   mel :['C5','E5','G5','E5','A4','C5','E5','C5','F4','A4','C5','A4','G4','B4','D5','G5'],
+   perc:['k','h','h','h','k','h','h','h','k','h','h','h','k','h','h','h']},
+];
+const music={on:false,track:0,step:0,next:0,timer:null,visT:0,gain:null};
+function ensureAudio(){AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+  if(!music.gain){music.gain=AC.createGain();music.gain.gain.value=.5;music.gain.connect(AC.destination);}
+  if(AC.state==='suspended')AC.resume();}
+function tone(freq,t,dur,type,vol){if(!freq)return;const o=AC.createOscillator(),g=AC.createGain();
+  o.type=type;o.frequency.setValueAtTime(freq,t);
+  g.gain.setValueAtTime(.0005,t);g.gain.linearRampToValueAtTime(vol,t+.012);
+  g.gain.exponentialRampToValueAtTime(.0005,t+dur);
+  o.connect(g);g.connect(music.gain);o.start(t);o.stop(t+dur+.03);}
+function kick(t){const o=AC.createOscillator(),g=AC.createGain();o.type='sine';
+  o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(45,t+.12);
+  g.gain.setValueAtTime(.16,t);g.gain.exponentialRampToValueAtTime(.001,t+.15);
+  o.connect(g);g.connect(music.gain);o.start(t);o.stop(t+.16);}
+function hat(t){const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=7400;
+  g.gain.setValueAtTime(.03,t);g.gain.exponentialRampToValueAtTime(.001,t+.025);
+  o.connect(g);g.connect(music.gain);o.start(t);o.stop(t+.03);}
+function musicSched(){const tr=TRACKS[music.track],sd=30/tr.bpm;   // durasi not 1/8
+  while(music.next<AC.currentTime+0.15){
+    const s=music.step%16,t=music.next;
+    tone(HZ(tr.bass[s]),t,sd*.95,'triangle',.06);
+    tone(HZ(tr.mel[s]), t,sd*.85,tr.lead,.045);
+    const p=tr.perc[s];if(p==='k')kick(t);else if(p==='h')hat(t);
+    music.next+=sd;music.step++;
+  }}
+function musicStart(){music.on=true;music.step=0;music.next=AC.currentTime+.06;
+  clearInterval(music.timer);music.timer=setInterval(musicSched,25);musicSched();}
+function musicStop(){music.on=false;clearInterval(music.timer);music.timer=null;}
+function jukeCycle(){ensureAudio();
+  if(!music.on){music.track=0;musicStart();beep(660,.05,.05);}
+  else if(music.track<TRACKS.length-1){music.track++;music.step=0;music.next=AC.currentTime+.04;beep(780,.05,.05);}
+  else{musicStop();beep(400,.06,.04);}}
 
 /* =========================================================================
    HUD DOM: banner, menu
@@ -1094,7 +1187,8 @@ addEventListener('keydown',e=>{
     e.preventDefault();
     if(player.sitting){standUp();return;}
     if(activeTool){openTool(activeTool);return;}
-    const st=seatAtFront();if(st)sitDown(st);         // berdiri di depan kursi → duduk
+    const st=seatAtFront();if(st){sitDown(st);return;}   // berdiri di depan kursi → duduk
+    if(jukeAtFront()){jukeCycle();return;}               // di depan jukebox → putar/ganti lagu
   }
 });
 addEventListener('keyup',e=>{if(KEYMAP[e.key])keys.delete(KEYMAP[e.key]);});
@@ -1128,7 +1222,7 @@ const joyEnd=e=>{
   if(performance.now()-joyT0<300&&joyMax<12){
     if(player.sitting)standUp();
     else if(activeTool)openTool(activeTool);
-    else{const st=seatAtFront();if(st)sitDown(st);}
+    else{const st=seatAtFront();if(st)sitDown(st);else if(jukeAtFront())jukeCycle();}
   }
 };
 stick.addEventListener('pointerup',joyEnd);stick.addEventListener('pointercancel',joyEnd);
@@ -1165,10 +1259,13 @@ cv.addEventListener('pointerdown',e=>{
       goToSeat(s);beep(440,.04,.03);return;
     }
   }
+  /* kena jukebox? hampiri lalu putar */
+  {const rc=jukebox.rect;
+   if(tx>=rc.x-1&&tx<rc.x+rc.w&&ty>=rc.y-1&&ty<rc.y+rc.h){goToJuke();beep(440,.04,.03);return;}}
   if(tx>=0&&ty>=0&&tx<COLS&&ty<ROWS&&!S(tx,ty)){
     const p=pathTo(tx,ty);
     if(p){if(player.sitting)standUp();
-      player.path=pathTo(tx,ty);player.pendTool=null;player.pendSeat=null;beep(330,.03,.02);}
+      player.path=pathTo(tx,ty);player.pendTool=null;player.pendSeat=null;player.pendJuke=null;beep(330,.03,.02);}
   }
 });
 
@@ -1198,6 +1295,7 @@ function update(dt){
         player.pendTool=null;beep(600,.05,.04);
       }
       if(!player.path.length&&player.pendSeat)sitDown(player.pendSeat);
+      if(!player.path.length&&player.pendJuke){player.pendJuke=null;player.dir='up';jukeCycle();}
     }else{
       if(Math.abs(dx)>Math.abs(dy))vx=Math.sign(dx);else vy=Math.sign(dy);
     }
@@ -1213,6 +1311,8 @@ function update(dt){
   }else player.animT=0;
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
   petUpdate(dt);botUpdate(dt);
+  if(music.on){music.visT+=dt;const beat=60/TRACKS[music.track].bpm;   // pet ikut goyang tiap ketukan
+    if(music.visT>=beat){music.visT-=beat;if(pet.hopT<=0)pet.hopT=.4;}}
 
   /* kamera mengikuti dino (rapat saat kanvas lebih kecil dari ruangan) */
   const tcx=cv.width>=W?(W-cv.width)/2:Math.max(0,Math.min(W-cv.width,player.x-cv.width/2));
@@ -1371,6 +1471,7 @@ addEventListener('resize',fit);fit();
 /* akses debug (dipakai pengujian otomatis; tidak memengaruhi game) */
 window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS,
               fog:()=>fogOn,SEATS,goToSeat,sitDown,standUp,seatAtFront,
+              music,jukebox,jukeCycle,jukeAtFront,goToJuke,TRACKS,
               render:()=>render(performance.now()),
               step:(n=1,d=1/60)=>{for(let i=0;i<n;i++){update(d);render(performance.now());}}};
 
