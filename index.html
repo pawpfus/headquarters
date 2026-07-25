@@ -375,16 +375,16 @@ function pool(g,x,y,w,h,rgb,peak){
 (function drawBG(){
   const g=bgc;
   P(g,'#0c1016',0,0,W,H);
-  /* lantai pelat logam (tile '.') */
+  /* lantai pelat logam (tile '.') — bersih, panel timbul tanpa paku keling berlebih */
   for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
     if(MAP[ty][tx]!=='.')continue;
     const px=tx*T,py=ty*T,alt=((tx+ty)%2);
-    P(g,alt?'#2b323f':'#2f3745',px,py,T,T);
-    P(g,'#1e2430',px,py+T-1,T,1);                        // sambungan pelat
-    P(g,'#1e2430',px+T-1,py,1,T);
-    P(g,'#454f61',px+1,py+1,1,1);P(g,'#454f61',px+T-3,py+1,1,1);   // paku keling
-    P(g,'#454f61',px+1,py+T-3,1,1);P(g,'#454f61',px+T-3,py+T-3,1,1);
-    if(rnd(tx,ty)%9===0)P(g,'#232935',px+4,py+7,8,2);    // kisi ventilasi
+    P(g,alt?'#2b323f':'#2f3745',px,py,T,T);              // pelat
+    P(g,'#353d4b',px,py,T,1);P(g,'#353d4b',px,py,1,T);   // sorot tepi atas & kiri
+    P(g,'#20262f',px,py+T-1,T,1);P(g,'#20262f',px+T-1,py,1,T); // sambungan bawah & kanan
+    const r=rnd(tx,ty)%14;
+    if(r===0)P(g,'#262d38',px+4,py+7,8,2);               // sesekali kisi ventilasi (samar)
+    else if(r===1)P(g,'#333b49',px+5,py+9,6,1);          // sesekali goresan halus
   }
   /* dinding (tile '#'): muka baja bila ada lantai tepat di bawahnya,
      selain itu pelat gelap berlist — denah kamar & lorong terbaca dari sini */
