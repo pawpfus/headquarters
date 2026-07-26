@@ -508,6 +508,9 @@ function buildBG(){
   P(g,'rgba(255,222,150,.06)',21*T-2,6*T,3*T+2,3*T-4);
   /* --- jendela dinding luar: langit ikut waktu + berkas cahaya masuk --- */
   const dl=daylight, ci=a=>`rgb(${a[0]|0},${a[1]|0},${a[2]|0})`;
+  /* matahari/bulan cuma tampak di satu jendela sesuai arahnya —
+     pagi terbit di timur (jendela timur), sore/malam di barat. */
+  const hostWin = curHour()<12 ? WINDOWS[1] : WINDOWS[0];
   for(const wd of WINDOWS){
     const rows=wd.ty1-wd.ty0+1, ww=12, wh=rows*T-4;
     const wx=wd.side==='W'?2:W-14, wy=wd.ty0*T+2;
@@ -517,9 +520,12 @@ function buildBG(){
     P(g,'#171d26',wx,wy+wh-1,ww,1);
     const gx=wx+2,gy=wy+2,gwd=ww-4,ght=wh-4;
     for(let i=0;i<ght;i++)P(g,ci(lerpA(dl.top,dl.bot,i/ght)),gx,gy+i,gwd,1); // kaca langit
-    const dcx=gx+((gwd/2)|0),dcy=gy+Math.round(dl.dyf*ght); // matahari / bulan
-    P(g,`rgba(${dl.disc[0]|0},${dl.disc[1]|0},${dl.disc[2]|0},.4)`,dcx-2,dcy-2,5,5);
-    P(g,ci(dl.disc),dcx-1,dcy-1,3,3);
+    if(wd===hostWin){                                    // matahari / bulan (satu jendela saja)
+      const dcx=gx+((gwd/2)|0),dcy=gy+Math.round(dl.dyf*ght);
+      P(g,`rgba(${dl.disc[0]|0},${dl.disc[1]|0},${dl.disc[2]|0},.18)`,dcx-3,dcy-3,7,7);
+      P(g,`rgba(${dl.disc[0]|0},${dl.disc[1]|0},${dl.disc[2]|0},.42)`,dcx-2,dcy-2,5,5);
+      P(g,ci(dl.disc),dcx-1,dcy-1,3,3);
+    }
     if(dl.star>.02)for(let i=0;i<rows*3;i++){             // bintang (malam)
       const sx=gx+((rnd(wd.side==='W'?7:311,wd.ty0*3+i)>>3)%gwd);
       const sy=gy+((rnd(wd.side==='W'?31:97,wd.ty0*5+i)>>2)%ght);
@@ -952,6 +958,47 @@ anims.push({fn:(g,t)=>{
     g.fillStyle=`rgba(206,230,246,${pulse})`;
     if(wd.side==='W')g.fillRect(wx+12,wd.ty0*T+2,10,rows*T-4);
     else g.fillRect(wx-11,wd.ty0*T+2,10,rows*T-4);
+  }
+}});
+
+/* --- cuaca: sesekali hujan di kaca & kawanan burung lewat --- */
+const weather={mode:'clear',next:9000,bird:null};
+const winGlass=wd=>{const rows=wd.ty1-wd.ty0+1,wx=wd.side==='W'?2:W-14;
+  return {gx:wx+2,gy:wd.ty0*T+4,gw:8,gh:rows*T-8};};
+anims.push({fn:(g,t)=>{
+  if(t>weather.next){                                    // ganti cuaca tiap ~20–50 dtk
+    weather.next=t+18000+Math.random()*30000;
+    weather.mode=Math.random()<.30?'rain':'clear';
+  }
+  if(weather.mode==='rain'){                             // tetes air mengalir turun di kaca
+    for(const wd of WINDOWS){const q=winGlass(wd);
+      g.fillStyle='rgba(120,150,180,.10)';g.fillRect(q.gx,q.gy,q.gw,q.gh); // kaca basah
+      g.fillStyle='rgba(206,228,246,.55)';
+      for(let k=0;k<7;k++){
+        const seed=k*97+wd.ty0*13, x=q.gx+((seed*7)%q.gw);
+        const y=q.gy+((t*.12+seed*23)%(q.gh+6))-3;
+        for(let s=0;s<3;s++){const yy=(y+s)|0;if(yy>=q.gy&&yy<q.gy+q.gh)g.fillRect(x,yy,1,1);}
+      }
+    }
+  }
+  if(!weather.bird&&daylight.star<.25&&Math.random()<.0009){ // kawanan burung (siang, sesekali)
+    const wd=WINDOWS[(Math.random()*WINDOWS.length)|0];
+    weather.bird={wd,t0:t,dur:4200,dir:Math.random()<.5?1:-1};
+  }
+  if(weather.bird){
+    const b=weather.bird,p=(t-b.t0)/b.dur;
+    if(p>=1){weather.bird=null;}
+    else{const q=winGlass(b.wd);
+      g.fillStyle='rgba(18,24,32,.85)';
+      for(let n=0;n<3;n++){                               // tiga burung beriringan
+        const pn=p-n*.12;if(pn<0||pn>1)continue;
+        const bx=Math.round(q.gx+(b.dir>0?pn*q.gw:(1-pn)*q.gw));
+        const by=Math.round(q.gy+pn*q.gh);
+        if(bx>=q.gx&&bx<q.gx+q.gw&&by>=q.gy+1&&by<q.gy+q.gh){
+          g.fillRect(bx,by,1,1);g.fillRect(bx-1,by-1,1,1);g.fillRect(bx+1,by-1,1,1); // ^ sayap
+        }
+      }
+    }
   }
 }});
 
@@ -1581,7 +1628,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS,
               fog:()=>fogOn,SEATS,goToSeat,sitDown,standUp,seatAtFront,
               music,jukebox,jukeCycle,jukeAtFront,goToJuke,TRACKS,
               setHour:h=>{forcedHour=h;skyBucket=-1;tickSky();render(performance.now());},
-              daylight:()=>daylight,buildBG,
+              daylight:()=>daylight,buildBG,weather,WINDOWS,
               render:()=>render(performance.now()),
               step:(n=1,d=1/60)=>{for(let i=0;i<n;i++){update(d);render(performance.now());}}};
 
