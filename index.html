@@ -235,6 +235,15 @@ const ROOMS=[
 let fogOn=false;
 const fogCv=document.createElement('canvas');   // lapisan gelap + lubang halo dino
 
+/* ---------- jendela dinding luar ----------
+   Kaca langit di dinding perimeter (barat/timur) + berkas cahaya siang
+   yang tumpah ke lantai di dalamnya. `side` W=cahaya ke timur, E=ke barat. */
+const WINDOWS=[
+  {side:'W', ty0:6, ty1:9},    // dinding barat — kamar kiri
+  {side:'E', ty0:3, ty1:6},    // dinding timur — kamar kanan-atas
+  {side:'E', ty0:10,ty1:13},   // dinding timur — kamar kanan-bawah
+];
+
 /* =========================================================================
    FONT BITMAP 3x5 — label pixel-perfect di kanvas
    ========================================================================= */
@@ -470,6 +479,38 @@ function pool(g,x,y,w,h,rgb,peak){
   pool(g,17*T+4,14*T,40,12,'159,184,208', .12);   // meja bengkel WORKSHOP (netral)
   P(g,'rgba(255,222,150,.08)',21*T+2,6*T+4,3*T-2,2*T);   // cahaya hangat lampu kanan-atas
   P(g,'rgba(255,222,150,.06)',21*T-2,6*T,3*T+2,3*T-4);
+  /* --- jendela dinding luar: kaca langit + berkas cahaya masuk --- */
+  const skyCol=f=>{                                       // gradasi langit siang (atas→bawah)
+    const r=Math.round(120+76*f),gg=Math.round(178+46*f),b=Math.round(216+24*f);
+    return `rgb(${r},${gg},${b})`;
+  };
+  for(const wd of WINDOWS){
+    const rows=wd.ty1-wd.ty0+1, ww=12, wh=rows*T-4;
+    const wx=wd.side==='W'?2:W-14, wy=wd.ty0*T+2;
+    P(g,'#0a0d13',wx-1,wy-1,ww+2,wh+2);                   // relung dalam
+    P(g,'#2b3340',wx,wy,ww,wh);                           // bingkai baja
+    P(g,'#3a4454',wx,wy,ww,1);P(g,'#3a4454',wx,wy,1,wh);  // sorot bingkai
+    P(g,'#171d26',wx,wy+wh-1,ww,1);
+    const gx=wx+2,gy=wy+2,gwd=ww-4,ght=wh-4;
+    for(let i=0;i<ght;i++)P(g,skyCol(i/ght),gx,gy+i,gwd,1); // kaca langit
+    for(let i=0;i<rows*3;i++){                             // bintik jauh (burung/awan)
+      const sx=gx+((rnd(wd.side==='W'?7:311,wd.ty0*3+i)>>3)%gwd);
+      const sy=gy+((rnd(wd.side==='W'?31:97,wd.ty0*5+i)>>2)%ght);
+      P(g,'rgba(255,255,255,.28)',sx,sy,1,1);
+    }
+    P(g,'#232a34',gx+((gwd/2)|0),gy,1,ght);               // jeruji tegak
+    for(let r=1;r<rows;r++)P(g,'#232a34',gx,gy+r*T-1,gwd,1); // jeruji datar
+    P(g,'rgba(206,230,246,.5)',gx,gy+ght-1,gwd,1);        // kilau ambang
+    /* berkas cahaya jatuh ke lantai */
+    const beamW=44, start=wd.side==='W'?wx+ww:wx-1;
+    const beamX0=wd.side==='W'?start:start-beamW+1;
+    for(let b=0;b<beamW;b++){
+      const fall=1-b/beamW, a=(0.19*fall*fall).toFixed(3);
+      const X=wd.side==='W'?start+b:start-b;
+      P(g,`rgba(206,230,246,${a})`,X,wy,1,wh);
+    }
+    for(let ry=wy;ry<wy+wh;ry+=T)P(g,'rgba(10,14,20,.09)',beamX0,ry,beamW,2); // bayang jeruji di lantai
+  }
 })();
 
 /* =========================================================================
@@ -861,6 +902,26 @@ anims.push({fn:(g,t)=>{
   if(fr===5)P(g,'#e8c05a',cxr-2,cyr+2,1,1);
 }});
 
+/* --- jendela: pantulan cahaya luar bergerak turun di kaca --- */
+anims.push({fn:(g,t)=>{
+  for(const wd of WINDOWS){
+    const rows=wd.ty1-wd.ty0+1;
+    const wx=wd.side==='W'?2:W-14, gx=wx+2, gy=wd.ty0*T+4;
+    const gwd=8, ght=rows*T-8;
+    const ph=((t/2600)+(wd.side==='W'?0:.5))%1;      // kilau meluncur
+    g.fillStyle='rgba(255,255,255,.14)';
+    g.fillRect(gx,gy+Math.round(ph*(ght-2)),gwd,2);
+    if(Math.floor(t/540+wd.ty0)%3===0){              // bintik berkedip
+      g.fillStyle='rgba(255,255,255,.55)';
+      g.fillRect(gx+(wd.side==='W'?2:5),gy+rows*3,1,1);
+    }
+    const pulse=(0.05+0.03*Math.sin(t/900+wd.ty0)).toFixed(3);  // berkas lantai bernapas
+    g.fillStyle=`rgba(206,230,246,${pulse})`;
+    if(wd.side==='W')g.fillRect(wx+12,wd.ty0*T+2,10,rows*T-4);
+    else g.fillRect(wx-11,wd.ty0*T+2,10,rows*T-4);
+  }
+}});
+
 /* --- debu melayang: butir halus hanyut pelan, hanya di atas lantai terbuka --- */
 anims.push({fn:(g,t)=>{
   for(let i=0;i<16;i++){
@@ -948,7 +1009,7 @@ function petUpdate(dt){
 }
 
 /* robot pembersih — meluncur lurus, belok acak saat menabrak */
-const bot={x:18*T+8,y:14*T+8,a:Math.random()*6.28};
+const bot={x:12*T+8,y:11*T+8,a:Math.random()*6.28};   // lorong tengah (lantai terbuka)
 function botFree(px,py){
   const x0=Math.floor((px-5)/T),y0=Math.floor((py-3)/T),
         x1=Math.floor((px+4)/T),y1=Math.floor((py+2)/T);
