@@ -514,32 +514,35 @@ function buildBG(){
   for(const wd of WINDOWS){
     const rows=wd.ty1-wd.ty0+1, ww=12, wh=rows*T-4;
     const wx=wd.side==='W'?2:W-14, wy=wd.ty0*T+2;
-    P(g,'#0a0d13',wx-1,wy-1,ww+2,wh+2);                   // relung dalam
-    P(g,'#2b3340',wx,wy,ww,wh);                           // bingkai baja
-    P(g,'#3a4454',wx,wy,ww,1);P(g,'#3a4454',wx,wy,1,wh);  // sorot bingkai
-    P(g,'#171d26',wx,wy+wh-1,ww,1);
-    const gx=wx+2,gy=wy+2,gwd=ww-4,ght=wh-4;
-    for(let i=0;i<ght;i++)P(g,ci(lerpA(dl.top,dl.bot,i/ght)),gx,gy+i,gwd,1); // kaca langit
+    const kSh=wd.side==='W'?.55:-.55;                     // arah miring (di-swap) ikut sudut pandang
+    /* gambar jendela LURUS ke kanvas kecil, lalu miringkan per-kolom:
+       kusen + jeruji ikut miring jadi jajaran-genjang, garis tegak tetap tegak */
+    const wc=document.createElement('canvas');wc.width=ww;wc.height=wh;
+    const wg=wc.getContext('2d');
+    P(wg,'#2b3340',0,0,ww,wh);                            // bingkai baja
+    P(wg,'#3a4454',0,0,ww,1);P(wg,'#3a4454',0,0,1,wh);   // sorot kiri/atas
+    P(wg,'#171d26',0,wh-1,ww,1);P(wg,'#171d26',ww-1,0,1,wh); // list bawah/kanan
+    const gx=2,gy=2,gwd=ww-4,ght=wh-4;                    // kaca (koordinat lokal)
+    for(let i=0;i<ght;i++)P(wg,ci(lerpA(dl.top,dl.bot,i/ght)),gx,gy+i,gwd,1); // kaca langit
     if(wd===hostWin){                                    // matahari / bulan (satu jendela saja)
       const dcx=gx+((gwd/2)|0),dcy=gy+Math.round(dl.dyf*ght);
-      P(g,`rgba(${dl.disc[0]|0},${dl.disc[1]|0},${dl.disc[2]|0},.18)`,dcx-3,dcy-3,7,7);
-      P(g,`rgba(${dl.disc[0]|0},${dl.disc[1]|0},${dl.disc[2]|0},.42)`,dcx-2,dcy-2,5,5);
-      P(g,ci(dl.disc),dcx-1,dcy-1,3,3);
+      P(wg,`rgba(${dl.disc[0]|0},${dl.disc[1]|0},${dl.disc[2]|0},.18)`,dcx-3,dcy-3,7,7);
+      P(wg,`rgba(${dl.disc[0]|0},${dl.disc[1]|0},${dl.disc[2]|0},.42)`,dcx-2,dcy-2,5,5);
+      P(wg,ci(dl.disc),dcx-1,dcy-1,3,3);
     }
     if(dl.star>.02)for(let i=0;i<rows*3;i++){             // bintang (malam)
       const sx=gx+((rnd(wd.side==='W'?7:311,wd.ty0*3+i)>>3)%gwd);
       const sy=gy+((rnd(wd.side==='W'?31:97,wd.ty0*5+i)>>2)%ght);
-      P(g,`rgba(255,255,255,${(dl.star*.75).toFixed(3)})`,sx,sy,1,1);
+      P(wg,`rgba(255,255,255,${(dl.star*.75).toFixed(3)})`,sx,sy,1,1);
     }
-    /* jeruji: garis tegak tetap tegak, garis datar dimiringkan mengikuti
-       sudut pandang (menanjak ke arah dalam ruang) — cermin kiri/kanan */
-    const kSh=wd.side==='W'?-.55:.55;
-    const slHoriz=(color,baseY,thick)=>{for(let x=0;x<gwd;x++){
-      let y=baseY+Math.round((x-gwd/2)*kSh);
-      y=Math.max(gy,Math.min(gy+ght-thick,y));P(g,color,gx+x,y,1,thick);}};
-    P(g,'#232a34',gx+((gwd/2)|0),gy,1,ght);               // jeruji tegak
-    for(let r=1;r<rows;r++)slHoriz('#232a34',gy+r*T-1,1);  // jeruji datar (miring)
-    slHoriz('rgba(206,230,246,.5)',gy+ght-1,1);           // kilau ambang (miring)
+    P(wg,'#232a34',gx+((gwd/2)|0),gy,1,ght);              // jeruji tegak
+    for(let r=1;r<rows;r++)P(wg,'#232a34',gx,gy+r*T-1,gwd,1); // jeruji datar
+    P(wg,'rgba(206,230,246,.5)',gx,gy+ght-1,gwd,1);       // kilau ambang
+    for(let x=0;x<ww;x++){                                // miringkan: geser tiap kolom
+      const yo=Math.round((x-ww/2)*kSh);
+      P(g,'#0a0d13',wx+x,wy+yo-1,1,wh+2);                 // relung gelap ikut miring
+      g.drawImage(wc,x,0,1,wh,wx+x,wy+yo,1,wh);
+    }
     /* berkas cahaya jatuh ke lantai — warna & kuat ikut waktu */
     const beamW=44, start=wd.side==='W'?wx+ww:wx-1, bc=dl.beam;
     const beamX0=wd.side==='W'?start:start-beamW+1;
@@ -954,7 +957,7 @@ anims.push({fn:(g,t)=>{
     const wx=wd.side==='W'?2:W-14, gx=wx+2, gy=wd.ty0*T+4;
     const gwd=8, ght=rows*T-8;
     const ph=((t/2600)+(wd.side==='W'?0:.5))%1;      // kilau meluncur (miring ikut jeruji)
-    const kSh=wd.side==='W'?-.55:.55, by=gy+Math.round(ph*(ght-2));
+    const kSh=wd.side==='W'?.55:-.55, by=gy+Math.round(ph*(ght-2));
     g.fillStyle='rgba(255,255,255,.14)';
     for(let x=0;x<gwd;x++){let y=by+Math.round((x-gwd/2)*kSh);
       y=Math.max(gy,Math.min(gy+ght-2,y));g.fillRect(gx+x,y,1,2);}
