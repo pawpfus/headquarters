@@ -531,9 +531,15 @@ function buildBG(){
       const sy=gy+((rnd(wd.side==='W'?31:97,wd.ty0*5+i)>>2)%ght);
       P(g,`rgba(255,255,255,${(dl.star*.75).toFixed(3)})`,sx,sy,1,1);
     }
+    /* jeruji: garis tegak tetap tegak, garis datar dimiringkan mengikuti
+       sudut pandang (menanjak ke arah dalam ruang) — cermin kiri/kanan */
+    const kSh=wd.side==='W'?-.55:.55;
+    const slHoriz=(color,baseY,thick)=>{for(let x=0;x<gwd;x++){
+      let y=baseY+Math.round((x-gwd/2)*kSh);
+      y=Math.max(gy,Math.min(gy+ght-thick,y));P(g,color,gx+x,y,1,thick);}};
     P(g,'#232a34',gx+((gwd/2)|0),gy,1,ght);               // jeruji tegak
-    for(let r=1;r<rows;r++)P(g,'#232a34',gx,gy+r*T-1,gwd,1); // jeruji datar
-    P(g,'rgba(206,230,246,.5)',gx,gy+ght-1,gwd,1);        // kilau ambang
+    for(let r=1;r<rows;r++)slHoriz('#232a34',gy+r*T-1,1);  // jeruji datar (miring)
+    slHoriz('rgba(206,230,246,.5)',gy+ght-1,1);           // kilau ambang (miring)
     /* berkas cahaya jatuh ke lantai — warna & kuat ikut waktu */
     const beamW=44, start=wd.side==='W'?wx+ww:wx-1, bc=dl.beam;
     const beamX0=wd.side==='W'?start:start-beamW+1;
@@ -947,9 +953,11 @@ anims.push({fn:(g,t)=>{
     const rows=wd.ty1-wd.ty0+1;
     const wx=wd.side==='W'?2:W-14, gx=wx+2, gy=wd.ty0*T+4;
     const gwd=8, ght=rows*T-8;
-    const ph=((t/2600)+(wd.side==='W'?0:.5))%1;      // kilau meluncur
+    const ph=((t/2600)+(wd.side==='W'?0:.5))%1;      // kilau meluncur (miring ikut jeruji)
+    const kSh=wd.side==='W'?-.55:.55, by=gy+Math.round(ph*(ght-2));
     g.fillStyle='rgba(255,255,255,.14)';
-    g.fillRect(gx,gy+Math.round(ph*(ght-2)),gwd,2);
+    for(let x=0;x<gwd;x++){let y=by+Math.round((x-gwd/2)*kSh);
+      y=Math.max(gy,Math.min(gy+ght-2,y));g.fillRect(gx+x,y,1,2);}
     if(Math.floor(t/540+wd.ty0)%3===0){              // bintik berkedip
       g.fillStyle='rgba(255,255,255,.55)';
       g.fillRect(gx+(wd.side==='W'?2:5),gy+rows*3,1,1);
