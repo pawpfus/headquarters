@@ -158,8 +158,10 @@ const TOOLS = [
 ];
 
 const T=16, COLS=25, ROWS=19, W=COLS*T, H=ROWS*T;
-const cv=document.getElementById('game'), cx=cv.getContext('2d');
-cx.imageSmoothingEnabled=false;
+const cv=document.getElementById('game'), dcx=cv.getContext('2d');
+const scene=document.createElement('canvas'), cx=scene.getContext('2d'); // buffer adegan → dipresentasi miring
+const KEYSTONE=0.055;                       // trapesium halus: ruang ikut menyudut seperti jendela
+dcx.imageSmoothingEnabled=false; cx.imageSmoothingEnabled=false;
 
 /* ---------- denah markas: '#' dinding, '.' lantai ----------
    Lorong tengah vertikal (hallway) membelah markas:
@@ -1394,7 +1396,9 @@ function doJump(){
 /* ketuk kanvas: menuju meja / berjalan ke titik */
 cv.addEventListener('pointerdown',e=>{
   const r=cv.getBoundingClientRect();
-  const mx=(e.clientX-r.left)/r.width*cv.width+cam.x, my=(e.clientY-r.top)/r.height*cv.height+cam.y;
+  const px=(e.clientX-r.left)/r.width*cv.width, py=(e.clientY-r.top)/r.height*cv.height;
+  const s=1-KEYSTONE*(py/((cv.height-1)||1)), ox=(cv.width-cv.width*s)/2;   // balik keystone
+  const mx=(px-ox)/s+cam.x, my=py+cam.y;
   const tx=Math.floor(mx/T),ty=Math.floor(my/T);
   /* kena furnitur tool (toleransi 1 tile utk label/overhang)? */
   for(const t of TOOLS){
@@ -1593,6 +1597,19 @@ function render(t){
     cx.setTransform(1,0,0,1,0,0);
     cx.drawImage(fogCv,0,0);
   }
+  present();
+}
+
+/* presentasi: salin buffer adegan ke kanvas tampil dengan trapesium halus (keystone)
+   — atas lebar penuh, bawah sedikit menyempit; tiap baris di-skala mendatar. */
+function present(){
+  const wI=cv.width,hI=cv.height,A=KEYSTONE,den=(hI-1)||1;
+  dcx.setTransform(1,0,0,1,0,0);
+  dcx.fillStyle='#080b11';dcx.fillRect(0,0,wI,hI);
+  for(let y=0;y<hI;y++){
+    const s=1-A*(y/den), w=wI*s, ox=(wI-w)/2;
+    dcx.drawImage(scene,0,y,wI,1,ox,y,w,1);
+  }
 }
 
 let last=0, skyBucket=-1;
@@ -1630,7 +1647,8 @@ function fit(){
     cv.style.width=(W*s)+'px';cv.style.height=(H*s)+'px';
   }
   fogCv.width=cv.width;fogCv.height=cv.height;   // lapisan kabut seukuran kanvas
-  cx.imageSmoothingEnabled=false;
+  scene.width=cv.width;scene.height=cv.height;   // buffer adegan seukuran kanvas
+  cx.imageSmoothingEnabled=false;dcx.imageSmoothingEnabled=false;
 }
 addEventListener('resize',fit);fit();
 
