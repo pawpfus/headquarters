@@ -244,6 +244,33 @@ const WINDOWS=[
   {side:'E', ty0:9, ty1:12},   // dinding timur — kamar kanan-bawah
 ];
 
+/* ---------- siklus siang–malam ----------
+   Langit di jendela, matahari/bulan, berkas cahaya, dan suasana interior
+   bergeser mengikuti jam asli pengunjung. `tint` = warna suasana keseluruhan,
+   `lamp` = seberapa hangat lampu interior menyala (paling terang saat gelap). */
+const SKY_KF=[
+  {h:0,   top:[8,10,26],   bot:[18,22,46],   beam:[150,172,212], bp:.06, star:.85, disc:[186,196,220], dyf:.30, tint:[12,18,46,.22], lamp:1},
+  {h:5.5, top:[64,54,96],  bot:[210,126,110],beam:[232,150,120], bp:.12, star:.15, disc:[255,196,150], dyf:.66, tint:[70,44,58,.12], lamp:.6},
+  {h:8,   top:[98,152,202],bot:[190,212,236],beam:[210,226,240], bp:.17, star:0,   disc:[255,244,214], dyf:.40, tint:[0,0,0,0],     lamp:.15},
+  {h:13,  top:[120,178,216],bot:[196,224,240],beam:[206,230,246],bp:.20, star:0,   disc:[255,250,230], dyf:.22, tint:[0,0,0,0],     lamp:0},
+  {h:17.5,top:[74,62,112], bot:[236,142,82], beam:[240,162,92],  bp:.14, star:.15, disc:[255,180,110], dyf:.66, tint:[96,48,18,.12], lamp:.6},
+  {h:20,  top:[12,14,32],  bot:[24,30,54],   beam:[150,172,212], bp:.07, star:.7,  disc:[190,200,224], dyf:.32, tint:[12,18,46,.20], lamp:.9},
+  {h:24,  top:[8,10,26],   bot:[18,22,46],   beam:[150,172,212], bp:.06, star:.85, disc:[186,196,220], dyf:.30, tint:[12,18,46,.22], lamp:1},
+];
+let forcedHour=null;                                   // override waktu untuk uji
+const curHour=()=>forcedHour!=null?forcedHour:(d=>d.getHours()+d.getMinutes()/60)(new Date());
+const lerp=(a,b,f)=>a+(b-a)*f;
+const lerpA=(a,b,f)=>a.map((v,i)=>lerp(v,b[i],f));
+function daylightAt(hh){
+  let i=0;while(i<SKY_KF.length-1&&SKY_KF[i+1].h<=hh)i++;
+  const a=SKY_KF[i],b=SKY_KF[Math.min(i+1,SKY_KF.length-1)];
+  const f=b.h>a.h?(hh-a.h)/(b.h-a.h):0;
+  return {top:lerpA(a.top,b.top,f),bot:lerpA(a.bot,b.bot,f),beam:lerpA(a.beam,b.beam,f),
+    bp:lerp(a.bp,b.bp,f),star:lerp(a.star,b.star,f),disc:lerpA(a.disc,b.disc,f),
+    dyf:lerp(a.dyf,b.dyf,f),tint:lerpA(a.tint,b.tint,f),lamp:lerp(a.lamp,b.lamp,f)};
+}
+let daylight=daylightAt(curHour());
+
 /* =========================================================================
    FONT BITMAP 3x5 — label pixel-perfect di kanvas
    ========================================================================= */
@@ -382,7 +409,7 @@ function pool(g,x,y,w,h,rgb,peak){
   for(let i=0;i<h;i++)P(g,`rgba(${rgb},${(peak*(1-i/h)).toFixed(3)})`,x,y+i,w,1);
 }
 
-(function drawBG(){
+function buildBG(){
   const g=bgc;
   P(g,'#0c1016',0,0,W,H);
   /* lantai pelat logam (tile '.') — bersih, panel timbul tanpa paku keling berlebih */
@@ -479,11 +506,8 @@ function pool(g,x,y,w,h,rgb,peak){
   pool(g,17*T+4,14*T,40,12,'159,184,208', .12);   // meja bengkel WORKSHOP (netral)
   P(g,'rgba(255,222,150,.08)',21*T+2,6*T+4,3*T-2,2*T);   // cahaya hangat lampu kanan-atas
   P(g,'rgba(255,222,150,.06)',21*T-2,6*T,3*T+2,3*T-4);
-  /* --- jendela dinding luar: kaca langit + berkas cahaya masuk --- */
-  const skyCol=f=>{                                       // gradasi langit siang (atas→bawah)
-    const r=Math.round(120+76*f),gg=Math.round(178+46*f),b=Math.round(216+24*f);
-    return `rgb(${r},${gg},${b})`;
-  };
+  /* --- jendela dinding luar: langit ikut waktu + berkas cahaya masuk --- */
+  const dl=daylight, ci=a=>`rgb(${a[0]|0},${a[1]|0},${a[2]|0})`;
   for(const wd of WINDOWS){
     const rows=wd.ty1-wd.ty0+1, ww=12, wh=rows*T-4;
     const wx=wd.side==='W'?2:W-14, wy=wd.ty0*T+2;
@@ -492,26 +516,35 @@ function pool(g,x,y,w,h,rgb,peak){
     P(g,'#3a4454',wx,wy,ww,1);P(g,'#3a4454',wx,wy,1,wh);  // sorot bingkai
     P(g,'#171d26',wx,wy+wh-1,ww,1);
     const gx=wx+2,gy=wy+2,gwd=ww-4,ght=wh-4;
-    for(let i=0;i<ght;i++)P(g,skyCol(i/ght),gx,gy+i,gwd,1); // kaca langit
-    for(let i=0;i<rows*3;i++){                             // bintik jauh (burung/awan)
+    for(let i=0;i<ght;i++)P(g,ci(lerpA(dl.top,dl.bot,i/ght)),gx,gy+i,gwd,1); // kaca langit
+    const dcx=gx+((gwd/2)|0),dcy=gy+Math.round(dl.dyf*ght); // matahari / bulan
+    P(g,`rgba(${dl.disc[0]|0},${dl.disc[1]|0},${dl.disc[2]|0},.4)`,dcx-2,dcy-2,5,5);
+    P(g,ci(dl.disc),dcx-1,dcy-1,3,3);
+    if(dl.star>.02)for(let i=0;i<rows*3;i++){             // bintang (malam)
       const sx=gx+((rnd(wd.side==='W'?7:311,wd.ty0*3+i)>>3)%gwd);
       const sy=gy+((rnd(wd.side==='W'?31:97,wd.ty0*5+i)>>2)%ght);
-      P(g,'rgba(255,255,255,.28)',sx,sy,1,1);
+      P(g,`rgba(255,255,255,${(dl.star*.75).toFixed(3)})`,sx,sy,1,1);
     }
     P(g,'#232a34',gx+((gwd/2)|0),gy,1,ght);               // jeruji tegak
     for(let r=1;r<rows;r++)P(g,'#232a34',gx,gy+r*T-1,gwd,1); // jeruji datar
     P(g,'rgba(206,230,246,.5)',gx,gy+ght-1,gwd,1);        // kilau ambang
-    /* berkas cahaya jatuh ke lantai */
-    const beamW=44, start=wd.side==='W'?wx+ww:wx-1;
+    /* berkas cahaya jatuh ke lantai — warna & kuat ikut waktu */
+    const beamW=44, start=wd.side==='W'?wx+ww:wx-1, bc=dl.beam;
     const beamX0=wd.side==='W'?start:start-beamW+1;
     for(let b=0;b<beamW;b++){
-      const fall=1-b/beamW, a=(0.19*fall*fall).toFixed(3);
+      const fall=1-b/beamW, a=(dl.bp*fall*fall).toFixed(3);
       const X=wd.side==='W'?start+b:start-b;
-      P(g,`rgba(206,230,246,${a})`,X,wy,1,wh);
+      P(g,`rgba(${bc[0]|0},${bc[1]|0},${bc[2]|0},${a})`,X,wy,1,wh);
     }
-    for(let ry=wy;ry<wy+wh;ry+=T)P(g,'rgba(10,14,20,.09)',beamX0,ry,beamW,2); // bayang jeruji di lantai
+    for(let ry=wy;ry<wy+wh;ry+=T)P(g,'rgba(10,14,20,.09)',beamX0,ry,beamW,2); // bayang jeruji
   }
-})();
+  /* lampu interior menyala lebih hangat saat langit gelap */
+  if(dl.lamp>.02){
+    P(g,`rgba(255,214,140,${(.15*dl.lamp).toFixed(3)})`,5*T,13*T+4,5*T,3*T);   // lampu lounge
+    P(g,`rgba(255,214,140,${(.13*dl.lamp).toFixed(3)})`,20*T,6*T,3*T,3*T-4);   // lampu kanan-atas
+  }
+}
+buildBG();
 
 /* =========================================================================
    FURNITUR — kanvas statis + overlay animasi, digambar urut kedalaman
@@ -1474,6 +1507,14 @@ function render(t){
     cx.fillRect(Math.round(player.x)-1,yy,2,2);
   }
 
+  /* suasana interior ikut waktu — grade warna tipis di atas seluruh ruang */
+  if(daylight.tint[3]>.003){
+    const tn=daylight.tint;
+    cx.setTransform(1,0,0,1,0,0);
+    cx.fillStyle=`rgba(${tn[0]|0},${tn[1]|0},${tn[2]|0},${tn[3].toFixed(3)})`;
+    cx.fillRect(0,0,cv.width,cv.height);
+    cx.translate(-Math.round(cam.x),-Math.round(cam.y));
+  }
   /* kabut perang paling akhir: petak gelap dilubangi halo di sekitar dino */
   if(fogOn){
     const g=fogCv.getContext('2d'),ox=Math.round(cam.x),oy=Math.round(cam.y);
@@ -1496,10 +1537,16 @@ function render(t){
   }
 }
 
-let last=0;
+let last=0, skyBucket=-1;
+function tickSky(){
+  daylight=daylightAt(curHour());                 // halus tiap frame (untuk grade warna)
+  const b=Math.round(curHour()*10);               // langit terpanggang ulang tiap ~6 menit
+  if(b!==skyBucket){skyBucket=b;buildBG();}
+}
+tickSky();
 function loop(ts){
   const dt=Math.min(.05,(ts-last)/1000)||0;last=ts;
-  update(dt);render(ts);
+  tickSky();update(dt);render(ts);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
@@ -1533,6 +1580,8 @@ addEventListener('resize',fit);fit();
 window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS,
               fog:()=>fogOn,SEATS,goToSeat,sitDown,standUp,seatAtFront,
               music,jukebox,jukeCycle,jukeAtFront,goToJuke,TRACKS,
+              setHour:h=>{forcedHour=h;skyBucket=-1;tickSky();render(performance.now());},
+              daylight:()=>daylight,buildBG,
               render:()=>render(performance.now()),
               step:(n=1,d=1/60)=>{for(let i=0;i<n;i++){update(d);render(performance.now());}}};
 
