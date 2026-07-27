@@ -1148,6 +1148,25 @@ function botUpdate(dt){
   else bot.a=Math.random()*6.28;
 }
 
+/* --- drone kargo: siklus antar-panen dari rak hidroponik ke pintu keluar ---
+   idle → terbang ke rak → panen (peti nyangkut) → antar turun → jatuhkan → balik. */
+const drone={x:200,y:128,state:'idle',t:0,crate:0,dz:0,da:0};
+const DR_HOME=[200,128], DR_RACK=[200,56], DR_DROP=[205,250], DR_SPD=46;
+function droneUpdate(dt){
+  const d=drone; d.t+=dt;
+  const moveTo=(tx,ty)=>{const dx=tx-d.x,dy=ty-d.y,dist=Math.hypot(dx,dy),step=DR_SPD*dt;
+    if(dist<=step){d.x=tx;d.y=ty;return true;} d.x+=dx/dist*step; d.y+=dy/dist*step; return false;};
+  switch(d.state){
+    case 'idle':    if(d.t>4){d.t=0;d.state='toRack';} break;
+    case 'toRack':  if(moveTo(DR_RACK[0],DR_RACK[1])){d.t=0;d.state='harvest';} break;
+    case 'harvest': if(d.t>1.2){d.crate=1;d.t=0;d.state='toDrop';} break;   // peti panen nyangkut
+    case 'toDrop':  if(moveTo(DR_DROP[0],DR_DROP[1])){d.crate=0;d.dz=0;d.da=1;d.t=0;d.state='drop';} break;
+    case 'drop':    if(d.t>0.8){d.t=0;d.state='return';} break;            // peti dilepas → jatuh
+    case 'return':  if(moveTo(DR_HOME[0],DR_HOME[1])){d.t=0;d.state='idle';} break;
+  }
+  if(d.da>0){d.dz=Math.min(d.dz+46*dt,12); d.da-=dt*0.7;}                   // peti jatuh lalu memudar
+}
+
 function boxFree(cxp,cyp){
   const x0=cxp-5,x1=cxp+4,y0=cyp-6,y1=cyp-1;
   for(const [px,py] of [[x0,y0],[x1,y0],[x0,y1],[x1,y1]]){
@@ -1496,7 +1515,7 @@ function update(dt){
     player.animT+=dt*Math.min(1.2,mag+.2);
   }else player.animT=0;
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
-  petUpdate(dt);botUpdate(dt);
+  petUpdate(dt);botUpdate(dt);droneUpdate(dt);
   if(music.on){music.visT+=dt;const beat=60/TRACKS[music.track].bpm;   // pet ikut goyang tiap ketukan
     if(music.visT>=beat){music.visT-=beat;if(pet.hopT<=0)pet.hopT=.4;}}
 
@@ -1526,8 +1545,8 @@ function render(t){
   cx.fillStyle='#080b11';cx.fillRect(0,0,cv.width,cv.height);
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   cx.drawImage(bg,0,0);
-  /* bayangan drone — menempel lantai, jadi tetap di bawah semua objek */
-  cx.fillStyle='rgba(0,0,0,.22)';cx.fillRect(12*T+3,10*T-4,10,2);
+  /* bayangan drone — mengikuti posisinya, tetap di bawah semua objek */
+  cx.fillStyle='rgba(0,0,0,.20)';cx.fillRect(Math.round(drone.x)-5,Math.round(drone.y)+22,10,2);
   /* robot pembersih (rata lantai, di bawah furnitur) */
   const bx=Math.round(bot.x),by=Math.round(bot.y);
   cx.fillStyle='rgba(0,0,0,.25)';cx.fillRect(bx-5,by+3,10,2);
@@ -1577,17 +1596,30 @@ function render(t){
     cx.drawImage(pet.dir>0?PETSPR.r[pf]:PETSPR.l[pf],Math.round(pet.x)-4,Math.round(pet.y)-8-Math.round(hop));
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
-  /* drone kargo — digambar setelah pemain karena sedang terbang di atas kepala */
+  /* drone kargo antar-panen — digambar setelah pemain (terbang di atas kepala) */
   {
-    const cxp=12*T+8,dy=8*T+2+Math.round(Math.sin(t/380)*3);
+    const d=drone,cxp=Math.round(d.x),dy=Math.round(d.y)+Math.round(Math.sin(t/380)*2);
     const rf=Math.floor(t/50)%2;
-    cx.fillStyle=rf?'#8fa3b8':'#5a6b7d';cx.fillRect(cxp-9,dy-1,5,1);
-    cx.fillStyle=rf?'#5a6b7d':'#8fa3b8';cx.fillRect(cxp+4,dy-1,5,1);
-    cx.fillStyle='#26303c';cx.fillRect(cxp-5,dy,10,4);
+    cx.fillStyle=rf?'#8fa3b8':'#5a6b7d';cx.fillRect(cxp-9,dy-1,5,1);   // baling kiri
+    cx.fillStyle=rf?'#5a6b7d':'#8fa3b8';cx.fillRect(cxp+4,dy-1,5,1);   // baling kanan
+    cx.fillStyle='#26303c';cx.fillRect(cxp-5,dy,10,4);                 // badan
     cx.fillStyle='#39414f';cx.fillRect(cxp-5,dy,10,1);
-    cx.fillStyle=Math.floor(t/300)%2?'#2ee0ff':'#1a7f99';cx.fillRect(cxp-1,dy+1,2,2);
-    cx.fillStyle='#8a6a42';cx.fillRect(cxp-2,dy+4,4,3);            // paket tergantung
-    cx.fillStyle='#6e4a2a';cx.fillRect(cxp-2,dy+4,4,1);
+    cx.fillStyle=Math.floor(t/300)%2?'#2ee0ff':'#1a7f99';cx.fillRect(cxp-1,dy+1,2,2); // lampu
+    cx.fillStyle='#3a4652';cx.fillRect(cxp,dy+4,1,2);                  // tali kait
+    if(d.crate){                                                      // membawa peti hasil panen
+      cx.fillStyle='#7a5a34';cx.fillRect(cxp-3,dy+6,7,5);
+      cx.fillStyle='#9a7a4a';cx.fillRect(cxp-3,dy+6,7,1);
+      cx.fillStyle='#5aa84e';cx.fillRect(cxp-2,dy+5,2,1);cx.fillRect(cxp+1,dy+5,2,1); // panen menyembul
+    }
+  }
+  /* peti panen yang dijatuhkan di dekat pintu → mendarat lalu memudar */
+  if(drone.da>0){
+    const cxp=DR_DROP[0],cyp=DR_DROP[1]+8+Math.round(drone.dz);
+    cx.globalAlpha=Math.max(0,Math.min(1,drone.da));
+    cx.fillStyle='#7a5a34';cx.fillRect(cxp-3,cyp,7,5);
+    cx.fillStyle='#9a7a4a';cx.fillRect(cxp-3,cyp,7,1);
+    cx.fillStyle='#5aa84e';cx.fillRect(cxp-2,cyp-1,2,1);cx.fillRect(cxp+1,cyp-1,2,1);
+    cx.globalAlpha=1;
   }
   /* overlay animasi furnitur (layar, api, dll) */
   for(const a of anims)a.fn(cx,t);
@@ -1678,7 +1710,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS,
               fog:()=>fogOn,SEATS,goToSeat,sitDown,standUp,seatAtFront,
               music,jukebox,jukeCycle,jukeAtFront,goToJuke,TRACKS,
               setHour:h=>{forcedHour=h;skyBucket=-1;tickSky();render(performance.now());},
-              daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,
+              daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,drone,droneUpdate,DR_RACK,DR_DROP,
               render:()=>render(performance.now()),
               step:(n=1,d=1/60)=>{for(let i=0;i<n;i++){update(d);render(performance.now());}}};
 
