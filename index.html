@@ -973,13 +973,14 @@ anims.push({fn:(g,t)=>{
 }});
 
 /* --- cuaca: sesekali hujan di kaca & kawanan burung lewat --- */
-const weather={mode:'clear',next:9000,bird:null};
+const weather={mode:'clear',next:9000,bird:null,flashT0:-1e9,flashNext:1e12};
 const winGlass=wd=>{const rows=wd.ty1-wd.ty0+1,wx=wd.side==='W'?2:W-14;
   return {gx:wx+2,gy:wd.ty0*T+4,gw:8,gh:rows*T-8};};
 anims.push({fn:(g,t)=>{
   if(t>weather.next){                                    // ganti cuaca tiap ~20–50 dtk
     weather.next=t+18000+Math.random()*30000;
     weather.mode=Math.random()<.30?'rain':'clear';
+    weather.flashNext=weather.mode==='rain'?t+5000+Math.random()*10000:1e12; // jadwal petir
   }
   if(weather.mode==='rain'){                             // tetes air mengalir turun di kaca
     for(const wd of WINDOWS){const q=winGlass(wd);
@@ -1009,6 +1010,19 @@ anims.push({fn:(g,t)=>{
           g.fillRect(bx,by,1,1);g.fillRect(bx-1,by-1,1,1);g.fillRect(bx+1,by-1,1,1); // ^ sayap
         }
       }
+    }
+  }
+  /* petir: sesekali menyambar saat hujan — jendela silau + ruang terang sekejap */
+  if(weather.mode==='rain'&&t>weather.flashNext){
+    weather.flashT0=t; weather.flashNext=t+9000+Math.random()*16000;
+  }
+  const fdt=t-weather.flashT0;
+  if(fdt>=0&&fdt<440){                                    // amplop kilat: sambaran ganda cepat
+    const flash=Math.min(1,Math.exp(-(((fdt-40)/40)**2))+.7*Math.exp(-(((fdt-230)/70)**2)));
+    if(flash>.01){
+      for(const wd of WINDOWS){const q=winGlass(wd);      // langit jendela menyilau
+        g.fillStyle='rgba(228,238,255,'+(flash*.72).toFixed(3)+')';g.fillRect(q.gx,q.gy,q.gw,q.gh);}
+      g.fillStyle='rgba(200,218,255,'+(flash*.16).toFixed(3)+')';g.fillRect(0,0,W,H); // ruang terang sekejap
     }
   }
 }});
@@ -1595,7 +1609,7 @@ function render(t){
   }
 }
 
-let last=0, skyBucket=-1;
+let last=0, skyBucket=-1, rafId=0;
 function tickSky(){
   daylight=daylightAt(curHour());                 // halus tiap frame (untuk grade warna)
   const b=Math.round(curHour()*10);               // langit terpanggang ulang tiap ~6 menit
@@ -1603,11 +1617,16 @@ function tickSky(){
 }
 tickSky();
 function loop(ts){
+  rafId=0;
   const dt=Math.min(.05,(ts-last)/1000)||0;last=ts;
   tickSky();update(dt);render(ts);
-  requestAnimationFrame(loop);
+  if(!document.hidden)rafId=requestAnimationFrame(loop);   // berhenti saat tab tersembunyi
 }
-requestAnimationFrame(loop);
+document.addEventListener('visibilitychange',()=>{         // lanjut render saat tab kembali aktif
+  if(document.hidden){if(rafId)cancelAnimationFrame(rafId);rafId=0;return;}
+  if(!rafId){last=performance.now();rafId=requestAnimationFrame(loop);}
+});
+rafId=requestAnimationFrame(loop);
 
 /* ---------- skala kanvas ----------
    Desktop : seluruh ruangan tampak, kanvas di-skala ke jendela.
