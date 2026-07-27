@@ -1150,14 +1150,17 @@ function botUpdate(dt){
 
 /* --- drone kargo: siklus antar-panen dari rak hidroponik ke pintu keluar ---
    idle → terbang ke rak → panen (peti nyangkut) → antar turun → jatuhkan → balik. */
-const drone={x:200,y:128,state:'idle',t:0,crate:0,dz:0,da:0};
-const DR_HOME=[200,128], DR_RACK=[200,56], DR_DROP=[205,250], DR_SPD=46;
+const drone={x:200,y:128,state:'idle',t:0,crate:0,dz:0,da:0,rest:0};
+const DR_HOME=[200,128], DR_RACK=[200,56], DR_DROP=[205,250], DR_PAD=[200,163], DR_SPD=46;
 function droneUpdate(dt){
   const d=drone; d.t+=dt;
   const moveTo=(tx,ty)=>{const dx=tx-d.x,dy=ty-d.y,dist=Math.hypot(dx,dy),step=DR_SPD*dt;
     if(dist<=step){d.x=tx;d.y=ty;return true;} d.x+=dx/dist*step; d.y+=dy/dist*step; return false;};
   switch(d.state){
-    case 'idle':    if(d.t>4){d.t=0;d.state='toRack';} break;
+    case 'idle':    if(d.t>3){d.t=0;d.state=Math.random()<0.4?'landing':'toRack';} break; // sesekali parkir
+    case 'landing': if(moveTo(DR_PAD[0],DR_PAD[1])){d.t=0;d.rest=5+Math.random()*4;d.state='parked';} break;
+    case 'parked':  if(d.t>d.rest){d.t=0;d.state='takeoff';} break;        // rehat di holo-pad
+    case 'takeoff': if(moveTo(DR_HOME[0],DR_HOME[1])){d.t=0;d.state='toRack';} break;
     case 'toRack':  if(moveTo(DR_RACK[0],DR_RACK[1])){d.t=0;d.state='harvest';} break;
     case 'harvest': if(d.t>1.2){d.crate=1;d.t=0;d.state='toDrop';} break;   // peti panen nyangkut
     case 'toDrop':  if(moveTo(DR_DROP[0],DR_DROP[1])){d.crate=0;d.dz=0;d.da=1;d.t=0;d.state='drop';} break;
@@ -1545,8 +1548,9 @@ function render(t){
   cx.fillStyle='#080b11';cx.fillRect(0,0,cv.width,cv.height);
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   cx.drawImage(bg,0,0);
-  /* bayangan drone — mengikuti posisinya, tetap di bawah semua objek */
-  cx.fillStyle='rgba(0,0,0,.20)';cx.fillRect(Math.round(drone.x)-5,Math.round(drone.y)+22,10,2);
+  /* bayangan drone — mengikuti posisinya (rapat saat parkir), di bawah semua objek */
+  cx.fillStyle='rgba(0,0,0,.20)';
+  cx.fillRect(Math.round(drone.x)-5,Math.round(drone.y)+(drone.state==='parked'?8:22),10,2);
   /* robot pembersih (rata lantai, di bawah furnitur) */
   const bx=Math.round(bot.x),by=Math.round(bot.y);
   cx.fillStyle='rgba(0,0,0,.25)';cx.fillRect(bx-5,by+3,10,2);
@@ -1598,14 +1602,21 @@ function render(t){
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
   /* drone kargo antar-panen — digambar setelah pemain (terbang di atas kepala) */
   {
-    const d=drone,cxp=Math.round(d.x),dy=Math.round(d.y)+Math.round(Math.sin(t/380)*2);
-    const rf=Math.floor(t/50)%2;
-    cx.fillStyle=rf?'#8fa3b8':'#5a6b7d';cx.fillRect(cxp-9,dy-1,5,1);   // baling kiri
-    cx.fillStyle=rf?'#5a6b7d':'#8fa3b8';cx.fillRect(cxp+4,dy-1,5,1);   // baling kanan
+    const d=drone,parked=d.state==='parked';
+    const cxp=Math.round(d.x),dy=Math.round(d.y)+(parked?0:Math.round(Math.sin(t/380)*2));
+    if(parked){                                                        // baling diam saat parkir
+      cx.fillStyle='#4a5666';cx.fillRect(cxp-9,dy-1,5,1);cx.fillRect(cxp+4,dy-1,5,1);
+      cx.fillStyle='#26303c';cx.fillRect(cxp-4,dy+4,1,2);cx.fillRect(cxp+3,dy+4,1,2); // kaki pendarat
+    }else{
+      const rf=Math.floor(t/50)%2;
+      cx.fillStyle=rf?'#8fa3b8':'#5a6b7d';cx.fillRect(cxp-9,dy-1,5,1);   // baling kiri
+      cx.fillStyle=rf?'#5a6b7d':'#8fa3b8';cx.fillRect(cxp+4,dy-1,5,1);   // baling kanan
+    }
     cx.fillStyle='#26303c';cx.fillRect(cxp-5,dy,10,4);                 // badan
     cx.fillStyle='#39414f';cx.fillRect(cxp-5,dy,10,1);
-    cx.fillStyle=Math.floor(t/300)%2?'#2ee0ff':'#1a7f99';cx.fillRect(cxp-1,dy+1,2,2); // lampu
-    cx.fillStyle='#3a4652';cx.fillRect(cxp,dy+4,1,2);                  // tali kait
+    cx.fillStyle=(parked?Math.floor(t/700)%2:Math.floor(t/300)%2)?'#2ee0ff':'#1a7f99';
+    cx.fillRect(cxp-1,dy+1,2,2);                                       // lampu (standby lebih pelan saat parkir)
+    if(!parked)cx.fillStyle='#3a4652',cx.fillRect(cxp,dy+4,1,2);       // tali kait (saat terbang)
     if(d.crate){                                                      // membawa peti hasil panen
       cx.fillStyle='#7a5a34';cx.fillRect(cxp-3,dy+6,7,5);
       cx.fillStyle='#9a7a4a';cx.fillRect(cxp-3,dy+6,7,1);
