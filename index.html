@@ -414,6 +414,7 @@ function buildBG(){
   P(g,'#0c1016',0,0,W,H);
   /* lantai per-ruang — tiap zona punya karakter sesuai fungsinya
      L=ruang data (panel akses) · C=lorong transit (aspal) · RT=briefing · RB=bengkel */
+  const DATA_VENTS=new Set(['3,5','8,6','4,12']);        // hanya 3 panel ventilasi menyala
   for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
     if(MAP[ty][tx]!=='.')continue;
     const px=tx*T,py=ty*T,alt=((tx+ty)%2),r=rnd(tx,ty)%14;
@@ -424,7 +425,7 @@ function buildBG(){
       P(g,'#191e27',px,py+T-1,T,1);P(g,'#191e27',px+T-1,py,1,T);   // nat tegas
       P(g,'#3b4453',px+1,py+1,1,1);P(g,'#3b4453',px+T-2,py+1,1,1); // sekrup sudut
       P(g,'#3b4453',px+1,py+T-2,1,1);P(g,'#3b4453',px+T-2,py+T-2,1,1);
-      if(r===0){P(g,'#12161d',px+4,py+4,8,8);                      // panel berlubang menyala
+      if(DATA_VENTS.has(tx+','+ty)){P(g,'#12161d',px+4,py+4,8,8);  // panel berlubang menyala (3 saja)
         for(let a=5;a<12;a+=2)for(let b=5;b<12;b+=2)P(g,'rgba(60,200,255,.4)',px+a,py+b,1,1);}
     }else if(z==='C'){                                    // lorong — aspal transit
       P(g,'#242a32',px,py,T,T);
