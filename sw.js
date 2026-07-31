@@ -3,12 +3,13 @@
    - Navigasi: network-first, fallback cache saat offline
    - Aset lain same-origin: stale-while-revalidate
    - Link keluar ke tools (origin lain) tidak disentuh */
-const VERSION = 'v1.32.0';
+const VERSION = 'v1.33.0';
 const CACHE = `hq-${VERSION}`;
 
 const ASSETS = [
   './',
   './index.html',
+  './app.js',
   './manifest.webmanifest',
   './vendor/fonts.css',
   './vendor/fonts/share-tech-mono-400-latin.woff2',
