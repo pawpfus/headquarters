@@ -62,6 +62,7 @@ const DECOR_SOLID=[
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
   {x:7, y:16,w:1,h:1},{x:1, y:4, w:1,h:1},                      // lampu lantai, dispenser air
   {x:1, y:12,w:1,h:1},{x:9, y:6, w:1,h:1},                      // peti, loker
+  {x:5, y:5, w:2,h:1},{x:9, y:5, w:1,h:1},                      // terminal ops (tengah), peti logam (samping loker)
   {x:22,y:7, w:1,h:1},{x:23,y:4, w:1,h:1},{x:17,y:7, w:1,h:1},  // lampu, rak data, tanaman (kanan-atas)
   {x:23,y:10,w:1,h:1},{x:15,y:10,w:1,h:1},{x:15,y:16,w:1,h:1}, // rak besi, tabung, ban (kanan-bawah)
   {x:4, y:16,w:1,h:1},                                          // jukebox (lounge)
@@ -357,6 +358,19 @@ function buildBG(){
       P(g,'#2e2748',xx,yy,2,2);                                       // pola titik
     P(g,'rgba(255,222,150,.09)',6*T+4,14*T+2,3*T-2,3*T-6);            // cahaya hangat lampu
     P(g,'rgba(255,222,150,.06)',6*T,14*T,4*T-2,3*T-2);
+  })();
+  /* planning bay — mat teknis menyatukan meja AREA SAMPLING + COOPERSTOWN jadi satu zona peta */
+  (function(){
+    const rx=2*T-2, ry=8*T-2, rw=8*T+4, rh=2*T+12;
+    P(g,'#181f2a',rx,ry,rw,rh);                                       // dasar slate
+    P(g,'#243244',rx,ry,rw,1);P(g,'#243244',rx,ry+rh-1,rw,1);         // tepi
+    P(g,'#243244',rx,ry,1,rh);P(g,'#243244',rx+rw-1,ry,1,rh);
+    for(let x=rx+8;x<rx+rw-4;x+=12)P(g,'rgba(76,201,224,.05)',x,ry+2,1,rh-4); // grid halus
+    const L=8;                                                        // bracket cyan tiap sudut
+    P(g,'#2f6d7d',rx+2,ry+2,L,2);P(g,'#2f6d7d',rx+2,ry+2,2,L);
+    P(g,'#2f6d7d',rx+rw-2-L,ry+2,L,2);P(g,'#2f6d7d',rx+rw-4,ry+2,2,L);
+    P(g,'#2f6d7d',rx+2,ry+rh-4,L,2);P(g,'#2f6d7d',rx+2,ry+rh-2-L,2,L);
+    P(g,'#2f6d7d',rx+rw-2-L,ry+rh-4,L,2);P(g,'#2f6d7d',rx+rw-4,ry+rh-2-L,2,L);
   })();
   /* ventilasi besar (dinding kanan-atas) */
   P(g,'#10141c',21*T+2,8*T+3,24,8);
@@ -699,6 +713,34 @@ const locker=furn({x:9,y:6,w:1,h:1},8,(g,w,h)=>{
   P(g,'#1a2029',4,5,4,1);P(g,'#1a2029',9,5,3,1);                              // ventilasi
   P(g,'#c9c9d2',6,9,1,2);P(g,'#c9c9d2',10,9,1,2);                             // gagang
 });
+/* terminal ops — jangkar tengah ruang data: meja + dua monitor + tower */
+const terminal=furn({x:5,y:5,w:2,h:1},14,(g,w,h)=>{
+  P(g,'#39414f',1,16,w-2,8);P(g,'#4a5468',1,16,w-2,2);         // meja logam
+  P(g,'#2a303c',2,24,3,h-24);P(g,'#2a303c',w-5,24,3,h-24);     // kaki
+  P(g,'#2b2b33',3,2,12,13);P(g,'#101018',5,4,8,9);             // monitor kiri
+  P(g,'#2b2b33',w-15,2,12,13);P(g,'#101018',w-13,4,8,9);       // monitor kanan
+  P(g,'#3a3a44',8,15,2,2);P(g,'#3a3a44',w-10,15,2,2);          // leher monitor
+  P(g,'#2a303c',9,18,14,3);P(g,'#39414f',9,18,14,1);           // keyboard
+  P(g,'#33333d',0,10,3,14);P(g,'#4cc9e0',1,12,1,1);P(g,'#7ee06a',1,14,1,1); // tower + LED
+});
+FURN.push(terminal);
+anims.push({f:terminal,fn:(g,t)=>{                             // layar: baris data bergulir + kursor
+  const scr=(sx,sy,seed)=>{
+    P(g,'#08131c',sx,sy,8,9);
+    for(let i=0;i<4;i++){const yy=sy+1+i*2,wln=2+((rnd(seed+i,Math.floor(t/650))>>2)%6);
+      g.fillStyle=i%2?'#46d160':'#4cc9e0';g.fillRect(sx+1,yy,wln,1);}
+    if(Math.floor(t/500)%2)P(g,'#8fd45e',sx+1,sy+8,2,1);
+  };
+  scr(terminal.px+5,terminal.py+4,1);
+  scr(terminal.px+terminal.canvas.width-13,terminal.py+4,9);
+}});
+/* peti logam — pojok logistik kecil di samping loker (imbangi berat kiri) */
+const crateNW=furn({x:9,y:5,w:1,h:1},7,(g,w,h)=>{
+  P(g,'#5f6b7a',2,6,11,10);P(g,'#74808f',2,6,11,2);P(g,'#3f4854',2,11,11,1);  // peti bawah
+  P(g,'#2a303c',7,6,1,10);
+  P(g,'#4a5468',4,0,8,6);P(g,'#5f6b7a',4,0,8,2);P(g,'#4cc9e0',6,2,4,1);        // peti atas + strip
+});
+FURN.push(crateNW);
 /* --- pengisi kamar kanan-atas (pelaporan) --- */
 const rackC=furn({x:23,y:4,w:1,h:1},4,g=>{rackPaint(g);});   // rak data (dinding kanan)
 const potRA=furn({x:17,y:7,w:1,h:1},4,potPaint);             // tanaman sudut
