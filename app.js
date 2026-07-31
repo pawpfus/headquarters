@@ -62,7 +62,7 @@ const DECOR_SOLID=[
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
   {x:7, y:16,w:1,h:1},{x:1, y:4, w:1,h:1},                      // lampu lantai, dispenser air
   {x:1, y:12,w:1,h:1},{x:9, y:6, w:1,h:1},                      // peti, loker
-  {x:5, y:5, w:2,h:1},{x:4,y:13,w:4,h:1},                      // terminal ops (tengah), partisi separator lounge (celah masuk di kanan)
+  {x:2, y:2, w:2,h:1},{x:4,y:13,w:4,h:1},                      // terminal ops (samping EVIDENCE), partisi separator lounge (celah masuk di kanan)
   {x:22,y:7, w:1,h:1},{x:23,y:4, w:1,h:1},{x:17,y:7, w:1,h:1},  // lampu, rak data, tanaman (kanan-atas)
   {x:23,y:10,w:1,h:1},{x:15,y:10,w:1,h:1},{x:15,y:16,w:1,h:1}, // rak besi, tabung, ban (kanan-bawah)
   {x:4, y:16,w:1,h:1},                                          // jukebox (lounge)
@@ -317,9 +317,9 @@ function buildBG(){
       P(g,'#232a36',px,py,T,T);
       for(let x=0;x<T;x+=6)P(g,'#1d2430',px+x,py,1,T);
       P(g,'#10141c',px,py+T-4,T,4);                      // list bawah dinding
-      P(g,'#2ee0ff',px,py+T-5,T,1);                      // strip cahaya cyan
+      P(g,'#ffcf4a',px,py+T-5,T,1);                      // strip cahaya kuning
       P(g,'rgba(0,0,0,.25)',px,py+T,T,4);                // bayangan jatuh ke lantai
-      pool(g,px,py+T+4,T,7,'46,224,255',.055);           // cahaya strip meleleh ke lantai
+      pool(g,px,py+T+4,T,7,'255,207,74',.055);           // cahaya strip meleleh ke lantai
     }else{
       P(g,'#161b24',px,py,T,T);
       for(let y=0;y<T;y+=8)P(g,'#1a2029',px,py+y,T,1);
@@ -366,11 +366,6 @@ function buildBG(){
     P(g,'#243244',rx,ry,rw,1);P(g,'#243244',rx,ry+rh-1,rw,1);         // tepi
     P(g,'#243244',rx,ry,1,rh);P(g,'#243244',rx+rw-1,ry,1,rh);
     for(let x=rx+8;x<rx+rw-4;x+=12)P(g,'rgba(76,201,224,.05)',x,ry+2,1,rh-4); // grid halus
-    const L=8;                                                        // bracket cyan tiap sudut
-    P(g,'#2f6d7d',rx+2,ry+2,L,2);P(g,'#2f6d7d',rx+2,ry+2,2,L);
-    P(g,'#2f6d7d',rx+rw-2-L,ry+2,L,2);P(g,'#2f6d7d',rx+rw-4,ry+2,2,L);
-    P(g,'#2f6d7d',rx+2,ry+rh-4,L,2);P(g,'#2f6d7d',rx+2,ry+rh-2-L,2,L);
-    P(g,'#2f6d7d',rx+rw-2-L,ry+rh-4,L,2);P(g,'#2f6d7d',rx+rw-4,ry+rh-2-L,2,L);
   })();
   /* ventilasi besar (dinding kanan-atas) */
   P(g,'#10141c',21*T+2,8*T+3,24,8);
@@ -713,8 +708,8 @@ const locker=furn({x:9,y:6,w:1,h:1},8,(g,w,h)=>{
   P(g,'#1a2029',4,5,4,1);P(g,'#1a2029',9,5,3,1);                              // ventilasi
   P(g,'#c9c9d2',6,9,1,2);P(g,'#c9c9d2',10,9,1,2);                             // gagang
 });
-/* terminal ops — jangkar tengah ruang data: meja + dua monitor + tower */
-const terminal=furn({x:5,y:5,w:2,h:1},14,(g,w,h)=>{
+/* terminal ops — stasiun kerja di samping EVIDENCE: meja + dua monitor + tower */
+const terminal=furn({x:2,y:2,w:2,h:1},14,(g,w,h)=>{
   P(g,'#39414f',1,16,w-2,8);P(g,'#4a5468',1,16,w-2,2);         // meja logam
   P(g,'#2a303c',2,24,3,h-24);P(g,'#2a303c',w-5,24,3,h-24);     // kaki
   P(g,'#2b2b33',3,2,12,13);P(g,'#101018',5,4,8,9);             // monitor kiri
