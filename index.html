@@ -609,13 +609,19 @@ FURN.push(furn(TOOLS[0].rect,18,(g,w,h)=>{
   P(g,'#4cc9e0',33,14,4,1);P(g,'#4cc9e0',32,16,6,1);
   P(g,'#7a3a2a',w-12,12,6,6);P(g,'#7a3a2a',w-7,13,2,3);        // cangkir
 }));
-anims.push({f:FURN[0],fn:(g,t)=>{                              // layar: grafik LTT
-  const x=FURN[0].px+10,y=FURN[0].py+4;
+anims.push({f:FURN[0],fn:(g,t)=>{                              // layar: konten bergilir (batang/tren/peta)
+  const x=FURN[0].px+10,y=FURN[0].py+4,mode=Math.floor(t/5000)%3;
   P(g,'#0f2f18',x,y,16,11);
   g.fillStyle='#46d160';
-  for(let i=0;i<14;i++){
-    const v=3+Math.round(3*Math.sin((i+t/300)*.8)+2*Math.sin(i*2.2));
-    g.fillRect(x+1+i,y+10-Math.max(1,Math.min(9,v)),1,1);
+  if(mode===0){                                               // grafik batang LTT
+    for(let i=0;i<14;i++){const v=3+Math.round(3*Math.sin((i+t/300)*.8)+2*Math.sin(i*2.2));
+      g.fillRect(x+1+i,y+10-Math.max(1,Math.min(9,v)),1,1);}
+  }else if(mode===1){                                         // grafik garis tren
+    let pv=y+6;for(let i=0;i<15;i++){const nv=y+6-Math.round(3*Math.sin((i+t/400)*.7));
+      const lo=Math.min(pv,nv),hi=Math.max(pv,nv);g.fillRect(x+1+i,lo,1,hi-lo+1);pv=nv;}
+  }else{                                                      // peta titik sebaran
+    for(let k=0;k<10;k++){const px=x+2+((k*37+3)%13),pyy=y+1+((k*53+1)%9);
+      g.fillStyle=((Math.floor(t/300)+k)%3)?'#46d160':'#8fd45e';g.fillRect(px,pyy,1,1);}
   }
   if(Math.floor(t/500)%2)P(g,'#8fd45e',x+13,y+1,2,2);          // kursor kedip
 }});
@@ -888,26 +894,43 @@ const hydro=furn({x:11,y:2,w:3,h:1},12,(g,w,h)=>{
 });
 /* kebun tumbuh: tiap slot melewati benih→tunas→muda→berbuah→panen,
    distaggered sehingga rak selalu menampilkan campuran tahap tumbuh. */
+const windGust=t=>Math.max(0,Math.sin(t/5200));               // 0..1: angin berhembus lalu reda
 const SLOTX=[9,18,27,36], GROW_DUR=36000, GROW=[];
+const SPECIES=['selada','tomat','cabai','bayam'];             // ragam tanaman per slot
 [{ly:4,maxH:4},{ly:14,maxH:8}].forEach((sh,s)=>SLOTX.forEach((lx,c)=>{
   const idx=s*SLOTX.length+c;
   GROW.push({wx:hydro.px+lx, wy:hydro.py+sh.ly, maxH:sh.maxH,
-    off:idx/(SLOTX.length*2), fruit:['#e06a5a','#e6c24a','#e07ad0','#f2f2f2'][c%4]});
+    off:idx/(SLOTX.length*2), sp:SPECIES[idx%4]});
 }));
-function drawPlant(ctx,wx,wy,maxH,gp,fruit){
+function drawPlant(ctx,wx,wy,maxH,gp,sp,sway){
   ctx.fillStyle='#4a3320';ctx.fillRect(wx-1,wy-1,3,1);          // media / tanah
   if(gp<0.06||gp>=0.9)return;                                   // benih / sudah dipanen
-  const gr=Math.min(1,(gp-0.06)/0.74), hgt=Math.max(1,Math.round(maxH*gr));
-  ctx.fillStyle='#3f7a3a';ctx.fillRect(wx,wy-hgt,1,hgt);        // batang
-  ctx.fillStyle='#5aa84e';
-  const leaves=Math.min(3,Math.floor(gr*3.2));
-  for(let l=1;l<=leaves;l++){const ly=wy-Math.round(l/(leaves+1)*hgt);
-    ctx.fillRect(wx-1,ly,1,1);ctx.fillRect(wx+1,ly,1,1);}       // daun berpasangan
-  ctx.fillStyle='#7ee06a';ctx.fillRect(wx,wy-hgt-1,1,1);        // pucuk
-  if(gr>0.82){ctx.fillStyle=fruit;ctx.fillRect(wx+1,wy-hgt+1,1,1);} // buah/bunga saat matang
+  const gr=Math.min(1,(gp-0.06)/0.74), sw=gr>0.45?sway:0;
+  if(sp==='selada'){                                            // selada: rimbun rendah, tanpa batang
+    const h=Math.max(1,Math.round(maxH*0.6*gr));
+    ctx.fillStyle='#4e9a44';
+    for(let yy=0;yy<h;yy++){const wd=Math.min(2,Math.round((h-yy)/2)+(gr>0.5?1:0));
+      ctx.fillRect(wx-wd+sw,wy-1-yy,wd*2+1,1);}
+    ctx.fillStyle='#6ec258';ctx.fillRect(wx-1+sw,wy-h,3,1);
+    return;
+  }
+  const hgt=Math.max(1,Math.round(maxH*(sp==='bayam'?0.85:1)*gr));
+  ctx.fillStyle=sp==='bayam'?'#357a34':'#3f7a3a';ctx.fillRect(wx+sw,wy-hgt,1,hgt); // batang
+  ctx.fillStyle=sp==='bayam'?'#4e9a44':'#5aa84e';
+  const lv=Math.min(3,Math.floor(gr*3.2)+(sp==='bayam'?1:0));
+  for(let l=1;l<=lv;l++){const ly=wy-Math.round(l/(lv+1)*hgt);
+    if(sp==='bayam'){ctx.fillRect(wx-2+sw,ly,2,1);ctx.fillRect(wx+1+sw,ly,2,1);}  // daun lebar
+    else{ctx.fillRect(wx-1+sw,ly,1,1);ctx.fillRect(wx+1+sw,ly,1,1);}}             // daun kecil
+  ctx.fillStyle='#7ee06a';ctx.fillRect(wx+sw,wy-hgt-1,1,1);     // pucuk
+  if(gr>0.75){
+    if(sp==='tomat'){ctx.fillStyle='#e0503a';ctx.fillRect(wx-1+sw,wy-hgt+2,2,2);}                  // tomat bulat
+    else if(sp==='cabai'){ctx.fillStyle='#d23a2a';ctx.fillRect(wx+1+sw,wy-hgt+2,1,3);ctx.fillRect(wx-1+sw,wy-hgt+5,1,2);}} // cabai menggantung
 }
 anims.push({fn:(g,t)=>{
-  for(const p of GROW){const gp=((t/GROW_DUR)+p.off)%1;drawPlant(g,p.wx,p.wy,p.maxH,gp,p.fruit);}
+  const gust=windGust(t);
+  for(const p of GROW){const gp=((t/GROW_DUR)+p.off)%1;
+    const sway=Math.round(Math.sin(t/1500+p.wx*0.25)*gust);    // goyang angin per tanaman
+    drawPlant(g,p.wx,p.wy,p.maxH,gp,p.sp,sway);}
   const gl=Math.floor(t/700)%2;                                 // pendar lampu tumbuh (ungu)
   P(g,gl?'rgba(160,90,224,.20)':'rgba(160,90,224,.10)',hydro.px+3,hydro.py+4,hydro.canvas.width-6,11);
   P(g,'#4cc9e0',hydro.px+9,hydro.py+16+(Math.floor(t/300)%4)*2,1,2);   // tetes air
@@ -1012,14 +1035,16 @@ anims.push({fn:(g,t)=>{
 }});
 
 /* --- cuaca: sesekali hujan di kaca & kawanan burung lewat --- */
-const weather={mode:'clear',next:9000,bird:null,flashT0:-1e9,flashNext:1e12};
+const weather={mode:'clear',next:9000,bird:null,flashT0:-1e9,flashNext:1e12,rainbowT0:-1e9,star:null};
 const winGlass=wd=>{const rows=wd.ty1-wd.ty0+1,wx=wd.side==='W'?2:W-14;
   return {gx:wx+2,gy:wd.ty0*T+4,gw:8,gh:rows*T-8};};
 anims.push({fn:(g,t)=>{
   if(t>weather.next){                                    // ganti cuaca tiap ~20–50 dtk
+    const wasRain=weather.mode==='rain';
     weather.next=t+18000+Math.random()*30000;
     weather.mode=Math.random()<.30?'rain':'clear';
     weather.flashNext=weather.mode==='rain'?t+5000+Math.random()*10000:1e12; // jadwal petir
+    if(wasRain&&weather.mode==='clear')weather.rainbowT0=t;   // pelangi sehabis hujan
   }
   if(weather.mode==='rain'){                             // tetes air mengalir turun di kaca
     for(const wd of WINDOWS){const q=winGlass(wd);
@@ -1064,6 +1089,35 @@ anims.push({fn:(g,t)=>{
       g.fillStyle='rgba(200,218,255,'+(flash*.16).toFixed(3)+')';g.fillRect(0,0,W,H); // ruang terang sekejap
     }
   }
+  /* pelangi samar sehabis hujan — lengkung tipis di jendela timur (siang) */
+  const rdt=t-weather.rainbowT0;
+  if(rdt>=0&&rdt<9000&&daylight.star<.25){
+    const fade=Math.min(1,rdt/1200)*Math.min(1,(9000-rdt)/1200), q=winGlass(WINDOWS[1]);
+    const cols=['232,96,96','240,180,90','120,200,120','96,170,236'];
+    for(let b=0;b<4;b++)for(let i=0;i<q.gw;i++){
+      const yy=q.gy+2+b+Math.round(2*Math.sin((i/q.gw)*Math.PI));
+      if(yy>=q.gy&&yy<q.gy+q.gh){g.fillStyle='rgba('+cols[b]+','+(fade*.35).toFixed(3)+')';g.fillRect(q.gx+i,yy,1,1);}
+    }
+  }
+  /* bintang jatuh — sesekali di malam cerah, melesat di kaca */
+  if(!weather.star&&daylight.star>.5&&weather.mode==='clear'&&Math.random()<.0016){
+    weather.star={wd:WINDOWS[(Math.random()*WINDOWS.length)|0],t0:t,dur:700,dir:Math.random()<.5?1:-1};
+  }
+  if(weather.star){
+    const s=weather.star,p=(t-s.t0)/s.dur;
+    if(p>=1){weather.star=null;}
+    else{const q=winGlass(s.wd),hx=q.gx+(s.dir>0?p*q.gw:(1-p)*q.gw),hy=q.gy+p*q.gh*.55+1;
+      g.fillStyle='rgba(255,255,255,'+(1-p*0.8).toFixed(2)+')';
+      for(let k=0;k<4;k++){const bx=Math.round(hx-(s.dir>0?k:-k)),by=Math.round(hy-k*.6);
+        if(bx>=q.gx&&bx<q.gx+q.gw&&by>=q.gy&&by<q.gy+q.gh)g.fillRect(bx,by,1,1);}
+    }
+  }
+  /* kabut pagi tipis (jam ~5.5–8) menghanyut rendah di ruangan */
+  const hr=curHour(), mist=(hr>5&&hr<8)?Math.min(1,Math.min(hr-5,8-hr)/1.2):0;
+  if(mist>.02)for(let i=0;i<8;i++){
+    const px=((t/50+i*150)%(W+140))-70, py=H-26-((i*43)%78)+Math.round(Math.sin(t/2000+i)*3);
+    g.fillStyle='rgba(210,222,236,'+(mist*.14).toFixed(3)+')';g.fillRect(px,py,64,12);
+  }
 }});
 
 /* --- debu melayang: butir halus hanyut pelan, hanya di atas lantai terbuka --- */
@@ -1089,14 +1143,28 @@ const keys=new Set();
 const KEYMAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
               w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
 
+/* rekan kerja penyuluh — mondar-mandir di ruang data (patroli col 6) */
+const coworker={x:6*T+8,y:6*T+8,wps:[[6*T+8,6*T+8],[6*T+8,12*T+8]],wi:0,t:0,moving:false,dir:1,frame:0};
+function coworkerUpdate(dt){
+  const c=coworker,[tx,ty]=c.wps[c.wi];
+  if(c.t>0){c.t-=dt;c.moving=false;return;}                 // jeda di ujung patroli
+  const dx=tx-c.x,dy=ty-c.y,m=Math.hypot(dx,dy);
+  if(m<1){c.x=tx;c.y=ty;c.wi=(c.wi+1)%c.wps.length;c.t=2+Math.random()*3;c.moving=false;}
+  else{const sp=20*dt;c.x+=dx/m*sp;c.y+=dy/m*sp;c.moving=true;c.frame+=dt*6;
+    if(Math.abs(dx)>.3)c.dir=dx>0?1:-1;}
+}
+
 /* anak dino peliharaan — berkeliaran acak antar tile bebas */
 const pet={x:6*T+8,y:15*T+12,tx:null,ty:null,timer:1,dir:1,frame:0,hopT:0,reactCd:0,
-           mode:'wander',followT:0,repathT:0,path:null,moving:false};
+           mode:'wander',followT:0,repathT:0,path:null,moving:false,sleepT:0};
 function petUpdate(dt){
   pet.reactCd=Math.max(0,pet.reactCd-dt);
   if(pet.hopT>0)pet.hopT=Math.max(0,pet.hopT-dt);
   pet.moving=false;
   const pdx=player.x-pet.x,pdy=player.y-pet.y,pd2=pdx*pdx+pdy*pdy;
+  if(pet.sleepT>0){                                         // sedang tidur (bangun bila pemain dekat)
+    if(pd2<40*40)pet.sleepT=0; else{pet.sleepT-=dt;return;}
+  }
   /* dino utama mendekat → menyapa, dan sesekali memutuskan ikut berkeliling */
   if(pd2<20*20&&pet.reactCd<=0){
     pet.hopT=.4;pet.reactCd=1.6;
@@ -1136,6 +1204,7 @@ function petUpdate(dt){
   if(pet.tx===null){
     pet.timer-=dt;
     if(pet.timer<=0){
+      if(Math.random()<0.18){pet.sleepT=3+Math.random()*3;pet.timer=1;return;}  // sesekali tidur (Zzz)
       const ptx=Math.floor(pet.x/T),pty=Math.floor(pet.y/T);
       const opts=[[1,0],[-1,0],[0,1],[0,-1]]
         .map(d=>[ptx+d[0],pty+d[1]])
@@ -1169,8 +1238,18 @@ function botUpdate(dt){
 
 /* --- drone kargo: siklus antar-panen dari rak hidroponik ke pintu keluar ---
    idle → terbang ke rak → panen (peti nyangkut) → antar turun → jatuhkan → balik. */
-const drone={x:200,y:128,state:'idle',t:0,crate:0,dz:0,da:0,rest:0};
+const drone={x:200,y:128,state:'idle',t:0,crate:0,dz:0,da:0,rest:0,cargo:'panen'};
 const DR_HOME=[200,128], DR_RACK=[200,56], DR_DROP=[205,250], DR_PAD=[200,163], DR_SPD=46;
+const DR_CARGO=['panen','parts','docs','water'];             // ragam muatan drone
+function drawCargo(ctx,x,y,type){
+  const box={panen:'#7a5a34',parts:'#4a5566',docs:'#9a7a4a',water:'#3a5a8a'}[type];
+  ctx.fillStyle=box;ctx.fillRect(x-3,y,7,5);
+  ctx.fillStyle='rgba(255,255,255,.14)';ctx.fillRect(x-3,y,7,1);
+  if(type==='panen'){ctx.fillStyle='#5aa84e';ctx.fillRect(x-2,y-1,2,1);ctx.fillRect(x+1,y-1,2,1);}   // sayuran nyembul
+  else if(type==='parts'){ctx.fillStyle='#c9a24a';ctx.fillRect(x-1,y+2,3,1);}                        // strip logam
+  else if(type==='docs'){ctx.fillStyle='#dfe6ee';ctx.fillRect(x-2,y+1,5,3);ctx.fillStyle='#4cc9e0';ctx.fillRect(x-1,y+2,3,1);} // berkas
+  else{ctx.fillStyle='#8fc9e0';ctx.fillRect(x-2,y+1,5,3);}                                           // galon air
+}
 function droneUpdate(dt){
   const d=drone; d.t+=dt;
   const moveTo=(tx,ty)=>{const dx=tx-d.x,dy=ty-d.y,dist=Math.hypot(dx,dy),step=DR_SPD*dt;
@@ -1181,7 +1260,7 @@ function droneUpdate(dt){
     case 'parked':  if(d.t>d.rest){d.t=0;d.state='takeoff';} break;        // rehat di holo-pad
     case 'takeoff': if(moveTo(DR_HOME[0],DR_HOME[1])){d.t=0;d.state='toRack';} break;
     case 'toRack':  if(moveTo(DR_RACK[0],DR_RACK[1])){d.t=0;d.state='harvest';} break;
-    case 'harvest': if(d.t>1.2){d.crate=1;d.t=0;d.state='toDrop';} break;   // peti panen nyangkut
+    case 'harvest': if(d.t>1.2){d.crate=1;d.cargo=DR_CARGO[(Math.random()*4)|0];d.t=0;d.state='toDrop';} break; // muatan acak
     case 'toDrop':  if(moveTo(DR_DROP[0],DR_DROP[1])){d.crate=0;d.dz=0;d.da=1;d.t=0;d.state='drop';} break;
     case 'drop':    if(d.t>0.8){d.t=0;d.state='return';} break;            // peti dilepas → jatuh
     case 'return':  if(moveTo(DR_HOME[0],DR_HOME[1])){d.t=0;d.state='idle';} break;
@@ -1537,7 +1616,7 @@ function update(dt){
     player.animT+=dt*Math.min(1.2,mag+.2);
   }else player.animT=0;
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
-  petUpdate(dt);botUpdate(dt);droneUpdate(dt);
+  petUpdate(dt);botUpdate(dt);droneUpdate(dt);coworkerUpdate(dt);
   if(music.on){music.visT+=dt;const beat=60/TRACKS[music.track].bpm;   // pet ikut goyang tiap ketukan
     if(music.visT>=beat){music.visT-=beat;if(pet.hopT<=0)pet.hopT=.4;}}
 
@@ -1617,6 +1696,18 @@ function render(t){
     cx.fillRect(Math.round(pet.x)-(hop>2?2:3),Math.round(pet.y)-1,hop>2?4:6,2);
     const pf=pet.moving?Math.floor(pet.frame)%2:0;
     cx.drawImage(pet.dir>0?PETSPR.r[pf]:PETSPR.l[pf],Math.round(pet.x)-4,Math.round(pet.y)-8-Math.round(hop));
+    if(pet.sleepT>0){                                           // Zzz mengambang saat tidur
+      const zx=Math.round(pet.x)+3,zy=Math.round(pet.y)-13-(Math.floor(t/500)%2);
+      cx.fillStyle='rgba(200,220,240,.85)';
+      cx.fillRect(zx,zy,3,1);cx.fillRect(zx+2,zy+1,1,1);cx.fillRect(zx,zy+2,3,1);
+    }
+  }});
+  items.push({y:coworker.y,draw:()=>{                           // rekan kerja (rompi biru)
+    const c=coworker,x=Math.round(c.x),y=Math.round(c.y),step=c.moving?Math.floor(c.frame)%2:0;
+    cx.fillStyle='rgba(0,0,0,.25)';cx.fillRect(x-3,y-1,6,2);
+    cx.fillStyle='#2a3550';cx.fillRect(x-2,y-3-step,2,3+step);cx.fillRect(x+1,y-3,2,3-step); // kaki jalan
+    cx.fillStyle='#3a5a8a';cx.fillRect(x-3,y-9,6,6);cx.fillStyle='#4a6f9f';cx.fillRect(x-3,y-9,6,1); // rompi
+    cx.fillStyle='#c99a6a';cx.fillRect(x-2,y-13,4,4);cx.fillStyle='#2a1c12';cx.fillRect(x-2,y-13,4,1); // kepala+rambut
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
   /* drone kargo antar-panen — digambar setelah pemain (terbang di atas kepala) */
@@ -1636,19 +1727,12 @@ function render(t){
     cx.fillStyle=(parked?Math.floor(t/700)%2:Math.floor(t/300)%2)?'#2ee0ff':'#1a7f99';
     cx.fillRect(cxp-1,dy+1,2,2);                                       // lampu (standby lebih pelan saat parkir)
     if(!parked)cx.fillStyle='#3a4652',cx.fillRect(cxp,dy+4,1,2);       // tali kait (saat terbang)
-    if(d.crate){                                                      // membawa peti hasil panen
-      cx.fillStyle='#7a5a34';cx.fillRect(cxp-3,dy+6,7,5);
-      cx.fillStyle='#9a7a4a';cx.fillRect(cxp-3,dy+6,7,1);
-      cx.fillStyle='#5aa84e';cx.fillRect(cxp-2,dy+5,2,1);cx.fillRect(cxp+1,dy+5,2,1); // panen menyembul
-    }
+    if(d.crate)drawCargo(cx,cxp,dy+6,d.cargo);                        // membawa muatan (ragam)
   }
-  /* peti panen yang dijatuhkan di dekat pintu → mendarat lalu memudar */
+  /* muatan yang dijatuhkan di dekat pintu → mendarat lalu memudar */
   if(drone.da>0){
-    const cxp=DR_DROP[0],cyp=DR_DROP[1]+8+Math.round(drone.dz);
     cx.globalAlpha=Math.max(0,Math.min(1,drone.da));
-    cx.fillStyle='#7a5a34';cx.fillRect(cxp-3,cyp,7,5);
-    cx.fillStyle='#9a7a4a';cx.fillRect(cxp-3,cyp,7,1);
-    cx.fillStyle='#5aa84e';cx.fillRect(cxp-2,cyp-1,2,1);cx.fillRect(cxp+1,cyp-1,2,1);
+    drawCargo(cx,DR_DROP[0],DR_DROP[1]+8+Math.round(drone.dz),drone.cargo);
     cx.globalAlpha=1;
   }
   /* overlay animasi furnitur (layar, api, dll) */
@@ -1740,7 +1824,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS,
               fog:()=>fogOn,SEATS,goToSeat,sitDown,standUp,seatAtFront,
               music,jukebox,jukeCycle,jukeAtFront,goToJuke,TRACKS,
               setHour:h=>{forcedHour=h;skyBucket=-1;tickSky();render(performance.now());},
-              daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,drone,droneUpdate,DR_RACK,DR_DROP,
+              daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,coworker,
               render:()=>render(performance.now()),
               step:(n=1,d=1/60)=>{for(let i=0;i<n;i++){update(d);render(performance.now());}}};
 
