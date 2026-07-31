@@ -1143,17 +1143,6 @@ const keys=new Set();
 const KEYMAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
               w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
 
-/* rekan kerja penyuluh — mondar-mandir di ruang data (patroli col 6) */
-const coworker={x:6*T+8,y:6*T+8,wps:[[6*T+8,6*T+8],[6*T+8,12*T+8]],wi:0,t:0,moving:false,dir:1,frame:0};
-function coworkerUpdate(dt){
-  const c=coworker,[tx,ty]=c.wps[c.wi];
-  if(c.t>0){c.t-=dt;c.moving=false;return;}                 // jeda di ujung patroli
-  const dx=tx-c.x,dy=ty-c.y,m=Math.hypot(dx,dy);
-  if(m<1){c.x=tx;c.y=ty;c.wi=(c.wi+1)%c.wps.length;c.t=2+Math.random()*3;c.moving=false;}
-  else{const sp=20*dt;c.x+=dx/m*sp;c.y+=dy/m*sp;c.moving=true;c.frame+=dt*6;
-    if(Math.abs(dx)>.3)c.dir=dx>0?1:-1;}
-}
-
 /* anak dino peliharaan — berkeliaran acak antar tile bebas */
 const pet={x:6*T+8,y:15*T+12,tx:null,ty:null,timer:1,dir:1,frame:0,hopT:0,reactCd:0,
            mode:'wander',followT:0,repathT:0,path:null,moving:false,sleepT:0};
@@ -1616,7 +1605,7 @@ function update(dt){
     player.animT+=dt*Math.min(1.2,mag+.2);
   }else player.animT=0;
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
-  petUpdate(dt);botUpdate(dt);droneUpdate(dt);coworkerUpdate(dt);
+  petUpdate(dt);botUpdate(dt);droneUpdate(dt);
   if(music.on){music.visT+=dt;const beat=60/TRACKS[music.track].bpm;   // pet ikut goyang tiap ketukan
     if(music.visT>=beat){music.visT-=beat;if(pet.hopT<=0)pet.hopT=.4;}}
 
@@ -1701,13 +1690,6 @@ function render(t){
       cx.fillStyle='rgba(200,220,240,.85)';
       cx.fillRect(zx,zy,3,1);cx.fillRect(zx+2,zy+1,1,1);cx.fillRect(zx,zy+2,3,1);
     }
-  }});
-  items.push({y:coworker.y,draw:()=>{                           // rekan kerja (rompi biru)
-    const c=coworker,x=Math.round(c.x),y=Math.round(c.y),step=c.moving?Math.floor(c.frame)%2:0;
-    cx.fillStyle='rgba(0,0,0,.25)';cx.fillRect(x-3,y-1,6,2);
-    cx.fillStyle='#2a3550';cx.fillRect(x-2,y-3-step,2,3+step);cx.fillRect(x+1,y-3,2,3-step); // kaki jalan
-    cx.fillStyle='#3a5a8a';cx.fillRect(x-3,y-9,6,6);cx.fillStyle='#4a6f9f';cx.fillRect(x-3,y-9,6,1); // rompi
-    cx.fillStyle='#c99a6a';cx.fillRect(x-2,y-13,4,4);cx.fillStyle='#2a1c12';cx.fillRect(x-2,y-13,4,1); // kepala+rambut
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
   /* drone kargo antar-panen — digambar setelah pemain (terbang di atas kepala) */
@@ -1824,7 +1806,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS,
               fog:()=>fogOn,SEATS,goToSeat,sitDown,standUp,seatAtFront,
               music,jukebox,jukeCycle,jukeAtFront,goToJuke,TRACKS,
               setHour:h=>{forcedHour=h;skyBucket=-1;tickSky();render(performance.now());},
-              daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,coworker,
+              daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,
               render:()=>render(performance.now()),
               step:(n=1,d=1/60)=>{for(let i=0;i<n;i++){update(d);render(performance.now());}}};
 
