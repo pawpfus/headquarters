@@ -317,9 +317,9 @@ function buildBG(){
       P(g,'#232a36',px,py,T,T);
       for(let x=0;x<T;x+=6)P(g,'#1d2430',px+x,py,1,T);
       P(g,'#10141c',px,py+T-4,T,4);                      // list bawah dinding
-      P(g,'#ffcf4a',px,py+T-5,T,1);                      // strip cahaya kuning
+      P(g,'#dbb03f',px,py+T-5,T,1);                      // strip cahaya kuning (agak redup)
       P(g,'rgba(0,0,0,.25)',px,py+T,T,4);                // bayangan jatuh ke lantai
-      pool(g,px,py+T+4,T,7,'255,207,74',.055);           // cahaya strip meleleh ke lantai
+      pool(g,px,py+T+4,T,7,'219,176,63',.045);           // cahaya strip meleleh ke lantai (agak redup)
     }else{
       P(g,'#161b24',px,py,T,T);
       for(let y=0;y<T;y+=8)P(g,'#1a2029',px,py+y,T,1);
