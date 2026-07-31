@@ -62,7 +62,7 @@ const DECOR_SOLID=[
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
   {x:7, y:16,w:1,h:1},{x:1, y:4, w:1,h:1},                      // lampu lantai, dispenser air
   {x:1, y:12,w:1,h:1},{x:9, y:6, w:1,h:1},                      // peti, loker
-  {x:5, y:5, w:2,h:1},{x:9, y:5, w:1,h:1},                      // terminal ops (tengah), peti logam (samping loker)
+  {x:5, y:5, w:2,h:1},{x:4,y:13,w:4,h:1},                      // terminal ops (tengah), partisi separator lounge (celah masuk di kanan)
   {x:22,y:7, w:1,h:1},{x:23,y:4, w:1,h:1},{x:17,y:7, w:1,h:1},  // lampu, rak data, tanaman (kanan-atas)
   {x:23,y:10,w:1,h:1},{x:15,y:10,w:1,h:1},{x:15,y:16,w:1,h:1}, // rak besi, tabung, ban (kanan-bawah)
   {x:4, y:16,w:1,h:1},                                          // jukebox (lounge)
@@ -734,13 +734,16 @@ anims.push({f:terminal,fn:(g,t)=>{                             // layar: baris d
   scr(terminal.px+5,terminal.py+4,1);
   scr(terminal.px+terminal.canvas.width-13,terminal.py+4,9);
 }});
-/* peti logam — pojok logistik kecil di samping loker (imbangi berat kiri) */
-const crateNW=furn({x:9,y:5,w:1,h:1},7,(g,w,h)=>{
-  P(g,'#5f6b7a',2,6,11,10);P(g,'#74808f',2,6,11,2);P(g,'#3f4854',2,11,11,1);  // peti bawah
-  P(g,'#2a303c',7,6,1,10);
-  P(g,'#4a5468',4,0,8,6);P(g,'#5f6b7a',4,0,8,2);P(g,'#4cc9e0',6,2,4,1);        // peti atas + strip
+/* partisi separator — batas kaca-logam antara ruang kerja & lounge (celah masuk di kanan, kolom 8-9) */
+const divider=furn({x:4,y:13,w:4,h:1},10,(g,w,h)=>{
+  const yt=4, yb=h-3;                                          // atas & dasar partisi (naik ~6px di atas ubin)
+  P(g,'rgba(120,170,200,.20)',1,yt+3,w-2,yb-yt-5);           // panel kaca beku
+  P(g,'rgba(190,220,238,.12)',1,yt+3,w-2,3);                  // kilau atas kaca
+  P(g,'#3a4453',0,yt,w,3);P(g,'#4cc9e0',0,yt+1,w,1);          // rel atas logam + garis neon cyan
+  P(g,'#2b3340',0,yb,w,3);P(g,'#1a2029',0,yb+2,w,1);          // rel bawah logam
+  for(let x=0;x<w;x+=15){P(g,'#455063',x,yt,3,yb-yt+3);P(g,'#5a6675',x,yt,3,2);} // tiang tiap ubin
 });
-FURN.push(crateNW);
+FURN.push(divider);
 /* --- pengisi kamar kanan-atas (pelaporan) --- */
 const rackC=furn({x:23,y:4,w:1,h:1},4,g=>{rackPaint(g);});   // rak data (dinding kanan)
 const potRA=furn({x:17,y:7,w:1,h:1},4,potPaint);             // tanaman sudut
