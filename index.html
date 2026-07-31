@@ -194,13 +194,13 @@ const DECOR_SOLID=[
   {x:1, y:2, w:1,h:1},{x:23,y:2, w:1,h:1},{x:19,y:15,w:2,h:1},  // rak, rak, peti
   {x:7, y:2, w:1,h:1},{x:1, y:7, w:1,h:1},{x:19,y:2, w:1,h:1},  // pot (samping stasiun)
   {x:8, y:16,w:2,h:1},{x:9, y:11,w:1,h:1},                      // bangku (pojok santai), drum
-  {x:15,y:2, w:1,h:1},{x:20,y:9, w:1,h:1},{x:20,y:10,w:1,h:1},  // kabinet, rak alat, tong
+  {x:15,y:2, w:1,h:1},{x:20,y:9, w:1,h:1},  // kabinet, rak alat
   {x:11,y:2, w:3,h:1},{x:5, y:14,w:2,h:1},{x:5, y:16,w:2,h:1},  // hidroponik (lorong), TV, sofa
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
   {x:7, y:16,w:1,h:1},{x:1, y:4, w:1,h:1},                      // lampu lantai, dispenser air
   {x:1, y:12,w:1,h:1},{x:9, y:6, w:1,h:1},                      // peti, loker
   {x:22,y:7, w:1,h:1},{x:23,y:4, w:1,h:1},{x:17,y:7, w:1,h:1},  // lampu, rak data, tanaman (kanan-atas)
-  {x:15,y:10,w:1,h:1},{x:15,y:16,w:1,h:1}, // tabung, ban (kanan-bawah)
+  {x:23,y:10,w:1,h:1},{x:15,y:10,w:1,h:1},{x:15,y:16,w:1,h:1}, // rak besi, tabung, ban (kanan-bawah)
   {x:4, y:16,w:1,h:1},                                          // jukebox (lounge)
 ];
 const solid=new Uint8Array(COLS*ROWS);
@@ -801,10 +801,6 @@ const toolRack=furn({x:20,y:9,w:1,h:1},12,(g)=>{
   P(g,'#8a6a42',10,5,1,7);P(g,'#c9c9d2',9,3,3,2);                            // kunci
   P(g,'#2a303c',2,18,12,10);                                                 // meja bawah
 });
-const barrels=furn({x:20,y:10,w:1,h:1},6,(g)=>{
-  P(g,'#6e4a2a',2,4,12,17);P(g,'#815a36',2,4,12,2);                          // tong kayu
-  P(g,'#573a20',2,10,12,2);P(g,'#573a20',2,16,12,2);
-});
 /* lampu lantai — penyatu pojok santai + aksen hangat di kamar kanan */
 const lampPaint=(g,w,h)=>{
   P(g,'#c89a3a',4,2,8,2);                                                     // rim kap
@@ -838,6 +834,13 @@ const locker=furn({x:9,y:6,w:1,h:1},8,(g,w,h)=>{
 const rackC=furn({x:23,y:4,w:1,h:1},4,g=>{rackPaint(g);});   // rak data (dinding kanan)
 const potRA=furn({x:17,y:7,w:1,h:1},4,potPaint);             // tanaman sudut
 /* --- pengisi kamar kanan-bawah (bengkel) --- */
+const shelfR=furn({x:23,y:10,w:1,h:1},8,(g,w,h)=>{           // rak besi suku cadang
+  P(g,'#3a4250',2,2,12,h-4);P(g,'#2a303c',2,2,12,2);           // rangka
+  P(g,'#4a5468',3,7,10,1);P(g,'#4a5468',3,13,10,1);            // ambalan
+  P(g,'#7a7f88',4,3,3,2);P(g,'#9aa0aa',9,3,2,2);               // balok logam
+  P(g,'#c9a24a',5,9,2,3);P(g,'#5f6670',9,9,3,3);               // baut & roda gigi
+  P(g,'#8a6a42',4,15,6,2);                                     // kayu
+});
 const gasCyl=furn({x:15,y:10,w:1,h:1},8,(g,w,h)=>{           // tabung gas
   P(g,'#55555f',6,1,4,5);P(g,'#3a3a42',6,1,4,2);               // katup
   P(g,'#b5482f',4,5,8,h-7);P(g,'#c95a3a',4,5,8,2);             // tabung merah
@@ -859,8 +862,8 @@ const jukebox=furn({x:4,y:16,w:1,h:1},14,(g,w,h)=>{          // h=30
   P(g,'#e8c05a',5,22,2,2);P(g,'#7ee06a',8,22,2,2);P(g,'#4cc9e0',11,22,1,2); // tombol
   P(g,'#2a1810',2,h-3,12,3);                                  // dasar
 });
-FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,barrels,lamp,cooler,boxes,locker,
-          lamp2,rackC,potRA,gasCyl,tires,jukebox);
+FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,lamp,cooler,boxes,locker,
+          lamp2,rackC,potRA,shelfR,gasCyl,tires,jukebox);
 anims.push({fn:(g,t)=>{                                       // layar & equalizer jukebox
   const jx=jukebox.px,jy=jukebox.py,dx=jx+4,dy=jy+6;
   if(music.on){
