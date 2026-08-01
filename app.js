@@ -562,31 +562,58 @@ anims.push({f:FURN[3],fn:(g,t)=>{                              // peta sampel: g
 
 /* --- TUNGKU TEMPA : SKP FORGE --- */
 FURN.push(furn(TOOLS[4].rect,22,(g,w,h)=>{
-  /* cerobong */
-  P(g,'#4a4a52',w-16,0,12,24);P(g,'#3a3a42',w-16,0,12,2);
-  for(let y=3;y<22;y+=5)P(g,'#3f3f47',w-16+(y%2?1:5),y,5,2);
-  /* badan tungku batu */
-  P(g,'#55555f',2,10,w-4,h-14);P(g,'#3a3a42',2,10,w-4,2);
-  for(let y=14;y<h-6;y+=6)for(let x=4;x<w-6;x+=8)
-    P(g,'#4a4a52',x+((y/6)%2?3:0),y,6,4);
-  P(g,'#1a1a20',8,18,14,12);                                    // mulut tungku
-  /* landasan (anvil) + palu */
-  P(g,'#26262e',28,22,14,5);P(g,'#33333d',30,20,10,3);P(g,'#26262e',32,27,6,5);
-  P(g,'#8a6a42',40,16,2,7);P(g,'#55555f',38,14,6,4);
   P(g,'#232833',2,h-4,w-4,4);                                   // alas logam
+  /* --- badan tungku batu (kiri-tengah) --- */
+  P(g,'#544a40',2,10,26,h-14);                                 // blok batu hangat
+  for(let y=13;y<h-6;y+=6)P(g,'#39322a',2,y,26,1);             // garis mortar
+  for(let y=11;y<h-8;y+=6)for(let x=4;x<26;x+=8)               // pola bata selang-seling
+    P(g,'#5f5548',x+((y/6)&1?4:0),y+1,6,4);
+  P(g,'#2e2820',18,26,1,10);P(g,'#2e2820',19,30,1,4);          // retak
+  /* pita besi + paku keling */
+  P(g,'#33333d',2,20,26,3);P(g,'#26262e',2,22,26,1);
+  P(g,'#33333d',2,40,26,3);P(g,'#26262e',2,42,26,1);
+  for(let x=5;x<27;x+=6){P(g,'#5a6675',x,20,1,1);P(g,'#5a6675',x,40,1,1);}
+  /* --- cerobong di atas mulut --- */
+  P(g,'#4a4238',9,0,12,12);
+  for(let y=2;y<12;y+=3)P(g,'#39322a',9,y,12,1);               // susunan bata
+  P(g,'#33333d',8,0,14,3);P(g,'#5a6675',11,1,1,1);P(g,'#5a6675',18,1,1,1); // tudung besi + keling
+  P(g,'#241a12',13,3,2,9);                                     // jelaga
+  /* --- mulut melengkung + jelaga --- */
+  P(g,'#241a12',5,23,20,21);                                   // halo jelaga
+  P(g,'#6b5f4e',6,24,18,3);P(g,'#7a6d58',13,23,4,3);           // lengkung bata + batu kunci
+  P(g,'#120c07',7,28,16,15);                                   // rongga (diisi anim)
+  /* tang tergantung di sisi badan */
+  P(g,'#55555f',25,14,3,2);P(g,'#8a6a42',25,16,1,8);P(g,'#8a6a42',27,16,1,8);
+  /* --- landasan (anvil) + tunggul kayu --- */
+  P(g,'#3a2a1a',32,45,10,h-45);P(g,'#4a3420',32,45,10,2);      // tunggul
+  P(g,'#3a3a44',30,39,15,4);P(g,'#4a4a54',30,39,15,1);         // muka landasan
+  P(g,'#2a2a32',27,40,3,2);                                    // tanduk
+  P(g,'#2a2a32',34,43,7,3);                                    // pinggang + kaki
 }));
-anims.push({f:FURN[4],fn:(g,t)=>{                              // api + bara + asap
-  const f=FURN[4],x=f.px+8,y=f.py+18,fr=Math.floor(t/140)%3;
-  P(g,'#1a1a20',x,y,14,12);
-  P(g,'#e04f2a',x+2,y+6,10,6);
-  P(g,'#ff8c3a',x+3+(fr===1?1:0),y+4,8,7);
-  P(g,'#ffd75e',x+5+(fr===2?1:0),y+6-fr,4,6);
-  P(g,'#fff3c0',x+6,y+8,2,3);
-  const r=rnd(Math.floor(t/200),3);                             // percikan bara
-  if(r%3===0)P(g,'#ffd75e',x+3+r%9,y-2-(r>>3)%4,1,1);
-  const sm=Math.floor(t/600)%2;                                 // asap cerobong
-  P(g,'rgba(200,200,210,.30)',f.px+f.canvas.width-14+(sm?2:0),f.py-5,7,4);
-  P(g,'rgba(200,200,210,.18)',f.px+f.canvas.width-11-(sm?2:0),f.py-11,9,5);
+anims.push({f:FURN[4],fn:(g,t)=>{                              // api bernapas + tempa + asap
+  const f=FURN[4], mx=f.px+7, my=f.py+28;
+  const breath=0.55+0.45*Math.sin(t/480), fr=Math.floor(t/120)%3;
+  P(g,'#160e07',mx,my,16,15);                                  // rongga gelap
+  P(g,'#7a2410',mx+1,my+11,14,4);P(g,'#c8401a',mx+2,my+12,12,2); // hamparan bara
+  P(g,'#e04f2a',mx+2,my+6,12,9);                               // api merah
+  P(g,'#ff8c3a',mx+3+(fr===1?1:0),my+4,10,10);                 // oranye
+  P(g,'#ffd75e',mx+5+(fr===2?1:0),my+3,6,9);                   // kuning
+  P(g,'#fff3c0',mx+7,my+7,2,5);                                // inti putih
+  P(g,`rgba(255,150,60,${(0.14*breath).toFixed(3)})`,mx-3,my-3,22,22); // pendar bata
+  const r=rnd(Math.floor(t/150),3);
+  if(r%2===0)P(g,'#ffd75e',mx+2+r%12,my-2-(r>>3)%5,1,1);       // percikan naik
+  /* palu menempa: angkat perlahan → jatuh cepat → dentum */
+  const ax=f.px+34, ay=f.py+39, cyc=(t%1400)/1400;
+  let hy; if(cyc<0.75)hy=ay-4-Math.round(9*(cyc/0.75));
+  else if(cyc<0.85)hy=ay-13+Math.round(9*((cyc-0.75)/0.10)); else hy=ay-4;
+  P(g,'#8a6a42',ax+3,hy+3,1,8);P(g,'#55555f',ax,hy,6,4);P(g,'#6a6a72',ax,hy,6,1);
+  if(cyc>=0.85&&cyc<0.95){for(let i=0;i<6;i++){const a=rnd(i,Math.floor(t/50));
+    P(g,'#ffd75e',ax+3+(a%9)-4,ay-1-(a>>3)%5,1,1);}
+    P(g,'rgba(255,220,120,.5)',ax-1,ay-2,8,3);}                // dentum → percikan
+  /* asap cerobong — tiga kepul naik memudar */
+  const puff=(o,al,sz)=>{const yy=f.py-3-((t/45+o)%20);
+    P(g,`rgba(200,200,210,${al})`,f.px+13+(Math.sin((t+o*400)/500)*2|0),yy,sz,sz-1);};
+  puff(0,.28,6);puff(600,.19,8);puff(1200,.11,10);
 }});
 
 /* --- MEJA NAVIGASI FARM AXIS : COOPERSTOWN --- */
