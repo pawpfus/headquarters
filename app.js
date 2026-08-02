@@ -317,9 +317,17 @@ function buildBG(){
       P(g,'#232a36',px,py,T,T);
       for(let x=0;x<T;x+=6)P(g,'#1d2430',px+x,py,1,T);
       P(g,'#10141c',px,py+T-4,T,4);                      // list bawah dinding
-      P(g,'#dbb03f',px,py+T-5,T,1);                      // strip cahaya kuning (agak redup)
+      /* strip cahaya: warna per-zona · redup siang / terang malam · hazard di ruang panas */
+      const wz=tx<10?'L':tx<15?'C':((ty+1)<9?'RT':'RB');
+      const br=(0.45+0.55*daylight.lamp).toFixed(2);     // kecerahan ikut jam
+      const SC={L:[46,224,255],C:[219,176,63],RT:[110,224,168]};  // data cyan · lorong amber · briefing hijau
+      if(wz==='RB'){                                      // forge/bengkel — pita hazard kuning-hitam
+        for(let x=0;x<T;x+=6){P(g,`rgba(219,176,63,${br})`,px+x,py+T-5,3,1);
+          P(g,'rgba(10,10,12,.85)',px+x+3,py+T-5,3,1);}
+      }else{const c=SC[wz];P(g,`rgba(${c[0]},${c[1]},${c[2]},${br})`,px,py+T-5,T,1);}
       P(g,'rgba(0,0,0,.25)',px,py+T,T,4);                // bayangan jatuh ke lantai
-      pool(g,px,py+T+4,T,7,'219,176,63',.045);           // cahaya strip meleleh ke lantai (agak redup)
+      const gc=(SC[wz]||[219,176,63]).join(',');
+      pool(g,px,py+T+4,T,7,gc,(.05*daylight.lamp+.02).toFixed(3)); // cahaya meleleh ke lantai
     }else{
       P(g,'#161b24',px,py,T,T);
       for(let y=0;y<T;y+=8)P(g,'#1a2029',px,py+y,T,1);
@@ -589,6 +597,10 @@ FURN.push(furn(TOOLS[4].rect,22,(g,w,h)=>{
   P(g,'#3a3a44',30,39,15,4);P(g,'#4a4a54',30,39,15,1);         // muka landasan
   P(g,'#2a2a32',27,40,3,2);                                    // tanduk
   P(g,'#2a2a32',34,43,7,3);                                    // pinggang + kaki
+  /* rangka palu-tempa vertikal (gantry di atas landasan) */
+  P(g,'#33333d',29,19,17,3);P(g,'#4a4a54',29,19,17,1);         // palang atas
+  P(g,'#3a3a44',30,21,2,19);P(g,'#2a2a32',30,21,1,19);         // tiang kiri
+  P(g,'#3a3a44',43,21,2,19);P(g,'#4a4a54',44,21,1,19);         // tiang kanan
 }));
 anims.push({f:FURN[4],fn:(g,t)=>{                              // api bernapas + tempa + asap
   const f=FURN[4], mx=f.px+7, my=f.py+28;
@@ -602,19 +614,15 @@ anims.push({f:FURN[4],fn:(g,t)=>{                              // api bernapas +
   P(g,`rgba(255,150,60,${(0.14*breath).toFixed(3)})`,mx-3,my-3,22,22); // pendar bata
   const r=rnd(Math.floor(t/150),3);
   if(r%2===0)P(g,'#ffd75e',mx+2+r%12,my-2-(r>>3)%5,1,1);       // percikan naik
-  /* palu-tempa berporos: lengan mengayun, kepala menghantam billet panas di landasan */
+  /* palu-tempa VERTIKAL: kepala besi jatuh lurus dalam rangka ke billet panas */
   const cyc=(t%1300)/1300;
-  let s; if(cyc<0.60)s=0; else if(cyc<0.70)s=(cyc-0.60)/0.10;     // tahan terangkat → jatuh cepat
-    else if(cyc<0.78)s=1; else s=1-(cyc-0.78)/0.22;              // hantam (tahan) → ayun naik
-  const pvx=f.px+45, pvy=f.py+27;                                // sendi poros (kanan-atas)
-  const hx=Math.round(f.px+31+3*s), hy=Math.round(f.py+25+13*s); // kepala menyusuri busur
-  P(g,'#3a3a44',f.px+44,f.py+26,3,16);P(g,'#4a4a54',f.px+44,f.py+26,3,2); // tiang penyangga
-  P(g,'#2a2a32',pvx-1,pvy-1,3,3);                                // sendi
-  for(let i=0;i<=8;i++){const bx=Math.round(pvx+(hx-pvx)*i/8),by=Math.round(pvy+(hy-pvy)*i/8);
-    P(g,'#6e4a2a',bx,by,2,2);}                                   // lengan kayu
-  P(g,'#4a4a54',hx-4,hy-1,9,3);P(g,'#6a6a72',hx-4,hy-1,9,1);     // kepala palu (batang melintang)
-  P(g,'#33333d',hx-4,hy+1,9,1);P(g,'#39414f',hx+3,hy-1,2,3);     // muka pemukul + ujung
-  P(g,'#2a2a32',hx-1,hy-1,2,3);                                  // mata (gagang masuk)
+  let s; if(cyc<0.58)s=0; else if(cyc<0.66)s=(cyc-0.58)/0.08;    // tahan terangkat → jatuh cepat
+    else if(cyc<0.74)s=1; else s=1-(cyc-0.74)/0.26;             // hantam (tahan) → naik lagi
+  const cxh=f.px+36, topY=f.py+20+Math.round(11*s);             // kepala turun saat s→1
+  const shH=topY-(f.py+21); if(shH>0)P(g,'#8a8a94',cxh-1,f.py+21,2,shH); // batang shaft
+  P(g,'#4a4a54',cxh-3,topY,6,8);P(g,'#6a6a72',cxh-3,topY,6,1);  // kepala besi (vertikal)
+  P(g,'#2f2f37',cxh-3,topY,1,8);P(g,'#5a5a64',cxh+2,topY,1,8);  // sisi gelap/terang
+  P(g,'#33333d',cxh-3,topY+7,6,1);                              // muka pemukul (bawah)
   const hit=s>0.85, wx=f.px+32, wy=f.py+37;                      // billet panas di landasan
   P(g,hit?'#fff3c0':'#ff9a3a',wx,wy,6,2);P(g,hit?'#ffd75e':'#e0641a',wx,wy+1,6,1);
   if(hit){for(let i=0;i<7;i++){const a=rnd(i,Math.floor(t/40));
