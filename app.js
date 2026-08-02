@@ -612,7 +612,9 @@ anims.push({f:FURN[4],fn:(g,t)=>{                              // api bernapas +
   P(g,'#2a2a32',pvx-1,pvy-1,3,3);                                // sendi
   for(let i=0;i<=8;i++){const bx=Math.round(pvx+(hx-pvx)*i/8),by=Math.round(pvy+(hy-pvy)*i/8);
     P(g,'#6e4a2a',bx,by,2,2);}                                   // lengan kayu
-  P(g,'#55555f',hx-2,hy-1,6,4);P(g,'#6a6a72',hx-2,hy-1,6,1);     // kepala palu
+  P(g,'#4a4a54',hx-4,hy-1,9,3);P(g,'#6a6a72',hx-4,hy-1,9,1);     // kepala palu (batang melintang)
+  P(g,'#33333d',hx-4,hy+1,9,1);P(g,'#39414f',hx+3,hy-1,2,3);     // muka pemukul + ujung
+  P(g,'#2a2a32',hx-1,hy-1,2,3);                                  // mata (gagang masuk)
   const hit=s>0.85, wx=f.px+32, wy=f.py+37;                      // billet panas di landasan
   P(g,hit?'#fff3c0':'#ff9a3a',wx,wy,6,2);P(g,hit?'#ffd75e':'#e0641a',wx,wy+1,6,1);
   if(hit){for(let i=0;i<7;i++){const a=rnd(i,Math.floor(t/40));
