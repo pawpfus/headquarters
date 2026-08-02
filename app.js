@@ -602,14 +602,22 @@ anims.push({f:FURN[4],fn:(g,t)=>{                              // api bernapas +
   P(g,`rgba(255,150,60,${(0.14*breath).toFixed(3)})`,mx-3,my-3,22,22); // pendar bata
   const r=rnd(Math.floor(t/150),3);
   if(r%2===0)P(g,'#ffd75e',mx+2+r%12,my-2-(r>>3)%5,1,1);       // percikan naik
-  /* palu menempa: angkat perlahan → jatuh cepat → dentum */
-  const ax=f.px+34, ay=f.py+39, cyc=(t%1400)/1400;
-  let hy; if(cyc<0.75)hy=ay-4-Math.round(9*(cyc/0.75));
-  else if(cyc<0.85)hy=ay-13+Math.round(9*((cyc-0.75)/0.10)); else hy=ay-4;
-  P(g,'#8a6a42',ax+3,hy+3,1,8);P(g,'#55555f',ax,hy,6,4);P(g,'#6a6a72',ax,hy,6,1);
-  if(cyc>=0.85&&cyc<0.95){for(let i=0;i<6;i++){const a=rnd(i,Math.floor(t/50));
-    P(g,'#ffd75e',ax+3+(a%9)-4,ay-1-(a>>3)%5,1,1);}
-    P(g,'rgba(255,220,120,.5)',ax-1,ay-2,8,3);}                // dentum → percikan
+  /* palu-tempa berporos: lengan mengayun, kepala menghantam billet panas di landasan */
+  const cyc=(t%1300)/1300;
+  let s; if(cyc<0.60)s=0; else if(cyc<0.70)s=(cyc-0.60)/0.10;     // tahan terangkat → jatuh cepat
+    else if(cyc<0.78)s=1; else s=1-(cyc-0.78)/0.22;              // hantam (tahan) → ayun naik
+  const pvx=f.px+45, pvy=f.py+27;                                // sendi poros (kanan-atas)
+  const hx=Math.round(f.px+31+3*s), hy=Math.round(f.py+25+13*s); // kepala menyusuri busur
+  P(g,'#3a3a44',f.px+44,f.py+26,3,16);P(g,'#4a4a54',f.px+44,f.py+26,3,2); // tiang penyangga
+  P(g,'#2a2a32',pvx-1,pvy-1,3,3);                                // sendi
+  for(let i=0;i<=8;i++){const bx=Math.round(pvx+(hx-pvx)*i/8),by=Math.round(pvy+(hy-pvy)*i/8);
+    P(g,'#6e4a2a',bx,by,2,2);}                                   // lengan kayu
+  P(g,'#55555f',hx-2,hy-1,6,4);P(g,'#6a6a72',hx-2,hy-1,6,1);     // kepala palu
+  const hit=s>0.85, wx=f.px+32, wy=f.py+37;                      // billet panas di landasan
+  P(g,hit?'#fff3c0':'#ff9a3a',wx,wy,6,2);P(g,hit?'#ffd75e':'#e0641a',wx,wy+1,6,1);
+  if(hit){for(let i=0;i<7;i++){const a=rnd(i,Math.floor(t/40));
+    P(g,'#ffd75e',wx+3+(a%9)-4,wy-1-(a>>3)%5,1,1);}
+    P(g,'rgba(255,220,120,.55)',wx-2,wy-2,10,3);}               // dentum → kilau + percikan
   /* asap cerobong — tiga kepul naik memudar */
   const puff=(o,al,sz)=>{const yy=f.py-3-((t/45+o)%20);
     P(g,`rgba(200,200,210,${al})`,f.px+13+(Math.sin((t+o*400)/500)*2|0),yy,sz,sz-1);};
