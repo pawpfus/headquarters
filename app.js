@@ -62,7 +62,7 @@ const DECOR_SOLID=[
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
   {x:7, y:16,w:1,h:1},{x:1, y:4, w:1,h:1},                      // lampu lantai, dispenser air
   {x:1, y:12,w:1,h:1},{x:9, y:6, w:1,h:1},                      // peti, loker
-  {x:2, y:2, w:2,h:1},{x:4,y:13,w:4,h:1},                      // lift (samping EVIDENCE, hook lantai 2), partisi separator lounge (celah masuk di kanan)
+  {x:4,y:13,w:4,h:1},                                          // partisi separator lounge (celah masuk di kanan) — lift kini menempel dinding (row 1, sudah solid)
   {x:22,y:7, w:1,h:1},{x:23,y:4, w:1,h:1},{x:17,y:7, w:1,h:1},  // lampu, rak data, tanaman (kanan-atas)
   {x:23,y:10,w:1,h:1},{x:15,y:10,w:1,h:1},{x:15,y:16,w:1,h:1}, // rak besi, tabung, ban (kanan-bawah)
   {x:4, y:16,w:1,h:1},                                          // jukebox (lounge)
@@ -793,32 +793,43 @@ const locker=furn({x:9,y:6,w:1,h:1},8,(g,w,h)=>{
   P(g,'#1a2029',4,5,4,1);P(g,'#1a2029',9,5,3,1);                              // ventilasi
   P(g,'#c9c9d2',6,9,1,2);P(g,'#c9c9d2',10,9,1,2);                             // gagang
 });
-/* LIFT — pintu elevator di samping EVIDENCE (hook lantai 2: pusat kendali).
-   Warna baja/logam khas lift; indikator lantai beranimasi. */
-const lift=furn({x:2,y:2,w:2,h:1},22,(g,w,h)=>{
-  P(g,'#242932',1,0,w-2,h);P(g,'#333a44',1,0,w-2,1);           // panel bingkai baja
-  P(g,'#12161c',4,6,w-8,1);                                    // list bawah lintel
-  P(g,'#0a0e13',8,1,16,5);                                     // housing indikator (diisi anim)
-  /* pintu baja dua daun */
-  P(g,'#7a828c',5,8,w-10,h-12);                                // dasar baja
-  for(let x=6;x<w-5;x+=2)P(g,(x&2)?'#868f99':'#6c747d',x,8,1,h-12); // garis brushed
-  P(g,'#a8b2bc',5,8,w-10,1);P(g,'#a8b2bc',5,8,1,h-12);         // kilau atas/kiri
-  P(g,'#565c66',5,h-5,w-10,1);                                 // bayang bawah pintu
-  P(g,'#3a4048',(w>>1)-1,8,2,h-12);P(g,'#10141a',w>>1,8,1,h-12); // celah tengah dua daun
-  P(g,'#39404a',3,h-4,w-6,3);P(g,'#5a626c',3,h-4,w-6,1);       // ambang / sill
-  P(g,'#161b22',w-4,15,3,7);                                   // panel pemanggil (kanan)
+/* LIFT — elevator menempel dinding di samping EVIDENCE (hook lantai 2: pusat kendali).
+   Pintu KACA semi-transparan yang menggeser buka-tutup; interior kabin terlihat. */
+const lift=furn({x:2,y:1,w:2,h:1},16,(g,w,h)=>{
+  /* interior kabin (di dalam bukaan — tampak lewat kaca / saat pintu terbuka) */
+  P(g,'#141922',5,6,w-10,h-6);                                 // rongga
+  P(g,'#20272f',6,8,w-12,h-11);                                // dinding belakang
+  P(g,'#262e38',7,11,w-14,1);P(g,'#262e38',7,17,w-14,1);       // garis panel
+  P(g,'#12161c',6,h-3,w-12,3);                                 // lantai kabin
+  P(g,'#3a4450',w-10,12,3,8);P(g,'#5ee8c8',w-9,13,1,1);P(g,'#e8c05a',w-9,16,1,1); // panel kendali + LED
+  P(g,'rgba(150,210,235,.10)',6,8,w-12,4);                     // cahaya plafon
+  /* rangka baja flush dinding: lintel + jamb (tanpa sill, menempel) */
+  P(g,'#2b3039',0,0,w,6);P(g,'#3a414c',0,0,w,1);               // lintel
+  P(g,'#2b3039',0,0,5,h);P(g,'#2b3039',w-5,0,5,h);             // jamb kiri/kanan
+  P(g,'#12161c',5,6,1,h-6);P(g,'#12161c',w-6,6,1,h-6);         // bayangan dalam
+  P(g,'#0a0e13',8,1,16,4);                                     // housing indikator (anim)
 });
 FURN.push(lift);
-anims.push({f:lift,fn:(g,t)=>{                                 // indikator lantai + tombol panggil
-  const ix=lift.px+8, iy=lift.py+1;
-  P(g,'#0a0e13',ix,iy,16,5);
-  const phase=Math.floor(t/2600)%2, sub=(t%2600)/2600, up=phase===0;
-  const fl=up?(sub<0.5?'1':'2'):(sub<0.5?'2':'1'), col=up?'#7ee06a':'#e8c05a';
-  if(up){P(g,col,ix+3,iy+1,1,1);P(g,col,ix+2,iy+2,3,1);P(g,col,ix+2,iy+3,3,1);}  // panah naik
-  else {P(g,col,ix+2,iy+1,3,1);P(g,col,ix+2,iy+2,3,1);P(g,col,ix+3,iy+3,1,1);}   // panah turun
-  drawText(g,fl,ix+9,iy,'#ffcf4a');                            // digit lantai
-  if(sub>0.5&&sub<0.62)P(g,'rgba(255,220,120,.5)',ix,iy,16,5); // "ding" saat tiba
-  if(Math.floor(t/700)%2)P(g,'#e8c05a',lift.px+29,lift.py+17,1,2); // tombol panggil kedip
+anims.push({f:lift,fn:(g,t)=>{                                 // pintu kaca geser + indikator
+  const px=lift.px, py=lift.py, W=lift.canvas.width, Hc=lift.canvas.height;
+  const ox=px+5, oyd=py+6, ow=W-10, oh=Hc-6, half=ow>>1;
+  const p=(t%6000)/6000;                                       // siklus buka-tutup
+  let op; if(p<0.15)op=p/0.15; else if(p<0.55)op=1; else if(p<0.70)op=1-(p-0.55)/0.15; else op=0;
+  const cover=Math.round(half*(1-op));
+  const leaf=(lx,lw)=>{ if(lw<=0)return;
+    g.fillStyle='rgba(150,182,208,0.32)';g.fillRect(lx,oyd,lw,oh);       // kaca semi-transparan
+    g.fillStyle='rgba(205,228,245,0.20)';g.fillRect(lx,oyd,lw,1);        // kilau atas
+    g.fillStyle='rgba(96,126,156,0.55)';g.fillRect(lx,oyd,1,oh); };      // rangka tepi daun
+  leaf(ox, cover);                                             // daun kiri (menempel jamb)
+  leaf(ox+ow-cover, cover);                                    // daun kanan
+  if(op<0.12)P(g,'rgba(40,50,62,.85)',ox+half-1,oyd,2,oh);     // celah tengah saat tertutup
+  if(op>0.6)P(g,`rgba(150,200,230,${(0.12*op).toFixed(3)})`,px+6,py+Hc,W-12,6); // cahaya tumpah ke lantai
+  /* indikator lantai */
+  const ix=px+8, iy=py+1, open=op>0.5, col=open?'#7ee06a':'#e8c05a';
+  P(g,'#0a0e13',ix,iy,16,4);
+  if(open)P(g,col,ix+7,iy+1,2,2);                              // dot menyala (tiba lt.2)
+  else{P(g,col,ix+7,iy,1,1);P(g,col,ix+6,iy+1,3,1);P(g,col,ix+6,iy+2,3,1);} // panah naik
+  if(p>0.13&&p<0.22)P(g,'rgba(255,220,120,.5)',ix,iy,16,4);   // "ding" saat tiba
 }});
 /* partisi separator — batas kaca-logam antara ruang kerja & lounge (celah masuk di kanan, kolom 8-9) */
 const divider=furn({x:4,y:13,w:4,h:1},10,(g,w,h)=>{
