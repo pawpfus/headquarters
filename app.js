@@ -406,8 +406,7 @@ function buildBG(){
   pool(g, 7*T+4,10*T,40, 9,'94,232,200', .09);   // meja peta COOPERSTOWN (teal)
   pool(g,17*T+4,11*T,40,12,'224,124,58', .16);   // bara tungku ESC FORGE (oranye)
   pool(g,17*T+4,14*T,40,12,'159,184,208', .12);   // meja bengkel WORKSHOP (netral)
-  P(g,'rgba(255,222,150,.08)',21*T+2,6*T+4,3*T-2,2*T);   // cahaya hangat lampu kanan-atas
-  P(g,'rgba(255,222,150,.06)',21*T-2,6*T,3*T+2,3*T-4);
+  P(g,'rgba(94,232,200,.05)',21*T+2,6*T+2,3*T-2,2*T+4);   // pendar dingin relay siar (kanan-atas)
   /* --- jendela dinding luar: langit ikut waktu + berkas cahaya masuk --- */
   const dl=daylight, ci=a=>`rgb(${a[0]|0},${a[1]|0},${a[2]|0})`;
   /* matahari/bulan cuma tampak di satu jendela sesuai arahnya —
@@ -458,7 +457,6 @@ function buildBG(){
   /* lampu interior menyala lebih hangat saat langit gelap */
   if(dl.lamp>.02){
     P(g,`rgba(255,214,140,${(.15*dl.lamp).toFixed(3)})`,5*T,13*T+4,5*T,3*T);   // lampu lounge
-    P(g,`rgba(255,214,140,${(.13*dl.lamp).toFixed(3)})`,20*T,6*T,3*T,3*T-4);   // lampu kanan-atas
   }
 }
 buildBG();
@@ -768,7 +766,30 @@ const lampPaint=(g,w,h)=>{
   P(g,'#3a3a42',5,h-4,6,2);P(g,'#2a2a32',4,h-2,8,2);                          // dasar
 };
 const lamp=furn({x:7,y:16,w:1,h:1},20,lampPaint);
-const lamp2=furn({x:22,y:7,w:1,h:1},20,lampPaint);   // sudut ruang pelaporan (kanan-atas)
+/* relay siar / uplink — pengganti lampu di sudut ruang pelaporan (nyambung tema diseminasi) */
+const relayPaint=(g,w,h)=>{
+  P(g,'#2a2f38',3,h-4,10,4);P(g,'#3a4048',3,h-4,10,1);P(g,'#1a1f26',4,h-1,8,1); // pedestal
+  P(g,'#454f5e',7,7,2,h-11);P(g,'#5a6675',7,7,1,h-11);                          // mast
+  P(g,'#2e3540',3,h-16,10,9);P(g,'#3a4250',3,h-16,10,1);P(g,'#1a1f26',3,h-8,10,1); // unit
+  P(g,'#0a1620',4,h-15,8,5);P(g,'#0d2418',4,h-15,8,1);                          // panel (anim)
+  P(g,'#6a7686',3,10,10,1);P(g,'#6a7686',4,6,8,1);                              // palang antena
+  P(g,'#3a4250',5,2,6,3);P(g,'#4a5568',5,2,6,1);P(g,'#1a2029',6,3,4,1);         // dish
+  P(g,'#8f9aa8',8,4,1,3);                                                       // feed horn
+  P(g,'#c9c9d2',7,0,2,2);                                                       // beacon (anim)
+};
+const relay=furn({x:22,y:7,w:1,h:1},20,relayPaint);   // relay siar (kanan-atas)
+anims.push({f:relay,fn:(g,t)=>{
+  const px=relay.px, py=relay.py, Hc=relay.canvas.height;
+  const pxs=px+4, pys=py+Hc-15;
+  P(g,'#0a1620',pxs,pys,8,5);
+  for(let i=0;i<3;i++){const wl=1+((rnd(i,Math.floor(t/450))>>2)%5);
+    g.fillStyle=i===1?'#e8c05a':'#46d160';g.fillRect(pxs+1,pys+1+i,wl,1);}     // LED data
+  if(Math.floor(t/500)%2)P(g,'#ff5a5a',px+7,py,2,1);                           // beacon kedip
+  const cxb=px+8, cyb=py+3;                                                    // sinyal siar memancar
+  for(let k=0;k<3;k++){const ph=((t/600)+k*0.34)%1,r=Math.round(2+ph*7),a=(0.55*(1-ph)).toFixed(2);
+    g.fillStyle=`rgba(94,232,200,${a})`;
+    g.fillRect(cxb-r,cyb,1,1);g.fillRect(cxb+r,cyb,1,1);g.fillRect(cxb,cyb-r,1,1);}
+}});
 /* dispenser air (pengisi dinding kiri, bawah rak server) */
 const cooler=furn({x:1,y:4,w:1,h:1},6,(g,w,h)=>{
   P(g,'#3a5a8a',5,2,6,5);P(g,'#8fc9e0',6,2,4,4);                              // galon air
@@ -870,7 +891,7 @@ const jukebox=furn({x:4,y:16,w:1,h:1},14,(g,w,h)=>{          // h=30
   P(g,'#2a1810',2,h-3,12,3);                                  // dasar
 });
 FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,lamp,cooler,boxes,locker,
-          lamp2,rackC,potRA,shelfR,gasCyl,tires,jukebox);
+          relay,rackC,potRA,shelfR,gasCyl,tires,jukebox);
 anims.push({fn:(g,t)=>{                                       // layar & equalizer jukebox
   const jx=jukebox.px,jy=jukebox.py,dx=jx+4,dy=jy+6;
   if(music.on){
