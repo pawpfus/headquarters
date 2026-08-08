@@ -351,8 +351,8 @@ function buildBG(){
     P(g,'#12151b',16*T+2,12*T+4,12,8);for(let i=0;i<12;i+=3)P(g,'#2a2f38',16*T+3+i,12*T+5,1,6);
   })();
   /* --- aksen lantai lain: keset, noda oli --- */
-  P(g,'#1d3a30',4*T+2,3*T+2,28,12);P(g,'#2a4d3f',4*T+4,3*T+4,24,8);   // keset depan EVIDENCE
-  P(g,'#1d3a30',4*T+8,3*T+6,16,4);
+  P(g,'#1d3a30',2*T+2,2*T+2,28,12);P(g,'#2a4d3f',2*T+4,2*T+4,24,8);   // keset depan lift
+  P(g,'#1d3a30',2*T+8,2*T+6,16,4);
   const stain=(sx,sy)=>{P(g,'rgba(8,10,14,.55)',sx,sy,10,5);
     P(g,'rgba(8,10,14,.55)',sx+3,sy-3,5,11);P(g,'rgba(8,10,14,.35)',sx-3,sy+2,16,3);};
   stain(6*T+4,9*T+8);stain(18*T+2,13*T+8);stain(12*T+4,5*T+6);        // noda oli
@@ -394,10 +394,6 @@ function buildBG(){
   P(g,'#2e3542',12*T+2,4,12,16);P(g,'#0c1118',12*T+3,5,10,14);
   drawText(g,'HQ',12*T+4,8,'#4ce0ff');
   P(g,'#e8c05a',12*T+4,15,8,1);
-  /* radar (kolom 3, dinding berlantai dekat EVIDENCE) — sapuan dianimasikan */
-  P(g,'#10141c',3*T+2,4,12,12);P(g,'#2e3542',3*T+2,4,12,1);
-  P(g,'#0d2418',3*T+3,6,10,9);
-  P(g,'#1d4a30',3*T+5,8,6,5);P(g,'#0d2418',3*T+6,9,4,3);
   /* rak trofi logam (kolom 15) */
   P(g,'#2e3542',15*T+1,14,14,3);
   P(g,'#e8c05a',15*T+5,6,6,5);P(g,'#c89a3a',15*T+7,11,2,2);P(g,'#39414f',15*T+5,13,6,2);
@@ -998,7 +994,7 @@ anims.push({fn:(g,t)=>{                                         // globe hologra
   }
 }});
 
-/* --- animasi ambience HQ: LED panel, rak server, radar, holo-pad --- */
+/* --- animasi ambience HQ: LED panel, rak server, holo-pad --- */
 anims.push({fn:(g,t)=>{
   const LC=['#46d160','#e8c05a','#ff5a5a','#2ee0ff'];
   for(let i=0;i<6;i++)
@@ -1009,12 +1005,6 @@ anims.push({fn:(g,t)=>{
     P(g,((bl+1+i)&1)?'#e8c05a':'#5a4a16',r.px+9,r.py+10,1,1);
     P(g,(bl^(i&1))?'#ff5a5a':'#4a1616',r.px+6,r.py+15,1,1);
   });
-  const DIRS=[[3,0],[2,2],[0,3],[-2,2],[-3,0],[-2,-2],[0,-3],[2,-2]];
-  const fr=Math.floor(t/240)%8,d=DIRS[fr],cxr=3*T+8,cyr=10;
-  P(g,'#46d160',cxr,cyr,1,1);
-  P(g,'#2f9b53',cxr+(d[0]>>1),cyr+(d[1]>>1),1,1);
-  P(g,'#46d160',cxr+d[0],cyr+d[1],1,1);
-  if(fr===5)P(g,'#e8c05a',cxr-2,cyr+2,1,1);
 }});
 
 /* --- jendela: pantulan cahaya luar bergerak turun di kaca --- */
