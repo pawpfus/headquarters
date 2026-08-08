@@ -62,7 +62,7 @@ const DECOR_SOLID=[
   {x:18,y:5, w:3,h:1},                                          // meja rapat (kamar kanan-atas)
   {x:7, y:16,w:1,h:1},{x:1, y:4, w:1,h:1},                      // lampu lantai, dispenser air
   {x:1, y:12,w:1,h:1},{x:9, y:6, w:1,h:1},                      // peti, loker
-  {x:2, y:2, w:2,h:1},{x:4,y:13,w:4,h:1},                      // terminal ops (samping EVIDENCE), partisi separator lounge (celah masuk di kanan)
+  {x:2, y:2, w:2,h:1},{x:4,y:13,w:4,h:1},                      // lift (samping EVIDENCE, hook lantai 2), partisi separator lounge (celah masuk di kanan)
   {x:22,y:7, w:1,h:1},{x:23,y:4, w:1,h:1},{x:17,y:7, w:1,h:1},  // lampu, rak data, tanaman (kanan-atas)
   {x:23,y:10,w:1,h:1},{x:15,y:10,w:1,h:1},{x:15,y:16,w:1,h:1}, // rak besi, tabung, ban (kanan-bawah)
   {x:4, y:16,w:1,h:1},                                          // jukebox (lounge)
@@ -793,26 +793,32 @@ const locker=furn({x:9,y:6,w:1,h:1},8,(g,w,h)=>{
   P(g,'#1a2029',4,5,4,1);P(g,'#1a2029',9,5,3,1);                              // ventilasi
   P(g,'#c9c9d2',6,9,1,2);P(g,'#c9c9d2',10,9,1,2);                             // gagang
 });
-/* terminal ops — stasiun kerja di samping EVIDENCE: meja + dua monitor + tower */
-const terminal=furn({x:2,y:2,w:2,h:1},14,(g,w,h)=>{
-  P(g,'#39414f',1,16,w-2,8);P(g,'#4a5468',1,16,w-2,2);         // meja logam
-  P(g,'#2a303c',2,24,3,h-24);P(g,'#2a303c',w-5,24,3,h-24);     // kaki
-  P(g,'#2b2b33',3,2,12,13);P(g,'#101018',5,4,8,9);             // monitor kiri
-  P(g,'#2b2b33',w-15,2,12,13);P(g,'#101018',w-13,4,8,9);       // monitor kanan
-  P(g,'#3a3a44',8,15,2,2);P(g,'#3a3a44',w-10,15,2,2);          // leher monitor
-  P(g,'#2a303c',9,18,14,3);P(g,'#39414f',9,18,14,1);           // keyboard
-  P(g,'#33333d',0,10,3,14);P(g,'#4cc9e0',1,12,1,1);P(g,'#7ee06a',1,14,1,1); // tower + LED
+/* LIFT — pintu elevator di samping EVIDENCE (hook lantai 2: pusat kendali).
+   Warna baja/logam khas lift; indikator lantai beranimasi. */
+const lift=furn({x:2,y:2,w:2,h:1},22,(g,w,h)=>{
+  P(g,'#242932',1,0,w-2,h);P(g,'#333a44',1,0,w-2,1);           // panel bingkai baja
+  P(g,'#12161c',4,6,w-8,1);                                    // list bawah lintel
+  P(g,'#0a0e13',8,1,16,5);                                     // housing indikator (diisi anim)
+  /* pintu baja dua daun */
+  P(g,'#7a828c',5,8,w-10,h-12);                                // dasar baja
+  for(let x=6;x<w-5;x+=2)P(g,(x&2)?'#868f99':'#6c747d',x,8,1,h-12); // garis brushed
+  P(g,'#a8b2bc',5,8,w-10,1);P(g,'#a8b2bc',5,8,1,h-12);         // kilau atas/kiri
+  P(g,'#565c66',5,h-5,w-10,1);                                 // bayang bawah pintu
+  P(g,'#3a4048',(w>>1)-1,8,2,h-12);P(g,'#10141a',w>>1,8,1,h-12); // celah tengah dua daun
+  P(g,'#39404a',3,h-4,w-6,3);P(g,'#5a626c',3,h-4,w-6,1);       // ambang / sill
+  P(g,'#161b22',w-4,15,3,7);                                   // panel pemanggil (kanan)
 });
-FURN.push(terminal);
-anims.push({f:terminal,fn:(g,t)=>{                             // layar: baris data bergulir + kursor
-  const scr=(sx,sy,seed)=>{
-    P(g,'#08131c',sx,sy,8,9);
-    for(let i=0;i<4;i++){const yy=sy+1+i*2,wln=2+((rnd(seed+i,Math.floor(t/650))>>2)%6);
-      g.fillStyle=i%2?'#46d160':'#4cc9e0';g.fillRect(sx+1,yy,wln,1);}
-    if(Math.floor(t/500)%2)P(g,'#8fd45e',sx+1,sy+8,2,1);
-  };
-  scr(terminal.px+5,terminal.py+4,1);
-  scr(terminal.px+terminal.canvas.width-13,terminal.py+4,9);
+FURN.push(lift);
+anims.push({f:lift,fn:(g,t)=>{                                 // indikator lantai + tombol panggil
+  const ix=lift.px+8, iy=lift.py+1;
+  P(g,'#0a0e13',ix,iy,16,5);
+  const phase=Math.floor(t/2600)%2, sub=(t%2600)/2600, up=phase===0;
+  const fl=up?(sub<0.5?'1':'2'):(sub<0.5?'2':'1'), col=up?'#7ee06a':'#e8c05a';
+  if(up){P(g,col,ix+3,iy+1,1,1);P(g,col,ix+2,iy+2,3,1);P(g,col,ix+2,iy+3,3,1);}  // panah naik
+  else {P(g,col,ix+2,iy+1,3,1);P(g,col,ix+2,iy+2,3,1);P(g,col,ix+3,iy+3,1,1);}   // panah turun
+  drawText(g,fl,ix+9,iy,'#ffcf4a');                            // digit lantai
+  if(sub>0.5&&sub<0.62)P(g,'rgba(255,220,120,.5)',ix,iy,16,5); // "ding" saat tiba
+  if(Math.floor(t/700)%2)P(g,'#e8c05a',lift.px+29,lift.py+17,1,2); // tombol panggil kedip
 }});
 /* partisi separator — batas kaca-logam antara ruang kerja & lounge (celah masuk di kanan, kolom 8-9) */
 const divider=furn({x:4,y:13,w:4,h:1},10,(g,w,h)=>{
