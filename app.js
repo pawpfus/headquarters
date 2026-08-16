@@ -18,6 +18,8 @@ const TOOLS = [
     url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', rect:{x:7, y:8, w:3, h:2} },
   { id:'workshop', name:'WORKSHOP',       desc:'Bengkel alat & blueprint (Drum Seeder, dll.)',
     url:'https://drum-seeder-pm-aas.vercel.app/', color:'#9fb8d0', rect:{x:17,y:14,w:3, h:2} },
+  { id:'rdkk',   name:'PROJEKT-FER',     desc:'Generator template e-RDKK dari database poktan',
+    url:'https://projekt-fer.vercel.app/', color:'#c2f24a', rect:{x:21,y:11,w:3, h:2} },
 ];
 
 const T=16, COLS=25, ROWS=19, W=COLS*T, H=ROWS*T;
@@ -714,6 +716,47 @@ FURN.push(furn(TOOLS[6].rect,8,(g,w,h)=>{
   P(g,'#8a6a42',30,h-16,8,1);P(g,'#6e4a2a',30,h-15,8,1);                // bilah kayu
   for(let i=0;i<5;i++)P(g,'#5f6670',22+i*2,h-3,1,1);                    // gram logam
 }));
+
+/* --- MEJA ARSIP e-RDKK : PROJEKT-FER (satu ruangan dgn forge & bengkel) --- */
+const rdkkT=furn(TOOLS[7].rect,18,(g,w,h)=>{
+  /* layar lebar berisi lembar kerja, dipasang di dinding */
+  P(g,'#2b3038',5,0,w-10,20);P(g,'#3a4252',5,0,w-10,1);        // bingkai
+  P(g,'#0d1218',7,2,w-14,16);                                  // kaca
+  P(g,'#1e2830',7,2,w-14,3);                                   // baris judul kolom
+  for(let x=13;x<w-8;x+=8)P(g,'#1e2830',x,2,1,16);             // garis kolom
+  for(let y=7;y<18;y+=3)P(g,'#151d24',8,y,w-16,1);             // garis baris
+  P(g,'#c2f24a',w-11,3,2,1);                                   // LED daya
+  /* meja arsip */
+  P(g,'#4a5468',2,20,w-4,4);P(g,'#5a657c',2,20,w-4,1);         // permukaan
+  P(g,'#39414f',3,24,w-6,h-27);                                // badan laci
+  P(g,'#2a303c',3,h-3,w-6,3);                                  // sokle
+  for(let i=0;i<3;i++){                                        // tiga laci + gagang
+    P(g,'#434c5e',6,26+i*7,w-12,5);P(g,'#2f3644',6,30+i*7,w-12,1);
+    P(g,'#8f98a8',19,28+i*7,10,1);
+  }
+  /* tumpukan formulir + map arsip di meja */
+  P(g,'#e8e4d8',4,14,13,6);P(g,'#cfcabb',4,14,13,1);
+  P(g,'#9fb8d0',6,16,9,1);P(g,'#9fb8d0',6,18,6,1);
+  P(g,'#c2a24a',18,16,5,4);P(g,'#dbb95c',18,16,5,1);           // map kuning
+  /* dua karung pupuk bersandar di sisi kanan meja */
+  P(g,'#c9c2a8',w-17,11,8,9);P(g,'#b3ab90',w-17,11,8,1);
+  P(g,'#4c7a00',w-16,14,6,4);P(g,'#6b9e12',w-16,14,6,1);
+  P(g,'#c9c2a8',w-8,13,6,7);P(g,'#b3ab90',w-8,13,6,1);
+  P(g,'#4c7a00',w-7,15,4,3);
+  /* stempel + bak tinta */
+  P(g,'#26262e',25,17,4,3);P(g,'#3a3a42',26,15,2,2);
+  P(g,'#1d232e',30,18,4,2);P(g,'#7a2a3a',31,18,2,1);
+});
+FURN.push(rdkkT);
+anims.push({f:rdkkT,fn:(g,t)=>{                                // baris lembar kerja terisi satu per satu
+  const x=rdkkT.px+10,y=rdkkT.py+7,n=Math.floor(t/430)%5;
+  for(let i=0;i<n;i++){
+    P(g,'#c2f24a',x,y+i*3,2,2);
+    P(g,'#7f9e2e',x+4,y+i*3,12+((i*7)%10),2);
+  }
+  if(Math.floor(t/500)%2)P(g,'#c2f24a',x+4,y+n*3,2,2);         // kursor kedip
+  if(t%6400<220)P(g,'rgba(194,242,74,.18)',rdkkT.px+7,rdkkT.py+2,rdkkT.canvas.width-14,16); // kilat simpan
+}});
 
 /* --- dekor berdiri: rak server & peti logam --- */
 const rackPaint=(g)=>{
@@ -1662,7 +1705,8 @@ function render(t){
     let lx=Math.round((rc.x+rc.w/2)*T-wpx/2);
     lx=Math.max(2,Math.min(W-wpx-2,lx));
     const bob=near?(Math.floor(t/280)%2):0;
-    const ly=rc.y*T-([18,16,20,4,22,4,8][TOOLS.indexOf(tool)]||12)-9-bob;
+    /* tinggi overhang tiap stasiun (urut TOOLS) — label duduk tepat di atas artnya */
+    const ly=rc.y*T-([18,16,20,4,22,4,8,18][TOOLS.indexOf(tool)]||12)-9-bob;
     cx.fillStyle=near?'rgba(6,14,20,.92)':'rgba(5,9,14,.62)';
     cx.fillRect(lx,ly,wpx,9);
     if(near){cx.fillStyle=tool.color;cx.fillRect(lx,ly+8,wpx,1);}
