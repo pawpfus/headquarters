@@ -266,24 +266,24 @@ const LEGS_UP=[
  ['..kggGGggk..','..kgg..ggk..','..kkk..kkk..'],
  ['..kggGGggk..','..kgg..gk...','..kkk...kk..'],
  ['..kggGGggk..','...kg..ggk..','..kk...kkk..']];
-const TOP_SIDE=[            // profil hadap kanan (14px) — kepala bulat, moncong pendek,
-'........kkk...',           // mata tunggal, perut terang di depan, ekor meruncing di belakang
-'.......kgggk..',
-'......kggggkk.',
-'......kggeggk.',
-'......kgggggGk',
-'......kgggkk..',
-'....kkggggggk.',
-'..kkgggglllk..',
-'.kGggggglllk..',
-'.kkggggllk....',
-'...kggglllk...',
-'...kgggggggk..',
-'....kkgggk....'];
+const TOP_SIDE=[            // profil hadap kanan (14px), proporsi tampak depan:
+'....kkkkkk....',           // kepala besar bulat + moncong, pita mulut gelap,
+'...kggggggkk..',           // badan mungil berperut terang, ekor panjang
+'...kggggggggk.',
+'...kgggggeggkk',
+'...kggggggggkk',
+'...kgGkkkkkkk.',
+'....kggggggk..',
+'kk..kgggllgk..',
+'kGGgggggllggk.',
+'.kkkggggllgk..',
+'....kgggllgk..',
+'....kggggggk..',
+'.....kggggk...'];
 const LEGS_SIDE=[
- ['.....kgggk....','.....kg.gk....','.....kk.kk....'],
- ['.....kgggk....','....kg...gk...','....kk...kk...'],
- ['.....kgggk....','......kgk.....','......kkk.....']];
+ ['......kgggk...','......kg.gk...','......kk.kk...'],
+ ['......kgggk...','.....kg...gk..','.....kk...kk..'],
+ ['......kgggk...','.......kgk....','.......kkk....']];
 
 function frameCanvas(rows,flip){
   const w=rows[0].length;                      // 12 (depan/belakang) atau 14 (samping)
