@@ -99,7 +99,7 @@ const MAP2=[
 '#########################',
 ];
 const DECOR2_SOLID=[
-  {x:7, y:2,w:2,h:1},                      // mesin pemindai berkas (dinding utara)
+  {x:7, y:2,w:1,h:1},                      // mesin pemindai berkas (dinding utara)
   {x:13,y:2,w:2,h:1},{x:21,y:2,w:2,h:1},   // rak arsip (dinding utara)
   {x:7, y:6,w:1,h:1},                      // troli dokumen (merapat sekat barat)
   {x:23,y:2,w:1,h:1},{x:23,y:7,w:1,h:1},   // dispenser (sudut timur laut) & pot (dinding timur)
@@ -1397,29 +1397,28 @@ const arsipB=furn({x:21,y:2,w:2,h:1},18,arsipPaint(11));
 FURN.push(arsipA,arsipB);
 
 /* --- mesin pemindai & penggandaan berkas (pengganti meja sortir) --- */
-const kopirT=furn({x:7,y:2,w:2,h:1},16,(g,w,h)=>{
-  P(g,'#39414f',2,5,w-4,h-7);P(g,'#4a5464',2,5,w-4,1);         // badan mesin
-  P(g,'#262c36',2,h-2,w-4,2);                                  // sokle
-  P(g,'#2b3039',3,0,w-6,6);P(g,'#3a4250',3,0,w-6,1);           // tutup pemindai
-  P(g,'#10151d',5,2,w-10,3);                                   // kaca pemindai (anim menyapu)
-  P(g,'#20262e',4,8,11,5);                                     // panel kendali
-  P(g,'#5d6773',6,9,4,1);P(g,'#69737e',6,11,6,1);
-  P(g,'#2e3540',w-13,8,9,5);                                   // layar kecil
-  P(g,'#2a303a',4,15,w-8,4);P(g,'#e8e4d8',6,16,w-12,2);        // baki keluaran + kertas
-  P(g,'#434c5e',4,21,w-8,5);P(g,'#8f98a8',12,23,8,1);          // laci kertas
+const kopirT=furn({x:7,y:2,w:1,h:1},12,(g,w,h)=>{
+  P(g,'#39414f',1,4,w-2,h-6);P(g,'#4a5464',1,4,w-2,1);         // badan mesin
+  P(g,'#262c36',1,h-2,w-2,2);                                  // sokle
+  P(g,'#2b3039',2,0,w-4,5);P(g,'#3a4250',2,0,w-4,1);           // tutup pemindai
+  P(g,'#10151d',3,2,w-6,2);                                    // kaca pemindai (anim menyapu)
+  P(g,'#20262e',3,7,7,4);P(g,'#5d6773',4,8,3,1);               // panel kendali
+  P(g,'#2e3540',11,7,3,4);                                     // layar kecil
+  P(g,'#2a303a',2,13,w-4,3);P(g,'#e8e4d8',4,14,w-8,1);         // baki keluaran + kertas
+  P(g,'#434c5e',2,18,w-4,4);P(g,'#8f98a8',6,20,5,1);           // laci kertas
 });
 FURN.push(kopirT);
 anims.push({f:kopirT,fn:(g,t)=>{
-  const x=kopirT.px,y=kopirT.py,gw=kopirT.canvas.width-10;
+  const x=kopirT.px,y=kopirT.py,gw=kopirT.canvas.width-6;
   const cyc=t%4200;
   if(cyc<1600){                                                // berkas lama dipindai
-    P(g,'rgba(120,180,220,.16)',x+5,y+2,gw,3);
-    P(g,'rgba(186,222,245,.55)',x+5+Math.round(cyc/1600*(gw-2)),y+2,2,3);
+    P(g,'rgba(120,180,220,.16)',x+3,y+2,gw,2);
+    P(g,'rgba(186,222,245,.55)',x+3+Math.round(cyc/1600*(gw-2)),y+2,2,2);
   }
-  if(Math.floor(t/760)%2)P(g,'#7d8a68',x+5,y+9,1,1);           // LED siap
+  if(Math.floor(t/760)%2)P(g,'#7d8a68',x+4,y+8,1,1);           // LED siap
   if(cyc>1750&&cyc<3200){                                      // lembar hasil menumpuk di baki
-    const n=Math.min(3,Math.floor((cyc-1750)/480)+1);
-    for(let i=0;i<n;i++)P(g,'#f0ead8',x+6,y+17-i,gw-2,1);
+    const n=Math.min(2,Math.floor((cyc-1750)/700)+1);
+    for(let i=0;i<n;i++)P(g,'#f0ead8',x+4,y+14-i,gw-4,1);
   }
 }});
 
