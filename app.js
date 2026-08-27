@@ -1276,21 +1276,29 @@ function buildBG2(){
       for(let y=0;y<T;y+=8)P(g,'#171c24',px,py+y,T,1);
     }
   }
-  /* di balik tepi dek: sepotong lantai kerja di bawah, makin ke bawah makin gelap.
-     Latar lt.1 selalu dipanggang lebih dulu (tickSky), jadi isinya mutakhir. */
+  /* di balik tepi dek: sepotong lantai kerja di bawah.
+     `bg` hanya berisi lantai & dinding — perabot lt.1 hidup di kanvas terpisah,
+     jadi disusun dulu jadi satu potret utuh supaya yang terlihat dari atas
+     bukan lantai kosong. Latar lt.1 selalu dipanggang lebih dulu (tickSky). */
+  const bawah=document.createElement('canvas');
+  bawah.width=W;bawah.height=H;
+  const bg1=bawah.getContext('2d');
+  bg1.imageSmoothingEnabled=false;
+  bg1.drawImage(bg,0,0);
+  FURNS[0].forEach(f=>bg1.drawImage(f.canvas,f.px,f.py));
   for(let tx=0;tx<COLS;tx++){
     if(MAP2[8][tx]!=='.')continue;
-    const px=tx*T,y0=9*T,hh=34;
+    const px=tx*T,y0=9*T,hh=52;
     g.save();
     g.beginPath();g.rect(px,y0,T,hh);g.clip();
     g.imageSmoothingEnabled=false;
-    g.globalAlpha=.6;
-    g.drawImage(bg,px,y0,T,hh,px,y0,T,hh);                      // petak lt.1 tepat di bawahnya
-    g.globalAlpha=1;
-    for(let i=0;i<hh;i++)                                       // jarak pandang meredup ke bawah
-      P(g,`rgba(5,7,12,${(0.18+0.82*i/hh).toFixed(3)})`,px,y0+i,T,1);
+    g.drawImage(bawah,px,y0,T,hh,px,y0,T,hh);                   // petak lt.1 tepat di bawahnya
+    P(g,'rgba(18,28,44,.18)',px,y0,T,hh);                       // kabut jarak
+    for(let i=0;i<hh;i++)                                       // makin jauh ke bawah makin gelap
+      P(g,`rgba(5,7,12,${(0.05+0.80*i/hh).toFixed(3)})`,px,y0+i,T,1);
+    P(g,'rgba(0,0,0,.5)',px,y0,T,3);                            // bayangan tepat di bawah tepi dek
     g.restore();
-    P(g,'rgba(255,214,140,.05)',px,y0,T,10);                    // cahaya lt.1 merembes naik
+    P(g,'rgba(255,214,140,.06)',px,y0,T,12);                    // cahaya lt.1 merembes naik
   }
   /* railing tepi dek: sisi selatan terbuka ke rongga lantai bawah */
   for(let tx=0;tx<COLS;tx++){
