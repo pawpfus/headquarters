@@ -158,8 +158,7 @@ const ROOMSETS=[
    {x:15,y:0,w:10,h:9, a:1},   // kamar kanan-atas
    {x:15,y:9,w:10,h:10,a:1}],  // kamar kanan-bawah
   [{x:0, y:0,w:7, h:19,a:1},   // lt.2 - serambi lift
-   {x:7, y:0,w:9, h:19,a:1},   // lt.2 - aula arsip barat
-   {x:16,y:0,w:9, h:19,a:1}],  // lt.2 - aula arsip timur
+   {x:7, y:0,w:18,h:19,a:1}],  // lt.2 - aula arsip (satu ruangan terbuka, jangan dipotong)
 ];
 let ROOMS=ROOMSETS[0];
 let fogOn=false;
