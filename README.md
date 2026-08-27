@@ -15,9 +15,13 @@ lantai yang sedang dibuka tampil di bawah judul HEADQUARTERS.
 | Lantai | Isi |
 |---|---|
 | **1 — Ruang kerja** | Tujuh stasiun tool, lorong tengah, kebun hidroponik, lounge (TV, sofa, jukebox), bengkel |
-| **2 — Ruang arsip** | Serambi lift + aula arsip memanjang: PROJEKT-FER & PROJECT ROPS, rak ordner, meja sortir, lemari berkas |
+| **2 — Ruang arsip** | Serambi lift + aula arsip memanjang: PROJEKT-FER & PROJECT ROPS, rak ordner, mesin pemindai berkas, troli dokumen |
 
-Peliharaan, robot pembersih, dan drone kargo hanya berkeliaran di lantai 1.
+Peliharaan, robot pembersih, dan drone kargo hanya berkeliaran di lantai 1; lantai 2
+punya robot arsiparis sendiri yang menyusuri lorong depan rak dan sesekali menarik
+ordner keluar. Dari balik railing tepi dek, lantai kerja di bawah terlihat samar.
+Cuaca (hujan, petir, kawanan burung, pelangi, bintang jatuh) tampak di jendela kedua
+lantai, jadi keduanya terasa satu bangunan.
 
 ## Tools yang terhubung
 

@@ -1131,7 +1131,10 @@ anims.push({fn:(g,t)=>winShimmer(g,t,WINDOWS)});
 const weather={mode:'clear',next:9000,bird:null,flashT0:-1e9,flashNext:1e12,rainbowT0:-1e9,star:null};
 const winGlass=wd=>{const rows=wd.ty1-wd.ty0+1,wx=wd.side==='W'?2:W-14;
   return {gx:wx+2,gy:wd.ty0*T+4,gw:8,gh:rows*T-8};};
-anims.push({fn:(g,t)=>{
+/* dipakai kedua lantai — daftar jendela & ketinggian pita kabut yang berbeda */
+function drawWeather(g,t,list,mistY){
+  if(weather.bird&&list.indexOf(weather.bird.wd)<0)weather.bird=null;   // jendela milik lantai lain
+  if(weather.star&&list.indexOf(weather.star.wd)<0)weather.star=null;
   if(t>weather.next){                                    // ganti cuaca tiap ~20–50 dtk
     const wasRain=weather.mode==='rain';
     weather.next=t+18000+Math.random()*30000;
@@ -1140,7 +1143,7 @@ anims.push({fn:(g,t)=>{
     if(wasRain&&weather.mode==='clear')weather.rainbowT0=t;   // pelangi sehabis hujan
   }
   if(weather.mode==='rain'){                             // tetes air mengalir turun di kaca
-    for(const wd of WINDOWS){const q=winGlass(wd);
+    for(const wd of list){const q=winGlass(wd);
       g.fillStyle='rgba(120,150,180,.10)';g.fillRect(q.gx,q.gy,q.gw,q.gh); // kaca basah
       g.fillStyle='rgba(206,228,246,.55)';
       for(let k=0;k<7;k++){
@@ -1151,7 +1154,7 @@ anims.push({fn:(g,t)=>{
     }
   }
   if(!weather.bird&&daylight.star<.25&&Math.random()<.0009){ // kawanan burung (siang, sesekali)
-    const wd=WINDOWS[(Math.random()*WINDOWS.length)|0];
+    const wd=list[(Math.random()*list.length)|0];
     weather.bird={wd,t0:t,dur:4200,dir:Math.random()<.5?1:-1};
   }
   if(weather.bird){
@@ -1177,7 +1180,7 @@ anims.push({fn:(g,t)=>{
   if(fdt>=0&&fdt<440){                                    // amplop kilat: sambaran ganda cepat
     const flash=Math.min(1,Math.exp(-(((fdt-40)/40)**2))+.7*Math.exp(-(((fdt-230)/70)**2)));
     if(flash>.01){
-      for(const wd of WINDOWS){const q=winGlass(wd);      // langit jendela menyilau
+      for(const wd of list){const q=winGlass(wd);         // langit jendela menyilau
         g.fillStyle='rgba(228,238,255,'+(flash*.72).toFixed(3)+')';g.fillRect(q.gx,q.gy,q.gw,q.gh);}
       g.fillStyle='rgba(200,218,255,'+(flash*.16).toFixed(3)+')';g.fillRect(0,0,W,H); // ruang terang sekejap
     }
@@ -1185,7 +1188,7 @@ anims.push({fn:(g,t)=>{
   /* pelangi samar sehabis hujan — lengkung tipis di jendela timur (siang) */
   const rdt=t-weather.rainbowT0;
   if(rdt>=0&&rdt<9000&&daylight.star<.25){
-    const fade=Math.min(1,rdt/1200)*Math.min(1,(9000-rdt)/1200), q=winGlass(WINDOWS[1]);
+    const fade=Math.min(1,rdt/1200)*Math.min(1,(9000-rdt)/1200), q=winGlass(list.find(w=>w.side==='E')||list[0]);
     const cols=['232,96,96','240,180,90','120,200,120','96,170,236'];
     for(let b=0;b<4;b++)for(let i=0;i<q.gw;i++){
       const yy=q.gy+2+b+Math.round(2*Math.sin((i/q.gw)*Math.PI));
@@ -1194,7 +1197,7 @@ anims.push({fn:(g,t)=>{
   }
   /* bintang jatuh — sesekali di malam cerah, melesat di kaca */
   if(!weather.star&&daylight.star>.5&&weather.mode==='clear'&&Math.random()<.0016){
-    weather.star={wd:WINDOWS[(Math.random()*WINDOWS.length)|0],t0:t,dur:700,dir:Math.random()<.5?1:-1};
+    weather.star={wd:list[(Math.random()*list.length)|0],t0:t,dur:700,dir:Math.random()<.5?1:-1};
   }
   if(weather.star){
     const s=weather.star,p=(t-s.t0)/s.dur;
@@ -1208,10 +1211,11 @@ anims.push({fn:(g,t)=>{
   /* kabut pagi tipis (jam ~5.5–8) menghanyut rendah di ruangan */
   const hr=curHour(), mist=(hr>5&&hr<8)?Math.min(1,Math.min(hr-5,8-hr)/1.2):0;
   if(mist>.02)for(let i=0;i<8;i++){
-    const px=((t/50+i*150)%(W+140))-70, py=H-26-((i*43)%78)+Math.round(Math.sin(t/2000+i)*3);
+    const px=((t/50+i*150)%(W+140))-70, py=mistY-((i*43)%78)+Math.round(Math.sin(t/2000+i)*3);
     g.fillStyle='rgba(210,222,236,'+(mist*.14).toFixed(3)+')';g.fillRect(px,py,64,12);
   }
-}});
+}
+anims.push({fn:(g,t)=>drawWeather(g,t,WINDOWS,H-26)});
 
 /* --- debu melayang: butir halus hanyut pelan, hanya di atas lantai terbuka --- */
 anims.push({fn:(g,t)=>{
@@ -1271,6 +1275,22 @@ function buildBG2(){
       P(g,'#12161d',px,py,T,T);
       for(let y=0;y<T;y+=8)P(g,'#171c24',px,py+y,T,1);
     }
+  }
+  /* di balik tepi dek: sepotong lantai kerja di bawah, makin ke bawah makin gelap.
+     Latar lt.1 selalu dipanggang lebih dulu (tickSky), jadi isinya mutakhir. */
+  for(let tx=0;tx<COLS;tx++){
+    if(MAP2[8][tx]!=='.')continue;
+    const px=tx*T,y0=9*T,hh=34;
+    g.save();
+    g.beginPath();g.rect(px,y0,T,hh);g.clip();
+    g.imageSmoothingEnabled=false;
+    g.globalAlpha=.6;
+    g.drawImage(bg,px,y0,T,hh,px,y0,T,hh);                      // petak lt.1 tepat di bawahnya
+    g.globalAlpha=1;
+    for(let i=0;i<hh;i++)                                       // jarak pandang meredup ke bawah
+      P(g,`rgba(5,7,12,${(0.18+0.82*i/hh).toFixed(3)})`,px,y0+i,T,1);
+    g.restore();
+    P(g,'rgba(255,214,140,.05)',px,y0,T,10);                    // cahaya lt.1 merembes naik
   }
   /* railing tepi dek: sisi selatan terbuka ke rongga lantai bawah */
   for(let tx=0;tx<COLS;tx++){
@@ -1455,8 +1475,45 @@ const petiU=furn({x:5,y:2,w:1,h:1},6,(g,w,h)=>{
 });
 FURN.push(potU,petiU);
 
-/* --- ambience lantai 2: kilau jendela & debu --- */
+/* --- robot arsiparis: menyusuri lorong depan rak, sesekali menarik ordner ---
+   Digambar di lapisan anims (paling atas) supaya lengannya tetap terlihat saat
+   menjulur ke dalam rak. Gerak & keadaannya dimajukan arcbotUpdate() di update(). */
+const ARC_Y=3*T+8, ARC_X0=7*T+8, ARC_X1=23*T+8, ARC_STOPS=[14*T,22*T];
+const arcbot={x:9*T,dir:1,state:'run',t:0,cool:0,ord:0};
+function arcbotUpdate(dt){
+  const a=arcbot;
+  if(a.cool>0)a.cool=Math.max(0,a.cool-dt);
+  if(a.state==='run'){
+    a.x+=a.dir*24*dt;
+    if(a.x>=ARC_X1){a.x=ARC_X1;a.dir=-1;}
+    else if(a.x<=ARC_X0){a.x=ARC_X0;a.dir=1;}
+    if(a.cool<=0)for(const st of ARC_STOPS)
+      if(Math.abs(a.x-st)<2){a.x=st;a.state='pick';a.t=0;a.ord=(a.ord+1)%ORD2.length;break;}
+  }else{
+    a.t+=dt;
+    if(a.t>3.4){a.state='run';a.t=0;a.cool=4;}                  // jeda sebelum berhenti lagi
+  }
+}
+anims.push({fn:(g,t)=>{
+  const a=arcbot,ax=Math.round(a.x),ay=ARC_Y;
+  if(a.state==='pick'){                                         // lengan teleskopik naik lalu turun
+    const up=Math.round(14*Math.min(1,Math.min(a.t,3.4-a.t)/1.1));
+    if(up>0){
+      P(g,'#5a6675',ax-1,ay-up,2,up);                           // batang lengan
+      P(g,'#8f98a8',ax-2,ay-up-1,4,1);                          // penjepit
+      if(a.t>1.5)P(g,ORD2[a.ord],ax-2,ay-up-5,4,4);             // ordner terjepit
+    }
+  }
+  P(g,'rgba(0,0,0,.25)',ax-5,ay+8,10,2);                        // bayangan
+  P(g,'#39414f',ax-5,ay,10,8);P(g,'#4a5464',ax-5,ay,10,1);      // badan
+  P(g,'#20262e',ax-3,ay+2,6,3);                                 // jendela muatan
+  P(g,Math.floor(t/520)%2?'#9fb8d0':'#4d5866',ax+3,ay+2,1,1);   // lampu status
+  P(g,'#232833',ax-4,ay+8,3,1);P(g,'#232833',ax+1,ay+8,3,1);    // roda
+}});
+
+/* --- ambience lantai 2: kilau jendela, cuaca & debu --- */
 anims.push({fn:(g,t)=>winShimmer(g,t,WINDOWS2)});
+anims.push({fn:(g,t)=>drawWeather(g,t,WINDOWS2,9*T-4)});
 anims.push({fn:(g,t)=>{                                        // debu di atas lantai dek
   for(let i=0;i<12;i++){
     const x=(i*151)%(W-48)+24+Math.sin(t/2400+i*1.7)*7;
@@ -2031,7 +2088,8 @@ function update(dt){
     player.animT+=dt*Math.min(1.2,mag+.2);
   }else player.animT=0;
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
-  if(floor===0){petUpdate(dt);botUpdate(dt);droneUpdate(dt);}   // penghuni lain tinggal di lt.1
+  if(floor===0){petUpdate(dt);botUpdate(dt);droneUpdate(dt);}   // penghuni lt.1
+  else arcbotUpdate(dt);                                        // robot arsiparis lt.2
   if(music.on){music.visT+=dt;const beat=60/TRACKS[music.track].bpm;   // pet ikut goyang tiap ketukan
     if(music.visT>=beat){music.visT-=beat;if(pet.hopT<=0)pet.hopT=.4;}}
 
@@ -2235,7 +2293,7 @@ addEventListener('resize',fit);fit();
 /* akses debug (dipakai pengujian otomatis; hanya di localhost, absen di produksi) */
 if(location.hostname==='localhost'||location.hostname==='127.0.0.1'||location.protocol==='file:')
 window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS,
-              floor:()=>floor,setFloor,rideLift,goToLift,LIFT_RECT,MAP2,SOLIDS,ZONES,FURNS,fade,
+              floor:()=>floor,setFloor,rideLift,goToLift,LIFT_RECT,MAP2,SOLIDS,ZONES,FURNS,fade,arcbot,
               fog:()=>fogOn,SEATS,goToSeat,sitDown,standUp,seatAtFront,
               music,jukebox,jukeCycle,jukeAtFront,goToJuke,TRACKS,
               setHour:h=>{forcedHour=h;skyBucket=-1;tickSky();render(performance.now());},
