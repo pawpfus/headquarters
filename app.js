@@ -1271,6 +1271,17 @@ anims.push({fn:(g,t)=>{
 const FURNS=[FURN], ANIMS=[anims];              // indeks = nomor lantai
 FURN=[];anims=[];                               // mulai daftar lantai 2
 
+/* --- jendela intip ke lantai 1 (dilihat dari dek lt.2, di balik railing) ---
+   Baris 8 denah lt.2 terbuka ke rongga; di baliknya kita tembuskan potongan
+   lantai kerja di bawah. PEEK_HH = seberapa dalam pandangan turun (makin besar
+   = makin panjang). Konstanta ini dipakai bersama oleh buildBG2 (latar dipanggang)
+   dan drawPeekLife (animasi tiap frame) supaya keduanya sejajar. */
+const PEEK_Y0=9*T, PEEK_HH=84;                  // dulu 52 — diperpanjang
+const PEEK_AX0=8*T, PEEK_AX1=23*T;              // rentang aula (jendela lebar)
+const PEEK_MOTES=16;
+const PEEK_COLS=[];
+for(let tx=0;tx<COLS;tx++)if(MAP2[8][tx]==='.')PEEK_COLS.push(tx);
+
 function buildBG2(){
   const g=bg2c;
   P(g,'#05070b',0,0,W,H);                                      // rongga gelap di luar dek
@@ -1317,7 +1328,7 @@ function buildBG2(){
   FURNS[0].forEach(f=>bg1.drawImage(f.canvas,f.px,f.py));
   for(let tx=0;tx<COLS;tx++){
     if(MAP2[8][tx]!=='.')continue;
-    const px=tx*T,y0=9*T,hh=52;
+    const px=tx*T,y0=PEEK_Y0,hh=PEEK_HH;
     g.save();
     g.beginPath();g.rect(px,y0,T,hh);g.clip();
     g.imageSmoothingEnabled=false;
@@ -1358,6 +1369,56 @@ function buildBG2(){
   /* jendela ke luar angkasa + cahaya kabin dingin */
   drawSpaceWindows(g,WINDOWS2);
   P(g,'rgba(120,170,230,.05)',7*T,2*T,17*T,7*T);              // ambience kabin biru dingin
+}
+
+/* --- animasi hidup di jendela intip lantai 1 ---
+   Latar lt.1 di jendela ini dipanggang statis (potret perabot), jadi supaya
+   terasa "ada kehidupan di bawah" kita timpakan tiap frame: pendar hangat yang
+   bernapas, debu naik dalam berkas cahaya, dan satu robot layanan yang meluncur
+   pelan di lorong. Semuanya dijepit ke kolom terbuka baris 8 supaya rapi di
+   dalam railing, dan diredupkan sesuai kedalaman agar menyatu dengan latarnya. */
+function drawPeekLife(t){
+  const y0=PEEK_Y0, hh=PEEK_HH, yb=y0+hh;
+  cx.save();
+  cx.beginPath();
+  for(const tx of PEEK_COLS)cx.rect(tx*T,y0,T,hh);
+  cx.clip();
+
+  /* pendar hangat naik dari lantai bawah — bernapas pelan */
+  cx.fillStyle=`rgba(255,206,132,${(0.06+0.035*Math.sin(t/1100)).toFixed(3)})`;
+  cx.fillRect(0,y0,W,18);
+
+  /* robot layanan meluncur di lorong lt.1 (bolak-balik pelan) */
+  const span=PEEK_AX1-PEEK_AX0-24;
+  const bx=Math.round(PEEK_AX0+12+(0.5+0.5*Math.sin(t/3400))*span);
+  const by=y0+Math.round(hh*0.36);
+  const dk=1-(by-y0)/hh*0.4;                        // makin dalam makin redup (halus)
+  const C=(r,gg,b)=>`rgb(${Math.round(r*dk)},${Math.round(gg*dk)},${Math.round(b*dk)})`;
+  const halo=cx.createRadialGradient(bx,by,1,bx,by,11);   // pendar lampu robot
+  halo.addColorStop(0,`rgba(90,210,255,${(0.22*dk).toFixed(3)})`);
+  halo.addColorStop(1,'rgba(90,210,255,0)');
+  cx.fillStyle=halo;cx.fillRect(bx-11,by-11,22,22);
+  cx.fillStyle='rgba(0,0,0,.32)';cx.fillRect(bx-5,by+4,10,2);  // bayangan
+  cx.fillStyle=C(46,58,72);cx.fillRect(bx-5,by-3,10,6);        // badan
+  cx.fillStyle=C(78,98,120);cx.fillRect(bx-5,by-3,10,1);       // kilap atas
+  const on=Math.floor(t/380)%2;
+  cx.fillStyle=on?C(90,226,255):C(30,110,140);
+  cx.fillRect(bx-1,by-1,3,2);                                  // lampu kedip
+  cx.fillStyle=`rgba(120,230,255,${(0.14*dk).toFixed(3)})`;    // sapuan sinar ke lantai
+  cx.fillRect(bx-2,by+1,4,7);
+
+  /* debu naik dalam berkas cahaya */
+  const inner=PEEK_AX1-PEEK_AX0-12;
+  for(let i=0;i<PEEK_MOTES;i++){
+    const sp=7+(i%4)*3, prog=(t/1000*sp+i*53.7)%hh, my=yb-prog;
+    const mx=PEEK_AX0+6+((i*97)%inner)+Math.round(3*Math.sin(t/1300+i));
+    let a=0.6*(1-(my-y0)/hh);
+    if(prog<10)a*=prog/10; else if(prog>hh-10)a*=(hh-prog)/10;
+    if(a<=0.01)continue;
+    cx.fillStyle=`rgba(255,228,176,${a.toFixed(3)})`;
+    cx.fillRect(Math.round(mx),Math.round(my),1,1);
+  }
+  cx.restore();
 }
 
 buildBG2();
@@ -2214,6 +2275,7 @@ function render(t){
   cx.fillStyle='#080b11';cx.fillRect(0,0,cv.width,cv.height);
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   cx.drawImage(floor?bg2:bg,0,0);
+  if(floor===1)drawPeekLife(t);                    // kehidupan di jendela intip lt.1
   if(floor===0){
     /* bayangan drone — mengikuti posisinya (rapat saat parkir), di bawah semua objek */
     cx.fillStyle='rgba(0,0,0,.20)';
