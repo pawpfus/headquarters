@@ -24,7 +24,7 @@ const TOOLS = [
   { id:'rops',   name:'PROJECT ROPS',    desc:'Generator proposal bantuan alsintan poktan',
     url:'https://project-rops.vercel.app/', color:'#a78bfa', floor:1, lo:16, rect:{x:17,y:2, w:3, h:1} },
   { id:'cpcl',   name:'CPCL STATION',    desc:'Generator CPCL PM AAS per kelompok tani',
-    url:'https://cpcl-pm-aas.vercel.app/', color:'#5ab0f2', floor:1, lo:16, rect:{x:13,y:2, w:3, h:1} },
+    url:'https://cpcls.vercel.app/', color:'#5ab0f2', floor:1, lo:16, rect:{x:13,y:2, w:3, h:1} },
 ];
 
 const T=16, COLS=25, ROWS=19, W=COLS*T, H=ROWS*T;
@@ -395,6 +395,40 @@ function drawWindows(g,list){
       P(g,`rgba(${bc[0]|0},${bc[1]|0},${bc[2]|0},${a})`,X,wy,1,wh);
     }
     for(let ry=wy;ry<wy+wh;ry+=T)P(g,'rgba(10,14,20,.09)',beamX0,ry,beamW,2); // bayang jeruji
+  }
+}
+
+/* jendela lantai 2 = jendela kapal ke luar angkasa: bintang + planet jauh */
+function drawSpaceWindows(g,list){
+  for(const wd of list){
+    const rows=wd.ty1-wd.ty0+1, ww=12, wh=rows*T-4;
+    const wx=wd.side==='W'?2:W-14, wy=wd.ty0*T+2;
+    const kSh=wd.side==='W'?.55:-.55;
+    const wc=document.createElement('canvas');wc.width=ww;wc.height=wh;
+    const wg=wc.getContext('2d');
+    P(wg,'#2b3340',0,0,ww,wh);P(wg,'#3a4454',0,0,ww,1);P(wg,'#3a4454',0,0,1,wh); // bingkai
+    P(wg,'#171d26',0,wh-1,ww,1);P(wg,'#171d26',ww-1,0,1,wh);
+    const gx=2,gy=2,gwd=ww-4,ght=wh-4;
+    for(let i=0;i<ght;i++)P(wg,`rgb(${6+(i/ght*4)|0},${8+(i/ght*6)|0},${16+(i/ght*10)|0})`,gx,gy+i,gwd,1); // ruang angkasa
+    for(let i=0;i<rows*8;i++){                                  // bintang
+      const sx=gx+((rnd(wd.side==='W'?7:311,wd.ty0*3+i)>>3)%gwd);
+      const sy=gy+((rnd(wd.side==='W'?31:97,wd.ty0*5+i)>>2)%ght);
+      const br=(0.35+0.6*((rnd(i*13,wd.ty0*7)>>2)%10)/10).toFixed(2);
+      P(wg,`rgba(220,235,255,${br})`,sx,sy,1,1);
+    }
+    if(wd===list[0]){const pcx=gx+gwd-4,pcy=gy+6;              // planet jauh (satu jendela)
+      P(wg,'#2a4568',pcx-3,pcy-3,7,7);P(wg,'#3a5a8a',pcx-2,pcy-3,5,5);
+      P(wg,'#4a6f9f',pcx-1,pcy-3,3,1);P(wg,'#26507a',pcx-1,pcy+1,4,2);}
+    P(wg,'#232a34',gx+((gwd/2)|0),gy,1,ght);                    // jeruji
+    for(let r=1;r<rows;r++)P(wg,'#232a34',gx,gy+r*T-1,gwd,1);
+    P(wg,'rgba(150,200,240,.35)',gx,gy+ght-1,gwd,1);           // kilau dingin
+    for(let x=0;x<ww;x++){const yo=Math.round((x-ww/2)*kSh);
+      P(g,'#0a0d13',wx+x,wy+yo-1,1,wh+2);
+      g.drawImage(wc,x,0,1,wh,wx+x,wy+yo,1,wh);}
+    const beamW=40,start=wd.side==='W'?wx+ww:wx-1;             // pendar dingin ke lantai
+    for(let b=0;b<beamW;b++){const fall=1-b/beamW,a=(0.05*fall*fall).toFixed(3);
+      const X=wd.side==='W'?start+b:start-b;
+      P(g,`rgba(120,170,230,${a})`,X,wy,1,wh);}
   }
 }
 
@@ -1244,20 +1278,14 @@ function buildBG2(){
   for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
     if(MAP2[ty][tx]!=='.')continue;
     const px=tx*T,py=ty*T,r=rnd(tx,ty)%14;
-    if(tx<7){                                                  // serambi lift
-      P(g,'#2c333d',px,py,T,T);
-      P(g,'#353d49',px,py,T,1);P(g,'#1c222b',px,py+T-1,T,1);
-      P(g,'#1c222b',px+T-1,py,1,T);
-      if(r===2)P(g,'#333b46',px+4,py+7,7,1);                    // goresan halus
-    }else{                                                     // aula arsip — papan kayu
-      const band=ty%2;
-      P(g,band?'#3a3128':'#352d25',px,py,T,T);
-      P(g,band?'#443a2e':'#3f362b',px,py,T,1);                  // sisi papan terang
-      P(g,'#221d18',px,py+T-1,T,1);                             // nat antar papan
-      P(g,'#221d18',px+band*8,py,1,T);                          // sambungan berselang
-      if(r===0)P(g,'#403528',px+3,py+5,9,1);                     // serat kayu
-      if(r===5)P(g,'#2e271f',px+8,py+10,5,1);
-    }
+    const alt=(tx+ty)&1;                                       // pelat lambung kapal antariksa
+    P(g,alt?'#2a313d':'#262c37',px,py,T,T);
+    P(g,'#333c4a',px,py,T,1);P(g,'#181d26',px,py+T-1,T,1);     // bevel atas/bawah
+    P(g,'#181d26',px+T-1,py,1,T);                              // nat kanan
+    P(g,'#3a4452',px+1,py+1,1,1);P(g,'#3a4452',px+T-2,py+1,1,1);   // rivet sudut
+    P(g,'#3a4452',px+1,py+T-2,1,1);P(g,'#3a4452',px+T-2,py+T-2,1,1);
+    if(r===3)P(g,'#313a48',px+4,py+7,8,1);                     // goresan pelat
+    if(r===9)P(g,'rgba(76,201,224,.045)',px+3,py+3,T-6,T-6);   // panel berpendar sesekali
   }
   /* dinding — muka baja bila ada lantai di bawahnya, sisanya rongga */
   for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
@@ -1268,7 +1296,7 @@ function buildBG2(){
       for(let x=0;x<T;x+=6)P(g,'#232833',px+x,py,1,T);
       P(g,'#14181f',px,py+T-4,T,4);                             // list bawah dinding
       const br=(0.45+0.55*daylight.lamp).toFixed(2);
-      const c=tx<7?[76,201,224]:[232,192,90];                   // serambi cyan · aula amber
+      const c=tx<7?[76,201,224]:[90,176,242];                   // strip lampu kapal (cyan · biru)
       P(g,`rgba(${c[0]},${c[1]},${c[2]},${br})`,px,py+T-5,T,1);
       P(g,'rgba(0,0,0,.25)',px,py+T,T,4);
       pool(g,px,py+T+4,T,7,c.join(','),(.05*daylight.lamp+.02).toFixed(3));
@@ -1327,10 +1355,9 @@ function buildBG2(){
   /* keset di depan lift */
   P(g,'#1d3a30',2*T+2,2*T+2,28,12);P(g,'#2a4d3f',2*T+4,2*T+4,24,8);
   P(g,'#1d3a30',2*T+8,2*T+6,16,4);
-  /* jendela luar + suasana lampu */
-  drawWindows(g,WINDOWS2);
-  if(daylight.lamp>.02)
-    P(g,`rgba(255,214,140,${(.10*daylight.lamp).toFixed(3)})`,7*T,2*T,17*T,7*T);
+  /* jendela ke luar angkasa + cahaya kabin dingin */
+  drawSpaceWindows(g,WINDOWS2);
+  P(g,'rgba(120,170,230,.05)',7*T,2*T,17*T,7*T);              // ambience kabin biru dingin
 }
 
 buildBG2();
@@ -1560,7 +1587,7 @@ function arcbotUpdate(dt){
   }
 }
 anims.push({fn:(g,t)=>{                                         // robot arsiparis gaya UFO (piring melayang)
-  const a=arcbot,ax=Math.round(a.x),bob=Math.round(2*Math.sin(t/600)),ay=ARC_Y+bob;
+  const a=arcbot,ax=Math.round(a.x),bob=Math.round(3*Math.sin(t/560)),ay=ARC_Y-12+bob; // melayang lebih tinggi
   if(a.state==='pick'){                                         // sinar penarik ke rak (ambil buku)
     const prog=Math.min(1,Math.min(a.t,3.4-a.t)/1.1);
     if(prog>0){
@@ -1571,7 +1598,7 @@ anims.push({fn:(g,t)=>{                                         // robot arsipar
         P(g,BUKU[a.ord%BUKU.length],ax-2,ay-6-Math.round(bh*desc),4,4);}
     }
   }
-  P(g,'rgba(0,0,0,.20)',ax-6,ARC_Y+10,12,2);                    // bayangan tetap di lantai
+  P(g,'rgba(0,0,0,.16)',ax-5,ARC_Y+12,10,2);                    // bayangan di lantai (jauh di bawah = mengapung tinggi)
   P(g,'#3a4250',ax-7,ay+1,14,2);P(g,'#2a303a',ax-4,ay+3,8,1);   // badan bawah piring
   P(g,'#5a6675',ax-7,ay-1,14,2);P(g,'#6a7686',ax-5,ay-1,10,1);  // badan atas piring
   P(g,'#7fc8e0',ax-2,ay-5,4,3);P(g,'#bff0ff',ax-1,ay-5,1,2);    // kubah kaca
