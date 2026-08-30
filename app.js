@@ -1543,7 +1543,7 @@ FURN.push(potU,petiU);
 /* --- robot arsiparis: menyusuri lorong depan rak, sesekali menarik ordner ---
    Digambar di lapisan anims (paling atas) supaya lengannya tetap terlihat saat
    menjulur ke dalam rak. Gerak & keadaannya dimajukan arcbotUpdate() di update(). */
-const ARC_Y=3*T+8, ARC_X0=7*T+8, ARC_X1=23*T+8, ARC_STOPS=[14*T,22*T];
+const ARC_Y=3*T+8, ARC_X0=8*T+8, ARC_X1=22*T, ARC_STOPS=[8*T+8,22*T];  // ulang-alik antar dua rak buku (arsipA x8 · arsipB x21-22)
 const arcbot={x:9*T,dir:1,state:'run',t:0,cool:0,ord:0};
 function arcbotUpdate(dt){
   const a=arcbot;
