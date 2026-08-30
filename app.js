@@ -23,7 +23,7 @@ const TOOLS = [
     url:'https://projekt-fer.vercel.app/', color:'#c2f24a', floor:1, lo:14, rect:{x:9, y:2, w:3, h:1} },
   { id:'rops',   name:'PROJECT ROPS',    desc:'Generator proposal bantuan alsintan poktan',
     url:'https://project-rops.vercel.app/', color:'#a78bfa', floor:1, lo:16, rect:{x:17,y:2, w:3, h:1} },
-  { id:'cpcl',   name:'CPCL STATION',    desc:'Generator CPCL PM AAS per kelompok tani',
+  { id:'cpcl',   name:'CPCLs',    desc:'Generator CPCL PM AAS per kelompok tani',
     url:'https://cpcls.vercel.app/', color:'#5ab0f2', floor:1, lo:16, rect:{x:13,y:2, w:3, h:1} },
 ];
 
@@ -216,12 +216,12 @@ R:[6,5,6,5,5],S:[3,4,2,1,6],T:[7,2,2,2,2],U:[5,5,5,5,7],V:[5,5,5,5,2],W:[5,5,5,7
 X:[5,5,2,5,5],Y:[5,5,2,2,2],Z:[7,1,2,4,7],'0':[7,5,5,5,7],'1':[2,6,2,2,7],
 '2':[6,1,2,4,7],'3':[6,1,2,1,6],'4':[5,5,7,1,1],'5':[7,4,6,1,6],'6':[3,4,6,5,2],
 '7':[7,1,2,2,2],'8':[7,5,2,5,7],'9':[2,5,3,1,6],'-':[0,0,7,0,0],'.':[0,0,0,0,2],
-'/':[1,1,2,4,4],':':[0,2,0,2,0],' ':[0,0,0,0,0]};
+'/':[1,1,2,4,4],':':[0,2,0,2,0],' ':[0,0,0,0,0],s:[0,3,4,1,6]};  // s huruf kecil (khusus label CPCLs)
 function textW(s){return s.length*4-1;}
 function drawText(g,s,x,y,color){
   g.fillStyle=color;
-  for(const ch of s.toUpperCase()){
-    const gl=F3[ch]||F3[' '];
+  for(const ch of s){
+    const gl=F3[ch]||F3[ch.toUpperCase()]||F3[' '];   // huruf mentah dulu (dukung 's' kecil), lalu KAPITAL
     for(let r=0;r<5;r++)for(let c=0;c<3;c++)
       if(gl[r]>>(2-c)&1)g.fillRect(x+c,y+r,1,1);
     x+=4;
