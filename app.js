@@ -23,6 +23,8 @@ const TOOLS = [
     url:'https://projekt-fer.vercel.app/', color:'#c2f24a', floor:1, lo:14, rect:{x:9, y:2, w:3, h:1} },
   { id:'rops',   name:'PROJECT ROPS',    desc:'Generator proposal bantuan alsintan poktan',
     url:'https://project-rops.vercel.app/', color:'#a78bfa', floor:1, lo:16, rect:{x:17,y:2, w:3, h:1} },
+  { id:'cpcl',   name:'CPCL STATION',    desc:'Generator CPCL PM AAS per kelompok tani',
+    url:'https://cpcl-pm-aas.vercel.app/', color:'#5ab0f2', floor:1, lo:16, rect:{x:13,y:2, w:3, h:1} },
 ];
 
 const T=16, COLS=25, ROWS=19, W=COLS*T, H=ROWS*T;
@@ -100,7 +102,7 @@ const MAP2=[
 ];
 const DECOR2_SOLID=[
   {x:7, y:2,w:1,h:1},                      // mesin pemindai berkas (dinding utara)
-  {x:13,y:2,w:2,h:1},{x:21,y:2,w:2,h:1},   // rak arsip (dinding utara)
+  {x:8, y:2,w:1,h:1},{x:21,y:2,w:2,h:1},   // rak arsip (dinding utara)
   {x:7, y:6,w:1,h:1},                      // troli dokumen (merapat sekat barat)
   {x:23,y:2,w:1,h:1},{x:23,y:7,w:1,h:1},   // dispenser (sudut timur laut) & pot (dinding timur)
   {x:1, y:5,w:1,h:1},{x:5, y:2,w:1,h:1},   // pot & peti kayu (serambi lift)
@@ -1320,6 +1322,7 @@ function buildBG2(){
   })();
   /* kolam cahaya tiap stasiun jatuh ke karpet */
   pool(g, 9*T+4,3*T,40,10,'194,242,74', .12);                   // PROJEKT-FER (hijau limau)
+  pool(g,13*T+4,3*T,40,10,'90,176,242', .12);                   // CPCL STATION (biru langit)
   pool(g,17*T+4,3*T,40,10,'167,139,250',.12);                   // PROJECT ROPS (ungu)
   /* keset di depan lift */
   P(g,'#1d3a30',2*T+2,2*T+2,28,12);P(g,'#2a4d3f',2*T+4,2*T+4,24,8);
@@ -1404,6 +1407,44 @@ anims.push({f:ropsT,fn:(g,t)=>{                                // naskah tersusu
   if(cyc>2200&&cyc<2420)P(g,'rgba(167,139,250,.18)',x+9,y+3,18,6); // kilat selesai cetak
 }});
 
+/* --- MEJA CPCL PM AAS : daftar calon petani calon lokasi --- */
+const cpclT=furn(TOOLS[9].rect,16,(g,w,h)=>{
+  /* papan daftar CPCL berdiri di belakang meja */
+  P(g,'#2b3038',4,0,26,14);P(g,'#3a4252',4,0,26,1);            // bingkai papan
+  P(g,'#e8e4d8',6,2,22,11);P(g,'#5ab0f2',6,2,22,2);            // lembar daftar + kepala tabel
+  P(g,'#cfcabb',16,4,1,9);                                     // garis pemisah kolom
+  P(g,'#b9bec6',8,6,7,1);P(g,'#b9bec6',18,6,7,1);              // baris nama & luas
+  P(g,'#b9bec6',8,8,8,1);P(g,'#b9bec6',18,8,6,1);
+  P(g,'#b9bec6',8,10,6,1);P(g,'#b9bec6',18,10,8,1);
+  P(g,'#454f61',4,13,26,1);                                    // ambang bawah papan
+  /* karung benih & pupuk bertumpuk di ujung kanan meja */
+  P(g,'#c9b98f',33,5,13,9);P(g,'#ddcfa6',33,5,13,1);           // karung besar
+  P(g,'#8d7f5c',33,9,13,1);P(g,'#5ab0f2',36,11,7,1);           // jahitan & label
+  P(g,'#b3a37c',35,1,9,4);P(g,'#c9b98f',35,1,9,1);             // karung kecil di atasnya
+  /* timbangan di ujung kiri meja */
+  P(g,'#39414f',0,10,4,4);P(g,'#8f98a8',0,9,4,1);
+  /* meja arsip */
+  P(g,'#4a5468',1,14,w-2,3);P(g,'#5a657c',1,14,w-2,1);         // permukaan
+  P(g,'#39414f',3,17,w-6,10);                                  // badan
+  P(g,'#2a303c',3,27,w-6,2);                                   // sokle
+  P(g,'#2a303c',4,29,3,3);P(g,'#2a303c',w-7,29,3,3);           // kaki
+  P(g,'#434c5e',6,19,w-12,3);P(g,'#8f98a8',18,20,12,1);        // laci atas
+  P(g,'#434c5e',6,23,w-12,3);P(g,'#8f98a8',18,24,12,1);        // laci bawah
+});
+FURN.push(cpclT);
+anims.push({f:cpclT,fn:(g,t)=>{                                // daftar terisi baris demi baris lalu dicap sah
+  const x=cpclT.px,y=cpclT.py;
+  const n=Math.floor(t/430)%4;
+  for(let i=0;i<n;i++){
+    P(g,'#5ab0f2',x+7,y+6+i*2,1,1);                            // centang di kolom nama
+    P(g,'#7f8790',x+8,y+6+i*2,7+((i*5)%6),1);                  // baris terisi
+    P(g,'#7f8790',x+18,y+6+i*2,5+((i*3)%5),1);                 // angka luas
+  }
+  if(n===3&&Math.floor(t/215)%2)
+    P(g,'rgba(90,176,242,.5)',x+19,y+9,7,4);                   // cap berkedip
+  if(Math.floor(t/620)%2)P(g,'#9ad4ff',x+28,y+3,1,1);          // LED papan
+}});
+
 /* --- rak arsip: punggung ordner warna acak tapi teredam (seed beda tiap rak) --- */
 const ORD2=['#6e6857','#5d6773','#6a6272','#66705c','#77685e','#565f6a','#7d7462','#69737e'];
 const arsipPaint=seed=>(g,w,h)=>{
@@ -1419,7 +1460,24 @@ const arsipPaint=seed=>(g,w,h)=>{
     P(g,'#2a303a',2,y+6,w-4,1);                                // papan rak
   }
 };
-const arsipA=furn({x:13,y:2,w:2,h:1},18,arsipPaint(3));
+/* rak buku terisi rapat — spine warna arsip (coklat/tan/slate) jelas terlihat */
+const BUKU=['#8a5a3a','#6e5a44','#5d6773','#3a5a4a','#7a4a52','#6a6272','#b09040','#4a6478'];
+const bukuPaint=seed=>(g,w,h)=>{
+  P(g,'#343945',0,0,w,h-2);P(g,'#414857',0,0,w,1);             // badan rak
+  P(g,'#1e222a',0,h-2,w,2);                                    // kaki
+  for(let r=0;r<4;r++){
+    const y=3+r*7;
+    P(g,'#181c22',2,y,w-4,6);                                  // rongga rak
+    for(let x=2;x<w-2;x++){                                    // satu punggung buku per kolom (rapat)
+      const c=BUKU[(rnd(seed*97+x*7,r*29+13)>>2)%BUKU.length];
+      P(g,c,x,y+1,1,4);                                        // punggung tinggi tetap
+    }
+    P(g,'rgba(0,0,0,.30)',2,y+1,w-4,1);                        // bayangan atas rongga
+    P(g,'rgba(215,220,228,.12)',3,y+3,w-7,1);                  // pita label indeks
+    P(g,'#2a303a',2,y+6,w-4,1);                                // papan rak
+  }
+};
+const arsipA=furn({x:8,y:2,w:1,h:1},18,bukuPaint(3));
 const arsipB=furn({x:21,y:2,w:2,h:1},18,arsipPaint(11));
 FURN.push(arsipA,arsipB);
 
@@ -1501,21 +1559,24 @@ function arcbotUpdate(dt){
     if(a.t>3.4){a.state='run';a.t=0;a.cool=4;}                  // jeda sebelum berhenti lagi
   }
 }
-anims.push({fn:(g,t)=>{
-  const a=arcbot,ax=Math.round(a.x),ay=ARC_Y;
-  if(a.state==='pick'){                                         // lengan teleskopik naik lalu turun
-    const up=Math.round(14*Math.min(1,Math.min(a.t,3.4-a.t)/1.1));
-    if(up>0){
-      P(g,'#5a6675',ax-1,ay-up,2,up);                           // batang lengan
-      P(g,'#8f98a8',ax-2,ay-up-1,4,1);                          // penjepit
-      if(a.t>1.5)P(g,ORD2[a.ord],ax-2,ay-up-5,4,4);             // ordner terjepit
+anims.push({fn:(g,t)=>{                                         // robot arsiparis gaya UFO (piring melayang)
+  const a=arcbot,ax=Math.round(a.x),bob=Math.round(2*Math.sin(t/600)),ay=ARC_Y+bob;
+  if(a.state==='pick'){                                         // sinar penarik ke rak (ambil buku)
+    const prog=Math.min(1,Math.min(a.t,3.4-a.t)/1.1);
+    if(prog>0){
+      const bh=Math.round(15*prog);
+      for(let i=0;i<bh;i++){const wr=1+Math.round((i/bh)*3);     // kerucut melebar ke arah rak
+        P(g,`rgba(150,230,255,${(0.07+0.12*prog).toFixed(3)})`,ax-wr,ay-4-i,wr*2,1);}
+      if(a.t>1.4){const desc=Math.max(0,1-(a.t-1.4)/1.3);        // buku melayang turun ke piring
+        P(g,BUKU[a.ord%BUKU.length],ax-2,ay-6-Math.round(bh*desc),4,4);}
     }
   }
-  P(g,'rgba(0,0,0,.25)',ax-5,ay+8,10,2);                        // bayangan
-  P(g,'#39414f',ax-5,ay,10,8);P(g,'#4a5464',ax-5,ay,10,1);      // badan
-  P(g,'#20262e',ax-3,ay+2,6,3);                                 // jendela muatan
-  P(g,Math.floor(t/520)%2?'#9fb8d0':'#4d5866',ax+3,ay+2,1,1);   // lampu status
-  P(g,'#232833',ax-4,ay+8,3,1);P(g,'#232833',ax+1,ay+8,3,1);    // roda
+  P(g,'rgba(0,0,0,.20)',ax-6,ARC_Y+10,12,2);                    // bayangan tetap di lantai
+  P(g,'#3a4250',ax-7,ay+1,14,2);P(g,'#2a303a',ax-4,ay+3,8,1);   // badan bawah piring
+  P(g,'#5a6675',ax-7,ay-1,14,2);P(g,'#6a7686',ax-5,ay-1,10,1);  // badan atas piring
+  P(g,'#7fc8e0',ax-2,ay-5,4,3);P(g,'#bff0ff',ax-1,ay-5,1,2);    // kubah kaca
+  for(let k=0;k<3;k++)P(g,(Math.floor(t/240)+k)%3===0?'#c2f24a':'#4d5866',ax-4+k*4,ay+2,1,1); // lampu rim
+  P(g,Math.floor(t/500)%2?'#8fd4e8':'#3a4a52',ax,ay+3,1,1);     // emitter tengah
 }});
 
 /* --- ambience lantai 2: kilau jendela, cuaca & debu --- */
@@ -1936,7 +1997,7 @@ function drawFade(){
   cx.fillStyle=`rgba(4,6,10,${Math.min(1,a).toFixed(3)})`;
   cx.fillRect(0,0,cv.width,cv.height);
   if(a>.55){
-    const s=fade.to?'LANTAI 2':'LANTAI 1',k=2;
+    const s=fade.to?'2ND FLOOR':'1ST FLOOR',k=2;
     cx.globalAlpha=Math.min(1,(a-.55)/.35);
     cx.setTransform(k,0,0,k,Math.round((cv.width-textW(s)*k)/2),Math.round(cv.height/2-3*k));
     drawText(cx,s,0,0,'#4ce0ff');
