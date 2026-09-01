@@ -11,10 +11,10 @@ const TOOLS = [
   { id:'disem',  name:'DIFFUSION REPORT', desc:'Rangkuman diseminasi media sosial',
     url:'https://laporandiseminasi.vercel.app/',         color:'#e07ad0', floor:0, lo:20, rect:{x:20,y:2, w:3, h:1} },
   { id:'ksa',    name:'AREA SAMPLING',    desc:'Pendampingan Kerangka Sampel Area',
-    url:'https://ksapendampingan.vercel.app/',           color:'#e8c05a', floor:2, lo:50, rect:{x:3, y:11,w:3, h:2} },
+    url:'https://ksapendampingan.vercel.app/',           color:'#e8c05a', floor:2, lo:40, rect:{x:3, y:11,w:3, h:2} },
   { id:'forge',  name:'ESC FORGE',        desc:'Generator laporan bulanan SKP',
     url:'https://skp-forge.vercel.app/', color:'#ff8c4a', floor:0, lo:22, rect:{x:17,y:9, w:3, h:2} },
-  { id:'farm',   name:'COOPERSTOWN',      desc:'FARM AXIS — peta poktan interaktif',
+  { id:'farm',   name:'COOPERSTOWN', short:'COOPTOWN', desc:'FARM AXIS — peta poktan interaktif',
     url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', floor:2, lo:30, rect:{x:17,y:9, w:3, h:1} },
   { id:'workshop', name:'WORKSHOP',       desc:'Bengkel alat & blueprint (Drum Seeder, dll.)',
     url:'https://drum-seeder-pm-aas.vercel.app/', color:'#9fb8d0', floor:0, lo:8, rect:{x:17,y:14,w:3, h:2} },
@@ -1777,7 +1777,7 @@ buildBG3();
 /* --- perabot & animasi AREA LUAR --- */
 FURN=[];anims=[];
 /* AREA SAMPLING — menara pengawas kebakaran (fire lookout): rangka kayu tinggi + kabin kaca */
-const ksaT=furn(TOOLS[3].rect,54,(g,w,h)=>{
+const ksaT=furn(TOOLS[3].rect,44,(g,w,h)=>{
   const yTop=27, yBot=h-2;
   const lx=y=>Math.round(16-(16-10)*(y-yTop)/(yBot-yTop));    // kaki kiri 16→10
   const rx=y=>Math.round(32+(38-32)*(y-yTop)/(yBot-yTop));    // kaki kanan 32→38
@@ -1804,17 +1804,14 @@ const ksaT=furn(TOOLS[3].rect,54,(g,w,h)=>{
   for(let yy=0;yy<8;yy++){const hw=6+yy*2.2;                                            // atap limas overhang
     P(g,yy<2?'#6e4030':(yy&1?'#5a3324':'#4d2b1e'),Math.round(24-hw),yy,Math.round(hw*2),1);}
   P(g,'#3a2016',6,8,36,1);                                                              // bayang tritisan
-  /* --- dasar: kotak alat + papan peta petak --- */
-  P(g,'#33333d',29,h-12,10,10);P(g,'#454f61',29,h-12,10,2);                             // kotak alat/generator
-  P(g,'#2f3745',1,h-13,12,12);P(g,'#3a4454',1,h-13,12,1);                               // papan peta
-  P(g,'#7aa85e',3,h-11,8,8);for(let i=0;i<2;i++)P(g,'#5f8a4a',3,h-9+i*3,8,1);
-  P(g,'#c04a3a',7,h-6,2,2);
+  /* --- dasar: kotak alat/generator (di tengah kaki) --- */
+  P(g,'#33333d',18,h-11,12,10);P(g,'#454f61',18,h-11,12,2);P(g,'#2a2f38',18,h-1,12,1);
+  P(g,'#3a4250',20,h-8,3,3);P(g,'#3a4250',25,h-8,3,3);                                   // panel
 });
 FURN.push(ksaT);
-anims.push({fn:(g,t)=>{                                     // beacon atap + jendela kabin + titik sampel
+anims.push({fn:(g,t)=>{                                     // beacon atap + jendela kabin berdenyut
   if(Math.floor(t/600)%2)P(g,'#ff5a4a',ksaT.px+23,ksaT.py-1,2,2);                        // beacon merah puncak
-  P(g,`rgba(255,221,150,${(0.22+0.18*Math.sin(t/1400)).toFixed(2)})`,ksaT.px+14,ksaT.py+14,20,3); // jendela berdenyut
-  if(Math.floor(t/500)%2)P(g,'#eef06a',ksaT.px+5,ksaT.py+ksaT.canvas.height-8,2,2);      // titik sampel di peta
+  P(g,`rgba(255,221,150,${(0.22+0.18*Math.sin(t/1400)).toFixed(2)})`,ksaT.px+14,ksaT.py+14,20,3); // jendela
 }});
 /* COOPERSTOWN — tiang papan-nama jalan (kompak); tetap membuka peta poktan */
 const navT=furn(TOOLS[5].rect,28,(g,w,h)=>{
@@ -2532,7 +2529,7 @@ function render(t){
   for(const tool of TOOLS){
     if((tool.floor||0)!==floor)continue;
     const rc=tool.rect,near=(activeTool===tool);
-    const label=tool.name,wpx=textW(label)+4;
+    const label=tool.short||tool.name,wpx=textW(label)+4;
     let lx=Math.round((rc.x+rc.w/2)*T-wpx/2);
     lx=Math.max(2,Math.min(W-wpx-2,lx));
     const bob=near?(Math.floor(t/280)%2):0;
