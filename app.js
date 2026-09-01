@@ -11,11 +11,11 @@ const TOOLS = [
   { id:'disem',  name:'DIFFUSION REPORT', desc:'Rangkuman diseminasi media sosial',
     url:'https://laporandiseminasi.vercel.app/',         color:'#e07ad0', floor:0, lo:20, rect:{x:20,y:2, w:3, h:1} },
   { id:'ksa',    name:'AREA SAMPLING',    desc:'Pendampingan Kerangka Sampel Area',
-    url:'https://ksapendampingan.vercel.app/',           color:'#e8c05a', floor:0, lo:4,  rect:{x:2, y:8, w:3, h:2} },
+    url:'https://ksapendampingan.vercel.app/',           color:'#e8c05a', floor:2, lo:4,  rect:{x:3, y:11,w:3, h:2} },
   { id:'forge',  name:'ESC FORGE',        desc:'Generator laporan bulanan SKP',
     url:'https://skp-forge.vercel.app/', color:'#ff8c4a', floor:0, lo:22, rect:{x:17,y:9, w:3, h:2} },
   { id:'farm',   name:'COOPERSTOWN',      desc:'FARM AXIS — peta poktan interaktif',
-    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', floor:0, lo:4, rect:{x:7, y:8, w:3, h:2} },
+    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', floor:2, lo:4, rect:{x:18,y:10,w:3, h:2} },
   { id:'workshop', name:'WORKSHOP',       desc:'Bengkel alat & blueprint (Drum Seeder, dll.)',
     url:'https://drum-seeder-pm-aas.vercel.app/', color:'#9fb8d0', floor:0, lo:8, rect:{x:17,y:14,w:3, h:2} },
   /* --- LANTAI 2 (naik lift) : ruang arsip & dokumen --- */
@@ -108,6 +108,38 @@ const DECOR2_SOLID=[
   {x:1, y:5,w:1,h:1},{x:5, y:2,w:1,h:1},   // pot & peti kayu (serambi lift)
 ];                    // tengah aula & baris 8 sengaja kosong: lantai lapang + jalur tepi railing
 
+/* ---------- denah AREA LUAR — sawah & desa poktan, dicapai lewat pintu utama ----------
+   '#' = tak-terlewati: fasad markas (baris 0-1, ada pintu balik di tengah), petak sawah
+   (air), gubuk desa (kluster kanan-atas), pagar pinggir. '.' = pematang/jalan tanah yang
+   bisa dilewati. Dua stasiun lapangan berdiri di tanah terbuka: AREA SAMPLING (kiri, di
+   antara sawah) & COOPERSTOWN (kanan, di tepi desa). buildBG3 memutuskan rupa tiap petak
+   dari posisinya (sawah vs gubuk), bukan dari logika muka-dinding. */
+const MAP3=[
+'#########################',
+'#########################',
+'#.......................#',
+'#.......................#',
+'#..####........###.###..#',
+'#..####........###.###..#',
+'#.......................#',
+'#..####.........#####...#',
+'#..####.........#####...#',
+'#.......................#',
+'#.......................#',
+'#.......................#',
+'#.......................#',
+'#.......................#',
+'#......####.....####....#',
+'#......####.....####....#',
+'#.......................#',
+'#.......................#',
+'#########################',
+];
+const DECOR3_SOLID=[
+  {x:2, y:2,w:1,h:1},{x:22,y:2,w:1,h:1},   // pohon sudut (fasad)
+  {x:2, y:16,w:1,h:1},{x:22,y:16,w:1,h:1}, // pohon sudut (bawah)
+];
+
 /* ---------- peta kepadatan per-lantai ---------- */
 function makeSolid(map,tools,decor){
   const sl=new Uint8Array(COLS*ROWS);
@@ -119,7 +151,8 @@ function makeSolid(map,tools,decor){
 }
 const onFloor=n=>TOOLS.filter(t=>(t.floor||0)===n);
 const SOLIDS=[makeSolid(MAP,onFloor(0),DECOR_SOLID),
-              makeSolid(MAP2,onFloor(1),DECOR2_SOLID)];
+              makeSolid(MAP2,onFloor(1),DECOR2_SOLID),
+              makeSolid(MAP3,onFloor(2),DECOR3_SOLID)];   // area luar (sawah & desa)
 let solid=SOLIDS[0];                       // ditukar oleh setFloor()
 const S=(x,y)=>solid[y*COLS+x];
 
@@ -131,6 +164,17 @@ const LIFT_TOOL=[
   {id:'lift-down',name:'LIFT — TURUN', btn:'TURUN &#9660;',isLift:true, to:0, color:'#e8c05a',
    desc:'Lantai 1 · lantai kerja utama & lounge'},
 ];
+
+/* ---------- PINTU UTAMA: penghubung markas (lt.1) ↔ area luar (sawah & desa) ----------
+   Pintu geser di dasar lorong lt.1 (kolom 12-13) menembus ke fasad markas di area luar
+   (kolom 11-13, baris 1). Perpindahan pakai mekanisme fade yang sama dengan lift, tapi
+   membawa titik-muncul (spawn) tujuan supaya dino keluar/masuk tepat di depan pintu. */
+const PRIME_DOOR={x:12,y:18,w:2,h:1};      // pintu keluar lt.1 (sudah digambar di buildBG)
+const OUT_DOOR ={x:11,y:1, w:3,h:1};       // pintu balik ke markas di fasad luar
+const DOOR_OUT={id:'door-out',name:'PINTU UTAMA', btn:'KELUAR &#9660;', isPortal:true, to:2,
+  spawn:{x:12.5*T,y:2*T+12,dir:'down'}, color:'#7ee06a', desc:'Keluar ke area sawah & desa poktan'};
+const DOOR_IN ={id:'door-in', name:'PINTU MARKAS',btn:'MASUK &#9650;',  isPortal:true, to:0,
+  spawn:{x:12.5*T,y:17*T+12,dir:'up'},  color:'#4cc9e0', desc:'Kembali ke markas'};
 
 /* zona interaksi = ring tile berjalan di sekeliling furnitur */
 function makeZones(tools,sl,liftTool){
@@ -147,7 +191,15 @@ function makeZones(tools,sl,liftTool){
   return z;
 }
 const ZONES=[makeZones(onFloor(0),SOLIDS[0],LIFT_TOOL[0]),
-             makeZones(onFloor(1),SOLIDS[1],LIFT_TOOL[1])];
+             makeZones(onFloor(1),SOLIDS[1],LIFT_TOOL[1]),
+             makeZones(onFloor(2),SOLIDS[2],null)];       // area luar: tanpa lift
+/* daftarkan petak di depan pintu utama sebagai zona portal (dua arah) */
+// prime door (lt.1): petak tepat di atas ambang pintu
+for(let x=PRIME_DOOR.x;x<PRIME_DOOR.x+PRIME_DOOR.w;x++){const y=PRIME_DOOR.y-1;
+  if(!SOLIDS[0][y*COLS+x])ZONES[0][x+','+y]=DOOR_OUT;}
+// pintu markas (luar): petak tepat di bawah fasad
+for(let x=OUT_DOOR.x;x<OUT_DOOR.x+OUT_DOOR.w;x++){const y=OUT_DOOR.y+OUT_DOOR.h;
+  if(!SOLIDS[2][y*COLS+x])ZONES[2][x+','+y]=DOOR_IN;}
 let zoneOf=ZONES[0];
 
 /* ---------- kabut perang (mobile): cahaya mengikuti dino ----------
@@ -161,6 +213,8 @@ const ROOMSETS=[
    {x:15,y:9,w:10,h:10,a:1}],  // kamar kanan-bawah
   [{x:0, y:0,w:7, h:19,a:1},   // lt.2 - serambi lift
    {x:7, y:0,w:18,h:19,a:1}],  // lt.2 - aula arsip (satu ruangan terbuka, jangan dipotong)
+  [{x:0, y:0,w:13,h:19,a:1},   // luar - paruh barat (sawah kiri)
+   {x:13,y:0,w:12,h:19,a:1}],  // luar - paruh timur (desa & sawah kanan)
 ];
 let ROOMS=ROOMSETS[0];
 let fogOn=false;
@@ -339,6 +393,8 @@ const bg=document.createElement('canvas');bg.width=W;bg.height=H;
 const bgc=bg.getContext('2d');
 const bg2=document.createElement('canvas');bg2.width=W;bg2.height=H;   // latar lantai 2
 const bg2c=bg2.getContext('2d');
+const bg3=document.createElement('canvas');bg3.width=W;bg3.height=H;   // latar area luar
+const bg3c=bg3.getContext('2d');
 function P(g,c,x,y,w=1,h=1){g.fillStyle=c;g.fillRect(x,y,w,h);}
 const rnd=(x,y)=>((x*73856093)^(y*19349663))>>>0;
 /* kolam cahaya di lantai — pita translusen yang memudar ke bawah */
@@ -526,14 +582,23 @@ function buildBG(){
     P(g,'rgba(255,222,150,.09)',6*T+4,14*T+2,3*T-2,3*T-6);            // cahaya hangat lampu
     P(g,'rgba(255,222,150,.06)',6*T,14*T,4*T-2,3*T-2);
   })();
-  /* planning bay — mat teknis menyatukan meja AREA SAMPLING + COOPERSTOWN jadi satu zona peta */
+  /* staging lapangan — bekas planning bay; AREA SAMPLING & COOPERSTOWN pindah ke luar,
+     kini pangkalan siaga menuju pintu utama: stensil arah + jejak sepatu ke lorong */
   (function(){
     const rx=2*T-2, ry=8*T-2, rw=8*T+4, rh=2*T+12;
     P(g,'#181f2a',rx,ry,rw,rh);                                       // dasar slate
     P(g,'#243244',rx,ry,rw,1);P(g,'#243244',rx,ry+rh-1,rw,1);         // tepi
     P(g,'#243244',rx,ry,1,rh);P(g,'#243244',rx+rw-1,ry,1,rh);
     for(let x=rx+8;x<rx+rw-4;x+=12)P(g,'rgba(76,201,224,.05)',x,ry+2,1,rh-4); // grid halus
+    drawText(g,'STAGING LAPANGAN',rx+6,ry+5,'#3f5a52');               // label stensil
+    /* panah stensil kuning menunjuk keluar (ke lorong → pintu utama) */
+    const ax=rx+rw-20, ay=ry+18;
+    for(let i=0;i<7;i++)P(g,'#8a7a3a',ax+i*3,ay,10,2);               // batang panah putus-putus
+    P(g,'#8a7a3a',ax+21,ay-4,2,10);P(g,'#8a7a3a',ax+19,ay-2,2,6);P(g,'#8a7a3a',ax+23,ay-2,2,6); // kepala
   })();
+  /* jejak sepatu menuju lorong keluar */
+  for(let i=0;i<5;i++){const jx=9*T+i*7,jy=10*T+2+i*8;
+    P(g,'rgba(180,150,90,.16)',jx,jy,3,2);P(g,'rgba(180,150,90,.16)',jx+4,jy+3,3,2);}
   /* ventilasi besar (dinding kanan-atas) */
   P(g,'#10141c',21*T+2,8*T+3,24,8);
   for(let i=0;i<5;i++)P(g,'#39414f',21*T+5+i*4,8*T+4,2,6);            // kisi ventilasi
@@ -561,8 +626,7 @@ function buildBG(){
   pool(g, 4*T+4,3*T, 40, 9,'76,201,224', .10);   // papan EVIDENCE (cyan)
   pool(g,20*T+4,3*T, 40, 9,'224,122,208',.09);   // TV DIFFUSION (merah muda)
   pool(g,11*T+3,3*T, 42,10,'160,90,224', .12);   // lampu tumbuh hidroponik (ungu)
-  pool(g, 2*T+4,10*T,40, 9,'232,192,90', .09);   // meja peta AREA SAMPLING (kuning)
-  pool(g, 7*T+4,10*T,40, 9,'94,232,200', .09);   // meja peta COOPERSTOWN (teal)
+  pool(g, 4*T,10*T,64, 9,'120,150,120', .06);    // cahaya netral staging lapangan
   pool(g,17*T+4,11*T,40,12,'224,124,58', .16);   // bara tungku ESC FORGE (oranye)
   pool(g,17*T+4,14*T,40,12,'159,184,208', .12);   // meja bengkel WORKSHOP (netral)
   drawWindows(g,WINDOWS);
@@ -673,30 +737,8 @@ anims.push({f:FURN[2],fn:(g,t)=>{                              // siaran feed me
   if(Math.floor(t/800)%2)P(g,'#ff5a5a',x+15,y+1,2,2);          // titik LIVE
 }});
 
-/* --- MEJA PETA SAWAH : LAPORAN KSA --- */
-FURN.push(furn(TOOLS[3].rect,4,(g,w,h)=>{
-  P(g,'#1c212b',2,h-6,4,6);P(g,'#1c212b',w-6,h-6,4,6);         // kaki depan
-  P(g,'#2f3745',0,2,w,h-8);                                     // rangka meja
-  P(g,'#3a4454',0,2,w,1);P(g,'#20262f',0,h-9,w,2);            // bevel atas/bawah
-  P(g,'#242b38',2,5,w-4,h-13);                                  // ceruk peta (bingkai)
-  P(g,'#7aa85e',3,7,w-6,h-16);                                  // peta hamparan
-  for(let i=0;i<4;i++)P(g,'#5f8a4a',3,10+i*4,w-6,1);            // baris padi
-  P(g,'#8fd45e',8,9,8,6);P(g,'#e8c05a',26,13,9,6);              // petak
-  P(g,'#4cc9e0',3,16,w-6,2);                                    // irigasi
-  P(g,'#c04a3a',37,9,2,2);P(g,'#f0ead8',20,20,9,3);             // pin + penggaris
-  P(g,'#33333d',30,19,7,7);P(g,'#9ec8dc',31,20,5,5);P(g,'#cfe6f0',32,20,2,2); // kaca pembesar
-  P(g,'#8a6a42',35,25,4,1);                                     // gagang lensa
-  P(g,'#c04a3a',41,5,1,4);P(g,'#4cc9e0',43,5,1,4);             // spidol
-  P(g,'#1a7f99',0,2,w,1);
-}));
-anims.push({f:FURN[3],fn:(g,t)=>{                              // peta sampel: garis pindai + titik
-  const f=FURN[3],mx=f.px+3,my=f.py+7,mw=f.canvas.width-6,mh=20;
-  const sy=my+Math.floor((t/40)%mh);
-  P(g,'rgba(150,225,120,.5)',mx,sy,mw,1);                     // garis pindai turun
-  [[8,4],[24,11],[34,6],[16,15]].forEach((d,i)=>{             // titik sampel berkedip
-    if(Math.floor(t/380+i)%2)P(g,'#eef06a',mx+d[0],my+d[1],2,2);});
-  if(Math.floor(t/650)%2){P(g,'#e8c05a',f.px+12,f.py+6,3,2);P(g,'#8a6a42',f.px+11,f.py+6,1,5);}
-}});
+/* AREA SAMPLING (KSA) & COOPERSTOWN kini berdiri di AREA LUAR (lihat bagian
+   "AREA LUAR" di bawah) — furnitur & animasinya dibangun di sana. */
 
 /* --- TUNGKU TEMPA : SKP FORGE --- */
 FURN.push(furn(TOOLS[4].rect,22,(g,w,h)=>{
@@ -732,8 +774,8 @@ FURN.push(furn(TOOLS[4].rect,22,(g,w,h)=>{
   P(g,'#3a3a44',30,21,2,19);P(g,'#2a2a32',30,21,1,19);         // tiang kiri
   P(g,'#3a3a44',43,21,2,19);P(g,'#4a4a54',44,21,1,19);         // tiang kanan
 }));
-anims.push({f:FURN[4],fn:(g,t)=>{                              // api bernapas + tempa + asap
-  const f=FURN[4], mx=f.px+7, my=f.py+28;
+anims.push({f:FURN[3],fn:(g,t)=>{                              // api bernapas + tempa + asap (KSA pindah luar → forge kini idx 3)
+  const f=FURN[3], mx=f.px+7, my=f.py+28;
   const breath=0.55+0.45*Math.sin(t/480), fr=Math.floor(t/120)%3;
   P(g,'#160e07',mx,my,16,15);                                  // rongga gelap
   P(g,'#7a2410',mx+1,my+11,14,4);P(g,'#c8401a',mx+2,my+12,12,2); // hamparan bara
@@ -764,34 +806,7 @@ anims.push({f:FURN[4],fn:(g,t)=>{                              // api bernapas +
   puff(0,.28,6);puff(600,.19,8);puff(1200,.11,10);
 }});
 
-/* --- MEJA NAVIGASI FARM AXIS : COOPERSTOWN --- */
-const navT=furn(TOOLS[5].rect,4,(g,w,h)=>{
-  P(g,'#1c212b',2,h-6,4,6);P(g,'#1c212b',w-6,h-6,4,6);         // kaki depan
-  P(g,'#2f3745',0,2,w,h-8);                                     // rangka meja
-  P(g,'#3a4454',0,2,w,1);P(g,'#20262f',0,h-9,w,2);            // bevel atas/bawah
-  P(g,'#0d2030',3,7,w-6,h-15);                                  // layar peta satelit
-  for(let i=6;i<w-12;i+=8)P(g,'#12405a',3+i,7,1,h-15);          // grid
-  for(let j=4;j<h-15;j+=6)P(g,'#12405a',3,7+j,w-6,1);
-  P(g,'#2f7a4a',6,10,10,6);P(g,'#2f7a4a',24,15,11,5);           // blok lahan
-  P(g,'#4cc9e0',3,13,w-6,1);                                    // saluran
-  P(g,'#e8c05a',19,9,3,3);                                      // pin poktan
-  P(g,'#10141c',34,8,10,10);P(g,'#1a7f99',34,8,10,1);           // dok kompas
-  P(g,'#2a303c',35,20,6,5);P(g,'#5a6675',36,21,4,3);P(g,'#8f9aa8',37,21,2,1); // trackball kontrol
-  P(g,'#c04a3a',43,20,1,5);P(g,'#7ee06a',45,20,1,5);           // spidol
-  P(g,'#1a7f99',0,2,w,1);
-});
-FURN.push(navT);
-anims.push({f:navT,fn:(g,t)=>{                                  // jarum kompas berputar
-  const DIRS=[[3,0],[2,2],[0,3],[-2,2],[-3,0],[-2,-2],[0,-3],[2,-2]];
-  const fr=Math.floor(t/300)%8,d=DIRS[fr],cxp=navT.px+39,cyp=navT.py+13;
-  P(g,'#5ee8c8',cxp,cyp,1,1);
-  P(g,'#5ee8c8',cxp+d[0],cyp+d[1],1,1);
-  P(g,'#2a8f78',cxp-d[0],cyp-d[1],1,1);
-  if(Math.floor(t/550)%2)P(g,'#ffd75e',navT.px+20,navT.py+10,1,1);  // pin berkedip
-  const bx=navT.px+4+Math.floor((t/110)%(navT.canvas.width-14));    // blip survei menyusuri saluran
-  P(g,'#7fffe0',bx,navT.py+13,2,1);
-  if(Math.floor(t/900)%2)P(g,'rgba(94,232,200,.35)',navT.px+6,navT.py+10,10,6);  // sapuan lahan
-}});
+/* COOPERSTOWN (FARM AXIS) dipindah ke AREA LUAR — dibangun di bagian bawah. */
 
 /* --- MEJA BENGKEL UMUM : WORKSHOP (isi menyusul, tak khusus drum seeder) --- */
 FURN.push(furn(TOOLS[6].rect,8,(g,w,h)=>{
@@ -851,6 +866,8 @@ const potPaint=g=>{
 const potA=furn({x:7, y:2, w:1,h:1},4,potPaint);
 const potB=furn({x:1, y:7, w:1,h:1},4,potPaint);
 const potC=furn({x:19,y:2, w:1,h:1},4,potPaint);
+const potD=furn({x:2, y:9, w:1,h:1},4,potPaint);   // isi staging lapangan (kiri)
+const potE=furn({x:8, y:8, w:1,h:1},4,potPaint);   // isi staging lapangan (kanan)
 const bench=furn({x:8,y:16,w:2,h:1},6,(g,w,h)=>{
   P(g,'#39414f',2,8,w-4,5);P(g,'#4a5468',2,8,w-4,2);                         // dudukan logam
   P(g,'#2a303c',3,13,3,h-14);P(g,'#2a303c',w-6,13,3,h-14);                   // kaki
@@ -987,7 +1004,7 @@ const jukebox=furn({x:4,y:16,w:1,h:1},14,(g,w,h)=>{          // h=30
   P(g,'#e8c05a',5,22,2,2);P(g,'#7ee06a',8,22,2,2);P(g,'#4cc9e0',11,22,1,2); // tombol
   P(g,'#2a1810',2,h-3,12,3);                                  // dasar
 });
-FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,lamp,cooler,boxes,locker,
+FURN.push(potA,potB,potC,potD,potE,bench,drum,kabinet,toolRack,lamp,cooler,boxes,locker,
           rackC,potRA,shelfR,gasCyl,tires,jukebox);
 anims.push({fn:(g,t)=>{                                       // layar & equalizer jukebox
   const jx=jukebox.px,jy=jukebox.py,dx=jx+4,dy=jy+6;
@@ -1681,15 +1698,171 @@ anims.push({fn:(g,t)=>{                                        // debu di atas l
   }
 }});
 
-/* selesai — simpan set lantai 2, kembalikan rujukan aktif ke lantai 1 */
+/* selesai — simpan set lantai 2 */
 FURNS.push(FURN);ANIMS.push(anims);
+
+/* =========================================================================
+   AREA LUAR (indeks 2) — sawah & desa poktan di balik pintu utama
+   ========================================================================= */
+const IN_HUT=(tx,ty)=>tx>=15&&tx<=21&&ty>=4&&ty<=8;      // kluster gubuk desa (kanan-atas)
+const OUT_PATH=new Set();                                 // jalan tanah: tulang tengah + 2 cabang
+for(let y=2;y<=17;y++)OUT_PATH.add('12,'+y);
+for(let x=3;x<=12;x++)OUT_PATH.add(x+',10');             // cabang ke AREA SAMPLING (kiri)
+for(let x=12;x<=20;x++)OUT_PATH.add(x+',9');             // cabang ke COOPERSTOWN (kanan)
+function buildBG3(){
+  const g=bg3c;
+  P(g,'#1c2f1a',0,0,W,H);                                 // dasar rumput gelap
+  /* tanah, sawah, fasad */
+  for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
+    const px=tx*T,py=ty*T,r=rnd(tx,ty)%16,cell=MAP3[ty][tx];
+    if(cell==='#'){
+      if(ty<=1){                                           // fasad markas (bangunan baja)
+        P(g,'#2a313d',px,py,T,T);
+        for(let x=0;x<T;x+=6)P(g,'#232a34',px+x,py,1,T);
+        if(ty===1)P(g,'#171d26',px,py+T-3,T,3);
+      }else if(IN_HUT(tx,ty)){
+        P(g,'#4d6f38',px,py,T,T);                          // rumput di bawah gubuk (gubuk digambar nanti)
+      }else{                                               // petak sawah (air keruh kehijauan)
+        P(g,'#37625f',px,py,T,T);P(g,'#2e5350',px,py+T-2,T,2);
+        for(let i=2;i<T;i+=4)P(g,'#4f7f52',px+1,py+i,T-2,1);            // baris padi
+        if(r<3)P(g,'rgba(200,230,220,.14)',px+3,py+3,4,1);             // kilau air
+      }
+    }else{                                                 // tanah bisa dilewati
+      if(OUT_PATH.has(tx+','+ty)){
+        P(g,'#7a5c3a',px,py,T,T);P(g,'#6e5233',px,py+T-2,T,2);         // jalan tanah
+        if(r<4)P(g,'#8a6a44',px+(r%12),py+((r*3)%12),2,1);            // kerikil
+      }else{
+        const a=(tx+ty)&1;
+        P(g,a?'#3f6b39':'#456f3e',px,py,T,T);                          // rumput
+        if(r===0)P(g,'#548146',px+4,py+7,3,2);
+        if(r===5)P(g,'#2f5230',px+9,py+3,2,3);
+        if(r===9)P(g,'#6f9a52',px+2,py+10,2,1);                        // rumpun cerah
+      }
+    }
+  }
+  /* pematang: garis tanah terang di batas air ↔ jalan/rumput */
+  for(let ty=2;ty<ROWS-1;ty++)for(let tx=1;tx<COLS-1;tx++){
+    if(MAP3[ty][tx]!=='#'||IN_HUT(tx,ty))continue;
+    const px=tx*T,py=ty*T;
+    if(MAP3[ty-1][tx]==='.')P(g,'#6e5836',px,py,T,2);
+    if(MAP3[ty+1][tx]==='.')P(g,'#6e5836',px,py+T-2,T,2);
+    if(MAP3[ty][tx-1]==='.')P(g,'#6e5836',px,py,2,T);
+    if(MAP3[ty][tx+1]==='.')P(g,'#6e5836',px+T-2,py,2,T);
+  }
+  /* semak pinggir peta (pagar hidup) */
+  for(let tx=0;tx<COLS;tx++){P(g,'#25451f',tx*T,1*T+12,T,4);P(g,'#25451f',tx*T,17*T,T,6);}
+  for(let ty=2;ty<18;ty++){P(g,'#25451f',0*T,ty*T,4,T);P(g,'#25451f',24*T-4,ty*T,4,T);}
+  /* bush sudut (petak solid DECOR3) */
+  const bush=(tx,ty)=>{const px=tx*T,py=ty*T;
+    P(g,'#2f5a28',px+2,py+4,12,10);P(g,'#3f7334',px+3,py+4,10,4);P(g,'#59934a',px+5,py+5,5,2);
+    P(g,'#20401b',px+2,py+13,12,2);};
+  bush(2,2);bush(22,2);bush(2,16);bush(22,16);
+  /* gubuk desa — COOPERSTOWN */
+  const hut=(tx,ty,tw,th)=>{
+    const px=tx*T,py=ty*T,w=tw*T,h=th*T,rh=Math.floor(h*0.52);
+    for(let ry=0;ry<rh;ry++){const ins=Math.floor((rh-ry)*(w/2)/rh);   // atap jerami segitiga
+      P(g,ry<2?'#c2a052':(ry&1?'#a8853f':'#997634'),px+ins,py+ry,w-2*ins,1);}
+    P(g,'#7a5a26',px,py+rh-1,w,2);                                      // bubungan bawah
+    P(g,'#6e4a2a',px+1,py+rh+1,w-2,h-rh-1);                             // dinding kayu
+    for(let x=px+3;x<px+w-2;x+=5)P(g,'#5a3c20',x,py+rh+2,1,h-rh-3);     // papan vertikal
+    P(g,'#3a2416',px+Math.floor(w/2)-2,py+h-8,4,8);                     // pintu
+    P(g,'#ffd878',px+3,py+rh+3,3,3);                                    // jendela menyala
+    P(g,'#2a1c12',px+1,py+h-1,w-2,1);                                   // bayang dasar
+  };
+  hut(15,4,3,2);hut(19,4,3,2);hut(16,7,5,2);
+  /* pintu balik ke markas (fasad, kolom 11-13 baris 1) */
+  (function(){const dx=11*T,dy=1*T;
+    P(g,'#0f1620',dx+3,dy+2,3*T-6,T-2);                                 // rongga pintu gelap
+    P(g,'#3a4658',dx+1,dy,2,T);P(g,'#3a4658',dx+3*T-3,dy,2,T);          // kusen
+    P(g,'#7ee06a',dx+7,dy+T-4,3*T-14,2);                                // cahaya hijau ambang
+    P(g,'#141a24',dx+T-3,dy-7,T+6,6);drawText(g,'HQ',dx+T+4,dy-6,'#8fd4e8'); // papan HQ
+  })();
+}
+buildBG3();
+
+/* --- perabot & animasi AREA LUAR --- */
+FURN=[];anims=[];
+/* AREA SAMPLING — meja peta sawah (kini kios lapangan) */
+const ksaT=furn(TOOLS[3].rect,4,(g,w,h)=>{
+  P(g,'#1c212b',2,h-6,4,6);P(g,'#1c212b',w-6,h-6,4,6);
+  P(g,'#2f3745',0,2,w,h-8);P(g,'#3a4454',0,2,w,1);P(g,'#20262f',0,h-9,w,2);
+  P(g,'#242b38',2,5,w-4,h-13);P(g,'#7aa85e',3,7,w-6,h-16);
+  for(let i=0;i<4;i++)P(g,'#5f8a4a',3,10+i*4,w-6,1);
+  P(g,'#8fd45e',8,9,8,6);P(g,'#e8c05a',26,13,9,6);P(g,'#4cc9e0',3,16,w-6,2);
+  P(g,'#c04a3a',37,9,2,2);P(g,'#f0ead8',20,20,9,3);
+  P(g,'#33333d',30,19,7,7);P(g,'#9ec8dc',31,20,5,5);P(g,'#cfe6f0',32,20,2,2);
+  P(g,'#8a6a42',35,25,4,1);P(g,'#c04a3a',41,5,1,4);P(g,'#4cc9e0',43,5,1,4);
+  P(g,'#1a7f99',0,2,w,1);
+});
+FURN.push(ksaT);
+anims.push({fn:(g,t)=>{                                     // peta sampel: garis pindai + titik
+  const mx=ksaT.px+3,my=ksaT.py+7,mw=ksaT.canvas.width-6,mh=20;
+  P(g,'rgba(150,225,120,.5)',mx,my+Math.floor((t/40)%mh),mw,1);
+  [[8,4],[24,11],[34,6],[16,15]].forEach((d,i)=>{
+    if(Math.floor(t/380+i)%2)P(g,'#eef06a',mx+d[0],my+d[1],2,2);});
+  if(Math.floor(t/650)%2){P(g,'#e8c05a',ksaT.px+12,ksaT.py+6,3,2);P(g,'#8a6a42',ksaT.px+11,ksaT.py+6,1,5);}
+}});
+/* COOPERSTOWN — meja navigasi FARM AXIS */
+const navT=furn(TOOLS[5].rect,4,(g,w,h)=>{
+  P(g,'#1c212b',2,h-6,4,6);P(g,'#1c212b',w-6,h-6,4,6);
+  P(g,'#2f3745',0,2,w,h-8);P(g,'#3a4454',0,2,w,1);P(g,'#20262f',0,h-9,w,2);
+  P(g,'#0d2030',3,7,w-6,h-15);
+  for(let i=6;i<w-12;i+=8)P(g,'#12405a',3+i,7,1,h-15);
+  for(let j=4;j<h-15;j+=6)P(g,'#12405a',3,7+j,w-6,1);
+  P(g,'#2f7a4a',6,10,10,6);P(g,'#2f7a4a',24,15,11,5);P(g,'#4cc9e0',3,13,w-6,1);
+  P(g,'#e8c05a',19,9,3,3);P(g,'#10141c',34,8,10,10);P(g,'#1a7f99',34,8,10,1);
+  P(g,'#2a303c',35,20,6,5);P(g,'#5a6675',36,21,4,3);P(g,'#8f9aa8',37,21,2,1);
+  P(g,'#c04a3a',43,20,1,5);P(g,'#7ee06a',45,20,1,5);P(g,'#1a7f99',0,2,w,1);
+});
+FURN.push(navT);
+anims.push({fn:(g,t)=>{                                     // jarum kompas berputar + blip survei
+  const DIRS=[[3,0],[2,2],[0,3],[-2,2],[-3,0],[-2,-2],[0,-3],[2,-2]];
+  const d=DIRS[Math.floor(t/300)%8],cxp=navT.px+39,cyp=navT.py+13;
+  P(g,'#5ee8c8',cxp,cyp,1,1);P(g,'#5ee8c8',cxp+d[0],cyp+d[1],1,1);P(g,'#2a8f78',cxp-d[0],cyp-d[1],1,1);
+  if(Math.floor(t/550)%2)P(g,'#ffd75e',navT.px+20,navT.py+10,1,1);
+  P(g,'#7fffe0',navT.px+4+Math.floor((t/110)%(navT.canvas.width-14)),navT.py+13,2,1);
+  if(Math.floor(t/900)%2)P(g,'rgba(94,232,200,.35)',navT.px+6,navT.py+10,10,6);
+}});
+/* orang-orangan sawah (dekor, di petak air kiri) */
+const scarecrow=furn({x:9,y:5,w:1,h:1},14,(g,w,h)=>{
+  P(g,'#6e5233',7,10,2,h-10);                              // tiang
+  P(g,'#8a6a42',2,13,12,2);                                // lengan
+  P(g,'#c9b07a',4,4,8,7);P(g,'#b89a5a',4,4,8,2);           // baju karung
+  P(g,'#d8c48a',6,0,4,4);P(g,'#9a7a3a',5,0,6,1);           // kepala + topi
+  P(g,'#3a2a18',6,1,1,1);P(g,'#3a2a18',9,1,1,1);           // mata
+});
+FURN.push(scarecrow);
+/* --- ambience: kilau air, kupu-kupu, kawanan burung --- */
+anims.push({fn:(g,t)=>{                                     // kilau bergerak di permukaan sawah
+  for(let ty=2;ty<ROWS;ty++)for(let tx=1;tx<COLS-1;tx++){
+    if(MAP3[ty][tx]!=='#'||ty<=1||IN_HUT(tx,ty))continue;
+    if((tx*3+ty*7+Math.floor(t/280))%9!==0)continue;
+    const px=tx*T+((tx*5+ty)%9)+2,py=ty*T+4+Math.floor(3*Math.sin(t/500+tx));
+    P(g,`rgba(210,236,226,${(0.10+0.06*Math.sin(t/400+tx+ty)).toFixed(3)})`,px,py,2,1);
+  }
+}});
+anims.push({fn:(g,t)=>{                                     // kupu-kupu + kawanan burung
+  const CB=[[5,12,'#f2c94c'],[9,14,'#f2a2c9'],[14,12,'#a2d4f2'],[20,13,'#f0ead8']];
+  CB.forEach((b,i)=>{const x=b[0]*T+Math.round(18*Math.sin(t/1400+i*2)),
+    y=b[1]*T+Math.round(10*Math.sin(t/900+i)),fl=Math.floor(t/120+i)%2;
+    P(g,b[2],x,y,1,1);P(g,b[2],x-1,y-(fl?1:0),1,1);P(g,b[2],x+1,y-(fl?1:0),1,1);
+    P(g,'#3a2a20',x,y,1,1);});
+  const bp=(t%16000)/16000;                                // kawanan burung lewat tiap ~16 dtk
+  if(bp<0.5){const bx=Math.round(bp*2*W),by=3*T+Math.round(6*Math.sin(t/600));
+    for(let n=0;n<4;n++){const x=bx-n*10;if(x<0||x>=W)continue;const fl=Math.floor(t/160+n)%2;
+      P(g,'rgba(20,26,32,.7)',x,by,1,1);P(g,'rgba(20,26,32,.7)',x-1,by-(fl?1:0),1,1);
+      P(g,'rgba(20,26,32,.7)',x+1,by-(fl?1:0),1,1);}}
+}});
+FURNS.push(FURN);ANIMS.push(anims);
+
+/* kembalikan rujukan aktif ke lantai 1 */
 FURN=FURNS[0];anims=ANIMS[0];
 
 /* =========================================================================
    PEMAIN
    ========================================================================= */
 const player={x:12.5*T,y:17*T+12,dir:'down',frame:0,animT:0,moving:false,path:null,
-              pendTool:null,jumpT:0,sitting:null,pendSeat:null,pendJuke:null,pendLift:false};
+              pendTool:null,jumpT:0,sitting:null,pendSeat:null,pendJuke:null,pendLift:false,pendPortal:null};
 const SPEED=62, JUMP_DUR=.45;
 const cam={x:0,y:0};
 const keys=new Set();
@@ -2001,13 +2174,15 @@ function setBanner(tool){
   if(!tool){banner.classList.remove('show');return;}
   bName.textContent=tool.name;bDesc.textContent=tool.desc;
   btnOpen.innerHTML=tool.btn||'BUKA &#9656;';
-  bKey.textContent=tool.isLift?'[ENTER] UNTUK BERPINDAH LANTAI':'[ENTER] UNTUK MEMBUKA';
+  bKey.textContent=tool.isLift?'[ENTER] UNTUK BERPINDAH LANTAI':
+    tool.isPortal?'[ENTER] UNTUK LEWATI PINTU':'[ENTER] UNTUK MEMBUKA';
   bSw.style.background=tool.color;bSw.style.color=tool.color;
   banner.classList.add('show');
   beep(520,.05,.03);
 }
 function openTool(tool){
   if(tool.isLift){rideLift(tool.to);return;}
+  if(tool.isPortal){startTravel(tool.to,tool.spawn);return;}    // pintu utama ↔ area luar
   beep(880,.07,.06);beep(1320,.1,.06,'square',.08);
   setTimeout(()=>{window.location.href=tool.url;},180);
 }
@@ -2020,7 +2195,7 @@ TOOLS.forEach(t=>{
   const mid=document.createElement('span');
   const nm=document.createElement('span');nm.className='nm';nm.textContent=t.name;
   const ds=document.createElement('span');ds.className='ds';
-  ds.textContent=t.desc+(t.floor?' · lantai 2':'');
+  ds.textContent=t.desc+['',' · lantai 2',' · area luar'][t.floor||0];
   mid.append(nm,document.createElement('br'),ds);
   const ar=document.createElement('span');ar.className='arrow';ar.textContent='▸';
   a.append(sq,mid,ar);
@@ -2036,31 +2211,34 @@ menu.addEventListener('click',e=>{if(e.target===menu)toggleMenu(false);});
    ========================================================================= */
 let floor=0;
 const FADE_DUR=1.05, FADE_HALF=.5;
-const fade={on:false,t:0,to:0,swapped:false};
-const floorName=n=>n?'LANTAI 2 · RUANG ARSIP':'LANTAI 1 · RUANG KERJA';
+const fade={on:false,t:0,to:0,swapped:false,spawn:null};
+const floorName=n=>['LANTAI 1 · RUANG KERJA','LANTAI 2 · RUANG ARSIP','LUAR · SAWAH & DESA POKTAN'][n];
 
-/* tukar seluruh rujukan denah ke lantai n, lalu tempatkan dino di depan lift */
-function setFloor(n){
+/* tukar seluruh rujukan denah ke area n; tempatkan dino di `spawn` (bila ada)
+   atau default tepat di depan pintu lift. spawn={x,y,dir} dalam piksel. */
+function setFloor(n,spawn){
   floor=n;
   solid=SOLIDS[n];zoneOf=ZONES[n];FURN=FURNS[n];anims=ANIMS[n];ROOMS=ROOMSETS[n];
-  ROOMS.forEach(r=>r.a=1);                        // kabut pekat lagi di lantai baru
+  ROOMS.forEach(r=>r.a=1);                        // kabut pekat lagi di area baru
   player.path=null;player.pendTool=null;player.pendSeat=null;
-  player.pendJuke=null;player.pendLift=false;player.sitting=null;
-  player.x=(LIFT_RECT.x+LIFT_RECT.w/2)*T;         // melangkah keluar tepat di depan kabin
-  player.y=(LIFT_RECT.y+LIFT_RECT.h)*T+12;
-  player.dir='down';player.moving=false;player.animT=0;
+  player.pendJuke=null;player.pendLift=false;player.pendPortal=null;player.sitting=null;
+  if(spawn){player.x=spawn.x;player.y=spawn.y;player.dir=spawn.dir||'down';}
+  else{player.x=(LIFT_RECT.x+LIFT_RECT.w/2)*T;player.y=(LIFT_RECT.y+LIFT_RECT.h)*T+12;player.dir='down';}
+  player.moving=false;player.animT=0;
   cam.x=cv.width>=W?(W-cv.width)/2:Math.max(0,Math.min(W-cv.width,player.x-cv.width/2));
   cam.y=cv.height>=H?(H-cv.height)/2:Math.max(0,Math.min(H-cv.height,player.y-8-cv.height/2));
   activeTool=null;lastZone=null;banner.classList.remove('show');
   floorTag.textContent=floorName(n);
 }
-function rideLift(to){
+/* perpindahan berfade umum (lift & pintu). spawn opsional membawa titik-muncul tujuan. */
+function startTravel(to,spawn){
   if(fade.on||to===floor)return;
   if(player.sitting)standUp();
-  player.path=null;player.pendTool=null;player.pendLift=false;
-  fade.on=true;fade.t=0;fade.to=to;fade.swapped=false;
+  player.path=null;player.pendTool=null;player.pendLift=false;player.pendPortal=null;
+  fade.on=true;fade.t=0;fade.to=to;fade.spawn=spawn||null;fade.swapped=false;
   beep(430,.07,.05);beep(660,.08,.05,'square',.1);beep(880,.14,.05,'square',.22);
 }
+const rideLift=to=>startTravel(to,null);           // lift: spawn default di depan kabin
 /* hampiri pintu lift lalu berpindah lantai setibanya di sana */
 function goToLift(){
   if(player.sitting)standUp();
@@ -2076,6 +2254,21 @@ function goToLift(){
   player.path=pathTo(best[0],best[1]);
   player.pendLift=true;player.pendTool=null;player.pendSeat=null;player.pendJuke=null;
 }
+/* hampiri ambang pintu utama lalu berpindah area setibanya di sana.
+   dy<0: petak depan di atas rect (pintu lt.1) · dy>0: di bawah rect (fasad luar) */
+function goToPortal(portal,rect,dy){
+  if(player.sitting)standUp();
+  const fy=dy<0?rect.y-1:rect.y+rect.h,[sx,sy]=ptile(),{dist}=bfs(sx,sy);
+  let best=null,bd=1e9;
+  for(let x=rect.x;x<rect.x+rect.w;x++){
+    if(fy<0||fy>=ROWS||S(x,fy))continue;
+    const d=dist[fy*COLS+x];if(d>=0&&d<bd){bd=d;best=[x,fy];}
+  }
+  if(!best)return;
+  if(bd===0){startTravel(portal.to,portal.spawn);return;}
+  player.path=pathTo(best[0],best[1]);
+  player.pendPortal=portal;player.pendTool=null;player.pendSeat=null;player.pendJuke=null;player.pendLift=false;
+}
 /* tirai gelap selama kabin berjalan + papan nama lantai tujuan */
 function drawFade(){
   if(!fade.on)return;
@@ -2085,7 +2278,7 @@ function drawFade(){
   cx.fillStyle=`rgba(4,6,10,${Math.min(1,a).toFixed(3)})`;
   cx.fillRect(0,0,cv.width,cv.height);
   if(a>.55){
-    const s=fade.to?'2ND FLOOR':'1ST FLOOR',k=2;
+    const s=['1ST FLOOR','2ND FLOOR','OUTSIDE'][fade.to],k=2;
     cx.globalAlpha=Math.min(1,(a-.55)/.35);
     cx.setTransform(k,0,0,k,Math.round((cv.width-textW(s)*k)/2),Math.round(cv.height/2-3*k));
     drawText(cx,s,0,0,'#4ce0ff');
@@ -2170,6 +2363,13 @@ cv.addEventListener('pointerdown',e=>{
    if(tx>=rc.x&&tx<rc.x+rc.w&&ty>=rc.y-1&&ty<=rc.y+rc.h){
      if(activeTool&&activeTool.isLift){rideLift(activeTool.to);return;}
      goToLift();beep(440,.04,.03);return;}}
+  /* kena pintu utama (lt.1) → keluar; atau pintu markas (luar) → masuk */
+  if(floor===0&&tx>=PRIME_DOOR.x&&tx<PRIME_DOOR.x+PRIME_DOOR.w&&ty>=PRIME_DOOR.y-2&&ty<=PRIME_DOOR.y){
+    if(activeTool&&activeTool.isPortal){startTravel(activeTool.to,activeTool.spawn);return;}
+    goToPortal(DOOR_OUT,PRIME_DOOR,-1);beep(440,.04,.03);return;}
+  if(floor===2&&tx>=OUT_DOOR.x&&tx<OUT_DOOR.x+OUT_DOOR.w&&ty>=OUT_DOOR.y&&ty<=OUT_DOOR.y+2){
+    if(activeTool&&activeTool.isPortal){startTravel(activeTool.to,activeTool.spawn);return;}
+    goToPortal(DOOR_IN,OUT_DOOR,1);beep(440,.04,.03);return;}
   /* kena furnitur tool (toleransi 1 tile utk label/overhang)? */
   for(const t of TOOLS){
     if((t.floor||0)!==floor)continue;
@@ -2202,7 +2402,7 @@ cv.addEventListener('pointerdown',e=>{
 function update(dt){
   if(fade.on){                                        // kabin lift berjalan: permainan membeku
     fade.t+=dt;
-    if(!fade.swapped&&fade.t>=FADE_HALF){setFloor(fade.to);fade.swapped=true;}
+    if(!fade.swapped&&fade.t>=FADE_HALF){setFloor(fade.to,fade.spawn);fade.swapped=true;}
     if(fade.t>=FADE_DUR)fade.on=false;
     return;
   }
@@ -2230,6 +2430,8 @@ function update(dt){
       if(!player.path.length&&player.pendSeat)sitDown(player.pendSeat);
       if(!player.path.length&&player.pendJuke){player.pendJuke=null;player.dir='up';jukeCycle();}
       if(!player.path.length&&player.pendLift){player.pendLift=false;player.dir='up';rideLift(floor?0:1);}
+      if(!player.path.length&&player.pendPortal){const p=player.pendPortal;player.pendPortal=null;
+        player.dir=p===DOOR_OUT?'down':'up';startTravel(p.to,p.spawn);}
     }else{
       if(Math.abs(dx)>Math.abs(dy))vx=Math.sign(dx);else vy=Math.sign(dy);
     }
@@ -2245,7 +2447,8 @@ function update(dt){
   }else player.animT=0;
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
   if(floor===0){petUpdate(dt);botUpdate(dt);droneUpdate(dt);}   // penghuni lt.1
-  else arcbotUpdate(dt);                                        // robot arsiparis lt.2
+  else if(floor===1)arcbotUpdate(dt);                          // robot arsiparis lt.2
+  /* area luar (2): kehidupan lewat anims (kilau air, kupu-kupu, burung) — tanpa update khusus */
   if(music.on){music.visT+=dt;const beat=60/TRACKS[music.track].bpm;   // pet ikut goyang tiap ketukan
     if(music.visT>=beat){music.visT-=beat;if(pet.hopT<=0)pet.hopT=.4;}}
 
@@ -2274,7 +2477,7 @@ function render(t){
   cx.setTransform(1,0,0,1,0,0);
   cx.fillStyle='#080b11';cx.fillRect(0,0,cv.width,cv.height);
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
-  cx.drawImage(floor?bg2:bg,0,0);
+  cx.drawImage([bg,bg2,bg3][floor],0,0);
   if(floor===1)drawPeekLife(t);                    // kehidupan di jendela intip lt.1
   if(floor===0){
     /* bayangan drone — mengikuti posisinya (rapat saat parkir), di bawah semua objek */
@@ -2407,7 +2610,7 @@ let last=0, skyBucket=-1, rafId=0;
 function tickSky(){
   daylight=daylightAt(curHour());                 // halus tiap frame (untuk grade warna)
   const b=Math.round(curHour()*10);               // langit terpanggang ulang tiap ~6 menit
-  if(b!==skyBucket){skyBucket=b;buildBG();buildBG2();}
+  if(b!==skyBucket){skyBucket=b;buildBG();buildBG2();buildBG3();}
 }
 tickSky();
 function loop(ts){
@@ -2450,7 +2653,8 @@ addEventListener('resize',fit);fit();
 /* akses debug (dipakai pengujian otomatis; hanya di localhost, absen di produksi) */
 if(location.hostname==='localhost'||location.hostname==='127.0.0.1'||location.protocol==='file:')
 window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS,
-              floor:()=>floor,setFloor,rideLift,goToLift,LIFT_RECT,MAP2,SOLIDS,ZONES,FURNS,fade,arcbot,
+              floor:()=>floor,setFloor,rideLift,startTravel,goToLift,LIFT_RECT,MAP2,MAP3,SOLIDS,ZONES,FURNS,fade,arcbot,
+              PRIME_DOOR,OUT_DOOR,DOOR_OUT,DOOR_IN,buildBG3,
               fog:()=>fogOn,SEATS,goToSeat,sitDown,standUp,seatAtFront,
               music,jukebox,jukeCycle,jukeAtFront,goToJuke,TRACKS,
               setHour:h=>{forcedHour=h;skyBucket=-1;tickSky();render(performance.now());},
