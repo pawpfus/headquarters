@@ -2611,8 +2611,9 @@ function render(t){
     cx.fillRect(0,0,cv.width,cv.height);
     cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   }
-  /* kabut perang paling akhir: petak gelap dilubangi halo di sekitar dino */
-  if(fogOn){
+  /* kabut perang (mobile) hanya untuk ruang tertutup lt.1 & lt.2 — area luar (lapangan
+     terbuka) dibiarkan terang penuh; fog ala-ruangan bikin petak gelap kaku di sana */
+  if(fogOn&&floor!==2){
     const g=fogCv.getContext('2d'),ox=Math.round(cam.x),oy=Math.round(cam.y);
     g.setTransform(1,0,0,1,0,0);
     g.clearRect(0,0,fogCv.width,fogCv.height);
