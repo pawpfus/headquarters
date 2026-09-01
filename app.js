@@ -1724,15 +1724,17 @@ function buildBG3(){
   /* tanah & sawah (baris 0-1 = fasad, digambar terpisah setelah ini) */
   for(let ty=2;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
     const px=tx*T,py=ty*T,r=rnd(tx,ty)%16,cell=MAP3[ty][tx];
-    if(cell==='#'){                                        // pagar kayu putih (pembatas kebun)
-      const ga=(tx+ty)&1;
-      P(g,ga?'#3f6b39':'#456f3e',px,py,T,T);                          // rumput dasar
-      P(g,'#efe9db',px,py+4,T,2);P(g,'#cbc4b2',px,py+6,T,1);          // rel atas + bayang
-      P(g,'#efe9db',px,py+10,T,2);P(g,'#cbc4b2',px,py+12,T,1);        // rel bawah + bayang
-      for(let x=1;x<T;x+=5){                                          // papan pagar (pickets) berujung lancip
-        P(g,'#f4f0e4',px+x,py+1,3,14);P(g,'#fbf9f0',px+x,py+1,1,14);P(g,'#d8d2c2',px+x+2,py+1,1,14);
-        P(g,'#f4f0e4',px+x+1,py,1,1);P(g,'rgba(0,0,0,.12)',px+x,py+15,3,1);
-      }
+    if(cell==='#'){                                        // gundukan kebun: tanah + sayur + bunga
+      P(g,'#5a3f28',px,py,T,T);                                        // tanah
+      P(g,'#6e4f34',px,py,T,3);P(g,'#7a5836',px+2,py,T-4,1);          // punggung gundukan tersinari
+      P(g,'#4a3018',px,py+T-2,T,2);                                    // dasar gelap
+      for(let i=4;i<T;i+=5)P(g,'#4a3320',px,py+i,T,1);                 // alur/furrow
+      const gv=rnd(tx,ty+5)%5;
+      if(gv<3){P(g,'#3f7a34',px+3,py+4,4,4);P(g,'#59a848',px+4,py+4,2,2);}   // rumpun sayur
+      if(gv>1){P(g,'#4a8f3a',px+9,py+8,4,3);P(g,'#6fc04a',px+10,py+8,2,1);}  // sayur ke-2
+      const fl=rnd(tx+3,ty)%6, FC=['#f2c94c','#e8607a','#f0ead8','#c98ce0'];
+      if(fl<3)P(g,FC[fl%4],px+((2+fl*3)%12)+1,py+2+((fl*5)%8),1,1);    // bunga
+      if(fl===0)P(g,'#f2c94c',px+11,py+11,1,1);
     }else if(OUT_PATH.has(tx+','+ty)){
       P(g,'#7a5c3a',px,py,T,T);P(g,'#6e5233',px,py+T-2,T,2);           // jalan tanah
       if(r<4)P(g,'#8a6a44',px+(r%12),py+((r*3)%12),2,1);              // kerikil
@@ -1743,6 +1745,15 @@ function buildBG3(){
       if(r===5)P(g,'#2f5230',px+9,py+3,2,3);
       if(r===9)P(g,'#6f9a52',px+2,py+10,2,1);                          // rumpun cerah
     }
+  }
+  /* pematang: garis tanah terang di batas gundukan ↔ jalan/rumput */
+  for(let ty=2;ty<ROWS-1;ty++)for(let tx=1;tx<COLS-1;tx++){
+    if(MAP3[ty][tx]!=='#')continue;
+    const px=tx*T,py=ty*T;
+    if(MAP3[ty-1][tx]==='.')P(g,'#6e5836',px,py,T,2);
+    if(MAP3[ty+1][tx]==='.')P(g,'#6e5836',px,py+T-2,T,2);
+    if(MAP3[ty][tx-1]==='.')P(g,'#6e5836',px,py,2,T);
+    if(MAP3[ty][tx+1]==='.')P(g,'#6e5836',px+T-2,py,2,T);
   }
   /* rimbun hutan hujan di pinggir (kiri/kanan/bawah) + pakis */
   for(let tx=0;tx<COLS;tx++){P(g,'#1c3a18',tx*T,17*T,T,7);
