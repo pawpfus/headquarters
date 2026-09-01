@@ -142,8 +142,15 @@ const OUT_TREES=[
   {x:6,y:6,s:12},{x:9,y:8,s:13},{x:14,y:11,s:14},{x:22,y:9,s:15},{x:15,y:15,s:16},{x:13,y:4,s:17},{x:6,y:13,s:18},
   {x:5,y:5,s:19},{x:9,y:11,s:20},{x:11,y:17,s:21},{x:16,y:16,s:22},{x:4,y:17,s:23},
 ];
+/* papan info poktan — objek yang bisa "dibaca" (banner memutar pesan) */
+const NOTICE_RECT={x:14,y:6,w:2,h:1};
+const noticeBoard={id:'board',name:'PAPAN INFO POKTAN',color:'#e8c05a',btn:'BACA &#9656;',isBoard:true,idx:0,
+  msgs:['JADWAL TANAM SERENTAK PEKAN DEPAN','RAPAT POKTAN JUMAT 15:30 DI BALAI',
+        'BANTUAN BENIH PADI SUDAH TERSEDIA','WASPADA WERENG - LAPOR SEGERA','UBINAN KSA BLOK 3 HARI KAMIS']};
+noticeBoard.desc=noticeBoard.msgs[0];
 const DECOR3_SOLID=[
   ...OUT_TREES.map(t=>({x:t.x,y:t.y,w:1,h:1})),        // batang pohon = solid
+  {x:NOTICE_RECT.x,y:NOTICE_RECT.y,w:NOTICE_RECT.w,h:NOTICE_RECT.h},   // papan info
 ];
 
 /* ---------- peta kepadatan per-lantai ---------- */
@@ -206,6 +213,9 @@ for(let x=PRIME_DOOR.x;x<PRIME_DOOR.x+PRIME_DOOR.w;x++){const y=PRIME_DOOR.y-1;
 // pintu markas (luar): petak tepat di bawah fasad
 for(let x=OUT_DOOR.x;x<OUT_DOOR.x+OUT_DOOR.w;x++){const y=OUT_DOOR.y+OUT_DOOR.h;
   if(!SOLIDS[2][y*COLS+x])ZONES[2][x+','+y]=DOOR_IN;}
+// papan info poktan (luar): petak tepat di bawah papan = zona baca
+for(let x=NOTICE_RECT.x;x<NOTICE_RECT.x+NOTICE_RECT.w;x++){const y=NOTICE_RECT.y+NOTICE_RECT.h;
+  if(!SOLIDS[2][y*COLS+x])ZONES[2][x+','+y]=noticeBoard;}
 let zoneOf=ZONES[0];
 
 /* ---------- kabut perang (mobile): cahaya mengikuti dino ----------
@@ -1745,15 +1755,22 @@ function buildBG3(){
     if(MAP3[ty][tx-1]==='.')P(g,'#6e5836',px,py,2,T);
     if(MAP3[ty][tx+1]==='.')P(g,'#6e5836',px+T-2,py,2,T);
   }
-  /* semak pinggir peta (kiri/kanan/bawah) */
-  for(let tx=0;tx<COLS;tx++)P(g,'#25451f',tx*T,17*T,T,6);
-  for(let ty=2;ty<18;ty++){P(g,'#25451f',0*T,ty*T,4,T);P(g,'#25451f',24*T-4,ty*T,4,T);}
-  /* --- tepi hutan di sepanjang atas (backdrop) --- */
+  /* rimbun hutan hujan di pinggir (kiri/kanan/bawah) + pakis */
+  for(let tx=0;tx<COLS;tx++){P(g,'#1c3a18',tx*T,17*T,T,7);
+    if(tx%2===0)P(g,'#2f5a28',tx*T+3,17*T-2,4,4);}                    // pucuk pakis (bawah)
+  for(let ty=2;ty<18;ty++){
+    P(g,'#1c3a18',0,ty*T,5,T);P(g,'#1c3a18',24*T-5,ty*T,5,T);
+    if(ty%2===0){P(g,'#2f5a28',3,ty*T+4,4,4);P(g,'#2f5a28',24*T-7,ty*T+4,4,4);}} // pakis tepi
+  /* --- tepi HUTAN HUJAN di sepanjang atas (backdrop berlapis) --- */
   (function(){
-    P(g,'#142c17',0,0,W,22);                                          // massa hutan gelap
-    for(let x=-2;x<W;x+=7){const hh=11+((x*13+7)%9);
-      P(g,'#1e421f',x,0,5,hh);P(g,'#2a5a2a',x+1,2,3,hh-5);}           // pucuk pohon
-    P(g,'#0e2011',0,20,W,3);                                          // bayang dasar hutan
+    P(g,'#0e2412',0,0,W,26);                                          // massa hutan gelap (tinggi)
+    for(let x=-3;x<W;x+=9){const hh=14+((x*13+7)%10);P(g,'#163417',x,0,7,hh);}    // lapis belakang
+    for(let x=-2;x<W;x+=7){const hh=11+((x*17+5)%9);
+      P(g,'#20481f',x,0,5,hh);P(g,'#2c5e2b',x+1,2,3,Math.max(1,hh-5));}           // lapis tengah
+    for(let x=2;x<W;x+=13){const hh=8+((x*7)%6);
+      P(g,'#3a7a34',x,1,3,hh);P(g,'#57a048',x+1,1,1,Math.max(1,hh-3));}           // pucuk tersorot
+    for(let x=10;x<W;x+=46)P(g,'#1c3a1a',x,20,1,8);                   // sulur menggantung
+    P(g,'#0a1a0d',0,24,W,3);                                          // bayang dasar hutan
   })();
   /* --- GEDUNG markas modern: berdiri di lapangan (± kolom 8-16) --- */
   (function(){
@@ -1869,6 +1886,28 @@ OUT_TREES.forEach(t=>{                                               // besar: 3
   const rect=t.big?{x:t.x-1,y:t.y,w:3,h:1}:{x:t.x,y:t.y,w:2,h:1};
   FURN.push(furn(rect,t.big?42:28,treePaint(t.s)));
 });
+/* lentera jalan — menyala saat gelap (glow di anims) */
+const lanternPaint=(g,w,h)=>{
+  P(g,'#2a2f38',6,6,3,h-6);P(g,'#3a4250',6,6,1,h-6);                 // tiang
+  P(g,'#3a4250',4,4,7,1);                                            // lengan gantung
+  P(g,'#4a4a3a',3,0,6,5);P(g,'#6a6a4a',3,0,6,1);P(g,'#151a10',2,0,8,1); // rangka + atap lampu
+  P(g,'#26261c',4,1,4,3);                                            // kaca (padam siang)
+};
+const lanterns=[{x:11,y:5},{x:13,y:9},{x:13,y:13}].map(L=>{
+  const f=furn({x:L.x,y:L.y,w:1,h:1},14,lanternPaint);FURN.push(f);return f;});
+/* papan info poktan (bisa dibaca — banner memutar pesan) */
+const boardF=furn(NOTICE_RECT,14,(g,w,h)=>{
+  P(g,'#5a3c20',4,h-10,2,10);P(g,'#5a3c20',w-6,h-10,2,10);           // dua tiang
+  P(g,'#6e4a2a',0,2,w,h-12);P(g,'#815a36',0,2,w,2);P(g,'#4a3018',0,h-11,w,1); // papan kayu
+  P(g,'#e8e2d0',4,5,11,8);P(g,'#d8d0ba',4,5,11,1);                   // kertas pengumuman
+  for(let i=0;i<4;i++)P(g,'#8a8470',5,7+i*2,8,1);                    // baris teks
+  P(g,'#dfe6ee',w-13,6,9,6);P(g,'#4cc9e0',w-12,7,7,1);              // kertas ke-2
+  P(g,'#c04a3a',7,4,1,1);P(g,'#c04a3a',w-9,5,1,1);                   // pin
+  P(g,'#2f5a3a',1,0,4,2);                                            // atap kecil hijau
+});
+FURN.push(boardF);
+/* ayam mematuk dekat gerbang gedung */
+const CHICK=[{x0:9,y0:5,c:'#f0ead8'},{x0:15,y0:6,c:'#e8d8b0'},{x0:17,y0:5,c:'#d8c0a0'}];
 /* --- ambience: kupu-kupu, kawanan burung, kabut tipis --- */
 anims.push({fn:(g,t)=>{                                     // kupu-kupu + kawanan burung
   const CB=[[5,12,'#f2c94c'],[9,14,'#f2a2c9'],[14,12,'#a2d4f2'],[20,13,'#f0ead8']];
@@ -1881,6 +1920,47 @@ anims.push({fn:(g,t)=>{                                     // kupu-kupu + kawan
     for(let n=0;n<4;n++){const x=bx-n*10;if(x<0||x>=W)continue;const fl=Math.floor(t/160+n)%2;
       P(g,'rgba(20,26,32,.7)',x,by,1,1);P(g,'rgba(20,26,32,.7)',x-1,by-(fl?1:0),1,1);
       P(g,'rgba(20,26,32,.7)',x+1,by-(fl?1:0),1,1);}}
+}});
+anims.push({fn:(g,t)=>{                                     // berkas sinar matahari menembus pohon (siang)
+  const day=1-daylight.lamp; if(day<0.15)return;
+  for(let i=0;i<4;i++){const x0=36+i*92+Math.round(6*Math.sin(t/4200+i));
+    const a=(0.045*day*(0.7+0.3*Math.sin(t/2600+i))).toFixed(3);
+    g.fillStyle=`rgba(255,246,205,${a})`;
+    for(let yy=0;yy<110;yy+=2)g.fillRect(x0+Math.round(yy*0.55),yy,9,2);}
+}});
+anims.push({fn:(g,t)=>{                                     // daun & kelopak melayang turun
+  const LC=['#6fae52','#c9a24a','#e88fb0','#d8c48a'];
+  for(let i=0;i<9;i++){const sp=8+(i%4)*3, y=(t/1000*sp+i*61)%(H+20)-10;
+    const x=((i*137)%W)+Math.round(11*Math.sin(t/700+i));
+    g.fillStyle=LC[i%4];g.fillRect(Math.round(x),Math.round(y),2,1);
+    g.fillRect(Math.round(x)+(Math.floor(t/200+i)%2?1:0),Math.round(y)-1,1,1);}
+}});
+anims.push({fn:(g,t)=>{                                     // kunang-kunang saat senja/malam
+  const night=Math.min(1,daylight.lamp*1.1); if(night<0.2)return;
+  for(let i=0;i<12;i++){
+    const x=((i*89)%(W-40))+20+Math.round(16*Math.sin(t/1300+i*1.7));
+    const y=5*T+Math.round(5*T*(0.5+0.5*Math.sin(t/900+i)))+Math.round(4*Math.sin(t/400+i));
+    const a=night*(0.5+0.5*Math.sin(t/300+i*2)); if(a<0.06)continue;
+    g.fillStyle=`rgba(190,240,120,${(0.9*a).toFixed(3)})`;g.fillRect(Math.round(x),Math.round(y),1,1);
+    g.fillStyle=`rgba(190,240,120,${(0.28*a).toFixed(3)})`;
+    g.fillRect(Math.round(x)-1,Math.round(y),3,1);g.fillRect(Math.round(x),Math.round(y)-1,1,3);}
+}});
+anims.push({fn:(g,t)=>{                                     // ayam mematuk & mengais
+  CHICK.forEach((ch,i)=>{const x=ch.x0*T+Math.round(10*Math.sin(t/2600+i*2)),
+    y=ch.y0*T+Math.round(5*Math.sin(t/3100+i)), pk=Math.sin(t/500+i*3)>0.6?2:0;
+    P(g,'rgba(0,0,0,.22)',x-2,y+3,5,1);                     // bayangan
+    P(g,ch.c,x-2,y,5,4);P(g,ch.c,x+2,y-2+pk,2,3);           // badan + leher/kepala
+    P(g,'#e8a030',x+4,y-1+pk,1,1);P(g,'#c0342a',x+2,y-3+pk,2,1); // paruh + jengger
+    P(g,'#c9902a',x-1,y+4,1,1);P(g,'#c9902a',x+1,y+4,1,1);});    // kaki
+}});
+anims.push({fn:(g,t)=>{                                     // pendar lentera saat gelap
+  const lamp=daylight.lamp; if(lamp<0.08)return;
+  for(const f of lanterns){const cx0=f.px+7,cy0=f.py+2,fl=0.85+0.15*Math.sin(t/300+cx0);
+    const gr=g.createRadialGradient(cx0,cy0+1,1,cx0,cy0+1,13);
+    gr.addColorStop(0,`rgba(255,206,120,${(0.5*lamp*fl).toFixed(3)})`);gr.addColorStop(1,'rgba(255,206,120,0)');
+    g.fillStyle=gr;g.fillRect(cx0-13,cy0-12,26,26);
+    g.fillStyle=`rgba(255,224,150,${(0.9*lamp).toFixed(3)})`;g.fillRect(cx0-2,cy0-1,4,4); // bola cahaya
+    g.fillStyle=`rgba(255,214,140,${(0.10*lamp).toFixed(3)})`;g.fillRect(f.px+1,f.py+13,13,6);} // kolam cahaya
 }});
 /* kabut area luar digambar di render() (ruang layar, dengan lubang bundar di sekitar dino) */
 FURNS.push(FURN);ANIMS.push(anims);
@@ -2205,7 +2285,8 @@ function setBanner(tool){
   bName.textContent=tool.name;bDesc.textContent=tool.desc;
   btnOpen.innerHTML=tool.btn||'BUKA &#9656;';
   bKey.textContent=tool.isLift?'[ENTER] UNTUK BERPINDAH LANTAI':
-    tool.isPortal?'[ENTER] UNTUK LEWATI PINTU':'[ENTER] UNTUK MEMBUKA';
+    tool.isPortal?'[ENTER] UNTUK LEWATI PINTU':
+    tool.isBoard?'[ENTER] BACA PENGUMUMAN BERIKUTNYA':'[ENTER] UNTUK MEMBUKA';
   bSw.style.background=tool.color;bSw.style.color=tool.color;
   banner.classList.add('show');
   beep(520,.05,.03);
@@ -2213,6 +2294,8 @@ function setBanner(tool){
 function openTool(tool){
   if(tool.isLift){rideLift(tool.to);return;}
   if(tool.isPortal){startTravel(tool.to,tool.spawn);return;}    // pintu utama ↔ area luar
+  if(tool.isBoard){tool.idx=(tool.idx+1)%tool.msgs.length;tool.desc=tool.msgs[tool.idx]; // baca pengumuman berikutnya
+    bDesc.textContent=tool.desc;beep(680,.05,.04);return;}
   beep(880,.07,.06);beep(1320,.1,.06,'square',.08);
   setTimeout(()=>{window.location.href=tool.url;},180);
 }
