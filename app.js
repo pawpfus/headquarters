@@ -2325,7 +2325,7 @@ menu.addEventListener('click',e=>{if(e.target===menu)toggleMenu(false);});
 let floor=0;
 const FADE_DUR=1.05, FADE_HALF=.5;
 const fade={on:false,t:0,to:0,swapped:false,spawn:null};
-const floorName=n=>['LANTAI 1 · RUANG KERJA','LANTAI 2 · RUANG ARSIP','LUAR · SAWAH & DESA POKTAN'][n];
+const floorName=n=>['LANTAI 1 · RUANG KERJA','LANTAI 2 · RUANG ARSIP',''][n];   // area luar tanpa sub-judul
 
 /* tukar seluruh rujukan denah ke area n; tempatkan dino di `spawn` (bila ada)
    atau default tepat di depan pintu lift. spawn={x,y,dir} dalam piksel. */
