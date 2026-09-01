@@ -799,6 +799,10 @@ anims.push({f:FURN[3],fn:(g,t)=>{                              // api bernapas +
   if(hit){for(let i=0;i<7;i++){const a=rnd(i,Math.floor(t/40));
     P(g,'#ffd75e',wx+3+(a%9)-4,wy-1-(a>>3)%5,1,1);}
     P(g,'rgba(255,220,120,.55)',wx-2,wy-2,10,3);}               // dentum → kilau + percikan
+  /* asap cerobong — tiga kepul naik memudar */
+  const puff=(o,al,sz)=>{const yy=f.py-3-((t/45+o)%20);
+    P(g,`rgba(200,200,210,${al})`,f.px+13+(Math.sin((t+o*400)/500)*2|0),yy,sz,sz-1);};
+  puff(0,.28,6);puff(600,.19,8);puff(1200,.11,10);
 }});
 
 /* COOPERSTOWN (FARM AXIS) dipindah ke AREA LUAR — dibangun di bagian bawah. */
