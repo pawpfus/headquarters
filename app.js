@@ -2611,8 +2611,8 @@ function render(t){
     cx.fillRect(0,0,cv.width,cv.height);
     cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   }
-  /* kabut perang paling akhir: petak gelap dilubangi halo di sekitar dino (bukan area luar) */
-  if(fogOn&&floor!==2){
+  /* kabut perang paling akhir: petak gelap dilubangi halo di sekitar dino */
+  if(fogOn){
     const g=fogCv.getContext('2d'),ox=Math.round(cam.x),oy=Math.round(cam.y);
     g.setTransform(1,0,0,1,0,0);
     g.clearRect(0,0,fogCv.width,fogCv.height);
@@ -2630,23 +2630,6 @@ function render(t){
     g.fillStyle=grd;g.fillRect(hx-R,hy-R,R*2,R*2);
     cx.setTransform(1,0,0,1,0,0);
     cx.drawImage(fogCv,0,0);
-  }
-  /* kabut AREA LUAR: veil kabut luas + lubang bundar mengikuti dino (khusus outside) */
-  if(floor===2){
-    const g=fogCv.getContext('2d'),ox=Math.round(cam.x),oy=Math.round(cam.y),fw=fogCv.width,fh=fogCv.height;
-    g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,fw,fh);g.globalCompositeOperation='source-over';
-    g.fillStyle='rgba(210,222,234,0.34)';g.fillRect(0,0,fw,fh);                     // veil merata
-    g.fillStyle='rgba(210,222,234,0.16)';g.fillRect(0,0,fw,Math.round(fh*0.34));    // lebih tebal di kejauhan (atas)
-    for(let i=0;i<6;i++){                                                           // gumpalan melayang
-      const wx=((t/(60+i*14))+i*130)%(fw+220)-110, wy=20+i*Math.round(fh/6);
-      g.fillStyle=`rgba(235,242,249,${(0.10+0.05*Math.sin(t/1700+i)).toFixed(3)})`;
-      g.fillRect(wx,wy,120,10);g.fillRect(wx+22,wy-5,86,7);g.fillRect(wx+44,wy+9,60,6);
-    }
-    const hx=Math.round(player.x)-ox,hy=Math.round(player.y)-8-oy,R=Math.round(Math.min(fw,fh)*0.30);
-    const grd=g.createRadialGradient(hx,hy,Math.round(R*0.22),hx,hy,R);             // lubang bundar di dino
-    grd.addColorStop(0,'rgba(0,0,0,1)');grd.addColorStop(0.6,'rgba(0,0,0,0.62)');grd.addColorStop(1,'rgba(0,0,0,0)');
-    g.globalCompositeOperation='destination-out';g.fillStyle=grd;g.fillRect(hx-R,hy-R,R*2,R*2);
-    cx.setTransform(1,0,0,1,0,0);cx.drawImage(fogCv,0,0);
   }
   drawFade();                                    // tirai perpindahan lantai paling atas
 }
