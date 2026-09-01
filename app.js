@@ -109,36 +109,41 @@ const DECOR2_SOLID=[
   {x:1, y:5,w:1,h:1},{x:5, y:2,w:1,h:1},   // pot & peti kayu (serambi lift)
 ];                    // tengah aula & baris 8 sengaja kosong: lantai lapang + jalur tepi railing
 
-/* ---------- denah AREA LUAR — sawah & kebun teh, dicapai lewat pintu utama ----------
-   '#' (baris 0-1) = fasad markas (bangunan; pintu balik di tengah). '#' lain = petak
-   sawah (air). '.' = pematang/jalan tanah yang bisa dilewati. Tata letak sengaja tak
-   simetris; pohon-pohon besar berdiri di pinggir (furnitur, bukan '#'). Dua stasiun:
-   AREA SAMPLING (kiri) & tiang papan-nama COOPERSTOWN (kanan). */
+/* ---------- denah AREA LUAR — sawah bertabur pepohonan, di depan gedung kota ----------
+   '#' (baris 0-1) = fasad gedung markas (pintu balik di tengah). '#' lain = petak sawah
+   (air), sengaja bentuk tak beraturan. '.' = pematang/jalan yang bisa dilewati.
+   Pepohonan (OUT_TREES) berdiri sebagai furnitur padat mengisi lapangan; batangnya
+   jadi tile solid. Dua stasiun: AREA SAMPLING (kiri) & tiang papan-nama COOPERSTOWN. */
 const MAP3=[
 '#########################',
 '#########################',
 '#.......................#',
-'#..####.........####....#',
-'#..####.........####....#',
+'#..##...........###.....#',
+'#..##...........####....#',
+'#................##.....#',
 '#.......................#',
 '#.......................#',
-'#...###.................#',
-'#...###.................#',
 '#.......................#',
 '#.......................#',
-'#..................####.#',
-'#..................####.#',
-'#.........####....####..#',
-'#.........####..........#',
 '#.......................#',
+'#.......................#',
+'#.......................#',
+'#.......###.......###...#',
+'#......####.......##....#',
+'#.......##..............#',
 '#.......................#',
 '#.......................#',
 '#########################',
 ];
+/* pepohonan: {x,y,big,seed} — batang jadi solid; `big` = pohon besar (kanopi lebar) */
+const OUT_TREES=[
+  {x:1,y:4,big:1,s:1},{x:1,y:12,big:1,s:2},{x:23,y:4,big:1,s:3},{x:23,y:14,big:1,s:4},{x:7,y:16,big:1,s:5},
+  {x:1,y:8,s:6},{x:2,y:10,s:7},{x:1,y:16,s:8},{x:23,y:8,s:9},{x:22,y:12,s:10},{x:23,y:16,s:11},
+  {x:6,y:6,s:12},{x:9,y:8,s:13},{x:14,y:11,s:14},{x:22,y:9,s:15},{x:15,y:15,s:16},{x:13,y:4,s:17},{x:6,y:13,s:18},
+  {x:5,y:5,s:19},{x:9,y:11,s:20},{x:11,y:17,s:21},{x:16,y:16,s:22},{x:4,y:17,s:23},
+];
 const DECOR3_SOLID=[
-  {x:1, y:4,w:1,h:1},{x:1, y:12,w:1,h:1},  // batang pohon besar (pinggir kiri)
-  {x:23,y:3,w:1,h:1},{x:23,y:14,w:1,h:1},  // batang pohon besar (pinggir kanan)
-  {x:7, y:16,w:1,h:1},                     // pohon besar (bawah)
+  ...OUT_TREES.map(t=>({x:t.x,y:t.y,w:1,h:1})),        // batang pohon = solid
 ];
 
 /* ---------- peta kepadatan per-lantai ---------- */
@@ -1733,29 +1738,32 @@ function buildBG3(){
   /* semak pinggir peta (kiri/kanan/bawah) */
   for(let tx=0;tx<COLS;tx++)P(g,'#25451f',tx*T,17*T,T,6);
   for(let ty=2;ty<18;ty++){P(g,'#25451f',0*T,ty*T,4,T);P(g,'#25451f',24*T-4,ty*T,4,T);}
-  /* --- fasad markas: tampak depan bangunan (baris 0-1) --- */
+  /* --- fasad GEDUNG KOTA: beton + dinding kaca (baris 0-1) --- */
   (function(){
-    const bx=1*T, bw=23*T;
-    P(g,'#cbb894',bx,8,bw,24);                                         // dinding krem
-    P(g,'#ddcfb0',bx,8,bw,2);P(g,'#b7a17c',bx,30,bw,2);               // garis atas & sokel
-    P(g,'#8a4a34',bx-2,0,bw+4,9);                                      // bidang atap genteng
-    for(let x=bx-2;x<bx+bw+2;x+=5)P(g,'#6e3826',x,0,1,9);             // alur genteng
-    P(g,'#a55c40',bx-2,0,bw+4,2);P(g,'#2e1710',bx-2,9,bw+4,2);        // bubungan & tritisan
-    const win=(wx)=>{P(g,'#5a4224',wx-1,13,14,12);                    // bingkai kayu
-      P(g,'#9fd0e0',wx,14,12,10);P(g,'#c4e6f0',wx,14,12,3);            // kaca + kilau
-      P(g,'#5a4224',wx+5,14,2,10);P(g,'#5a4224',wx,18,12,1);};        // palang
-    [3*T,6*T,16*T,20*T].forEach(win);
-    const dx=11*T, dm=dx+Math.floor(3*T/2);                           // pintu masuk (tengah)
-    P(g,'#4a3218',dx-1,10,3*T+2,22);P(g,'#2a1c0e',dx+1,12,3*T-2,20);  // kusen + panel
-    P(g,'#ffdd9a',dx+3,13,3*T-6,17);                                  // cahaya hangat dari dalam
-    for(let x=dx+3;x<dx+3*T-3;x+=6)P(g,'#caa25a',x,13,1,17);          // bilah kaca
-    P(g,'#3a2616',dm-1,12,2,20);                                       // daun pintu tengah
-    P(g,'#ffe6b0',dm-4,21,2,2);P(g,'#ffe6b0',dm+3,21,2,2);            // gagang
-    P(g,'#2e6f5a',dx-4,8,3*T+8,4);                                     // kanopi hijau
-    for(let x=dx-4;x<dx+3*T+4;x+=6)P(g,'#245a48',x,8,3,4);
-    P(g,'#173d31',dx-4,12,3*T+8,1);
-    P(g,'#173026',dx+2,3,3*T-4,4);P(g,'#2e6f5a',dx+3,4,3*T-6,2);      // papan nama kosong (tanpa teks)
-    P(g,'rgba(0,0,0,.22)',bx,32,bw,3);                                 // bayang bangunan ke tanah
+    const bx=1*T, bw=23*T, right=bx+bw;
+    P(g,'#5c6470',bx,6,bw,26);                                         // badan beton abu
+    P(g,'#6e7784',bx,6,bw,2);                                          // garis atas terang
+    P(g,'#3c424b',bx-2,0,bw+4,6);P(g,'#4c545e',bx-2,0,bw+4,2);        // parapet atap datar
+    P(g,'#2b3038',bx-2,6,bw+4,1);                                      // bayang bawah parapet
+    for(let bxr=bx+18;bxr<right-24;bxr+=64)P(g,'#7a828e',bxr,-0+1,10,4); // unit atap kecil
+    const doorL=11*T-4, doorR=14*T+2;
+    for(let x=bx+3;x<right-9;x+=16){                                   // dinding tirai: kaca biru + mullion
+      if(x>doorL&&x<doorR)continue;                                    // sisakan zona pintu
+      P(g,'#2b4a63',x,9,12,9);P(g,'#3f6f92',x,9,12,3);P(g,'#8fc0da',x+1,10,4,1);   // pane atas
+      P(g,'#2b4a63',x,20,12,8);P(g,'#3f6f92',x,20,12,3);P(g,'#8fc0da',x+1,21,4,1); // pane bawah
+      P(g,'#454c56',x-2,6,2,26);                                       // mullion vertikal
+    }
+    P(g,'#3a414b',bx,28,bw,4);                                         // lantai dasar (sokel beton)
+    const dx=11*T, dw=3*T, dm=dx+Math.floor(dw/2);                     // pintu kaca modern (tengah)
+    P(g,'#3a414b',dx-2,6,dw+4,26);                                     // portal beton
+    P(g,'#1a2a33',dx,10,dw,22);                                        // kaca gelap
+    P(g,'#ffdd9a',dx+2,12,dw-4,18);                                    // cahaya lobi hangat
+    for(let x=dx+2;x<dx+dw-2;x+=5)P(g,'rgba(180,210,230,.18)',x,12,1,18); // garis kaca
+    P(g,'#2a3a44',dm-1,10,2,22);                                       // pembagi pintu
+    P(g,'#cfe0ea',dm-4,20,2,3);P(g,'#cfe0ea',dm+3,20,2,3);            // gagang stainless
+    P(g,'#8a929c',dx-4,6,dw+8,3);P(g,'#6e7680',dx-4,9,dw+8,1);        // kanopi beton datar
+    P(g,'#2b3138',dm-14,2,28,3);P(g,'#4cc9e0',dm-13,3,26,1);          // papan nama LED (tanpa teks)
+    P(g,'rgba(0,0,0,.25)',bx,32,bw,3);                                 // bayang gedung ke tanah
   })();
 }
 buildBG3();
@@ -1818,18 +1826,22 @@ const scarecrow=furn({x:11,y:13,w:1,h:1},14,(g,w,h)=>{
   P(g,'#3a2a18',6,1,1,1);P(g,'#3a2a18',9,1,1,1);           // mata
 });
 FURN.push(scarecrow);
-/* pohon-pohon besar di pinggir (furnitur, urut kedalaman) */
+/* pepohonan mengisi lapangan (furnitur, urut kedalaman) — kanopi menyesuaikan ukuran kanvas */
 const treePaint=seed=>(g,w,h)=>{
-  P(g,'#5a3f28',20,h-16,8,16);P(g,'#6e4f34',20,h-16,3,16);           // batang
-  P(g,'rgba(0,0,0,.16)',12,h-4,26,3);                                // bayang akar
-  P(g,'#1c3f18',7,5,34,27);P(g,'#2a5f24',10,4,28,22);                // massa daun
-  P(g,'#357a2c',13,5,22,15);P(g,'#4a9640',17,6,12,8);                // sorotan
+  const cx=w>>1, tw=Math.max(3,w>>3), ch=h-14;                       // pusat, lebar batang, tinggi kanopi
+  P(g,'rgba(0,0,0,.16)',cx-(w>>2),h-3,w>>1,3);                       // bayang akar
+  P(g,'#5a3f28',cx-(tw>>1),h-14,tw,14);P(g,'#6e4f34',cx-(tw>>1),h-14,Math.max(1,tw>>1),14); // batang
+  P(g,'#1c3f18',2,3,w-4,ch-2);P(g,'#2a5f24',4,2,w-8,ch-6);          // massa daun
+  P(g,'#357a2c',6,3,w-12,Math.floor(ch*0.5));P(g,'#4a9640',cx-4,4,8,Math.floor(ch*0.32)); // sorotan
+  P(g,'#173015',3,ch-2,w-6,2);                                       // dasar kanopi gelap
   const cols=['#22521e','#2f6a28','#3f8a34','#54a044'];
-  for(let k=0;k<14;k++){const rx=7+((k*97+seed*13)%32),ry=5+((k*53+seed*7)%24);
+  for(let k=0;k<(w>>1);k++){const rx=3+((k*97+seed*13)%(w-5)),ry=2+((k*53+seed*7)%(ch-2));
     P(g,cols[(k+seed)%4],rx,ry,2,2);}                                // tekstur daun
 };
-const bigTree=(cx,cy,seed)=>furn({x:cx-1,y:cy,w:3,h:1},40,treePaint(seed));
-FURN.push(bigTree(1,4,1),bigTree(1,12,2),bigTree(23,3,3),bigTree(23,14,4),bigTree(7,16,5));
+OUT_TREES.forEach(t=>{                                               // besar: 3-lebar/tinggi · kecil: 2-lebar
+  const rect=t.big?{x:t.x-1,y:t.y,w:3,h:1}:{x:t.x,y:t.y,w:2,h:1};
+  FURN.push(furn(rect,t.big?42:28,treePaint(t.s)));
+});
 /* --- ambience: kilau air, kupu-kupu, kawanan burung --- */
 anims.push({fn:(g,t)=>{                                     // kilau bergerak di permukaan sawah
   for(let ty=2;ty<ROWS;ty++)for(let tx=1;tx<COLS-1;tx++){
