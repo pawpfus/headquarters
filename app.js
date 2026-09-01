@@ -15,7 +15,7 @@ const TOOLS = [
   { id:'forge',  name:'ESC FORGE',        desc:'Generator laporan bulanan SKP',
     url:'https://skp-forge.vercel.app/', color:'#ff8c4a', floor:0, lo:22, rect:{x:17,y:9, w:3, h:2} },
   { id:'farm',   name:'COOPERSTOWN',      desc:'FARM AXIS — peta poktan interaktif',
-    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', floor:2, lo:4, rect:{x:18,y:10,w:3, h:2} },
+    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', floor:2, lo:44, rect:{x:17,y:9, w:3, h:1} },
   { id:'workshop', name:'WORKSHOP',       desc:'Bengkel alat & blueprint (Drum Seeder, dll.)',
     url:'https://drum-seeder-pm-aas.vercel.app/', color:'#9fb8d0', floor:0, lo:8, rect:{x:17,y:14,w:3, h:2} },
   /* --- LANTAI 2 (naik lift) : ruang arsip & dokumen --- */
@@ -70,6 +70,7 @@ const DECOR_SOLID=[
   {x:7, y:16,w:1,h:1},{x:1, y:4, w:1,h:1},                      // lampu lantai, dispenser air
   {x:1, y:12,w:1,h:1},{x:9, y:6, w:1,h:1},                      // peti, loker
   {x:4,y:13,w:4,h:1},                                          // partisi separator lounge (celah masuk di kanan) — lift kini menempel dinding (row 1, sudah solid)
+  {x:2,y:9, w:6,h:1},                                          // partisi pemisah EVIDENCE (atas) ↔ lounge (bawah), celah di kanan (kolom 8-9)
   {x:23,y:4, w:1,h:1},{x:17,y:7, w:1,h:1},                     // rak data, tanaman (kanan-atas)
   {x:17,y:5, w:1,h:1},{x:21,y:5, w:1,h:1},{x:18,y:6, w:3,h:1}, // kursi rapat (ujung + sisi depan)
   {x:23,y:10,w:1,h:1},{x:15,y:10,w:1,h:1},{x:15,y:16,w:1,h:1}, // rak besi, tabung, ban (kanan-bawah)
@@ -108,36 +109,36 @@ const DECOR2_SOLID=[
   {x:1, y:5,w:1,h:1},{x:5, y:2,w:1,h:1},   // pot & peti kayu (serambi lift)
 ];                    // tengah aula & baris 8 sengaja kosong: lantai lapang + jalur tepi railing
 
-/* ---------- denah AREA LUAR — sawah & desa poktan, dicapai lewat pintu utama ----------
-   '#' = tak-terlewati: fasad markas (baris 0-1, ada pintu balik di tengah), petak sawah
-   (air), gubuk desa (kluster kanan-atas), pagar pinggir. '.' = pematang/jalan tanah yang
-   bisa dilewati. Dua stasiun lapangan berdiri di tanah terbuka: AREA SAMPLING (kiri, di
-   antara sawah) & COOPERSTOWN (kanan, di tepi desa). buildBG3 memutuskan rupa tiap petak
-   dari posisinya (sawah vs gubuk), bukan dari logika muka-dinding. */
+/* ---------- denah AREA LUAR — sawah & kebun teh, dicapai lewat pintu utama ----------
+   '#' (baris 0-1) = fasad markas (bangunan; pintu balik di tengah). '#' lain = petak
+   sawah (air). '.' = pematang/jalan tanah yang bisa dilewati. Tata letak sengaja tak
+   simetris; pohon-pohon besar berdiri di pinggir (furnitur, bukan '#'). Dua stasiun:
+   AREA SAMPLING (kiri) & tiang papan-nama COOPERSTOWN (kanan). */
 const MAP3=[
 '#########################',
 '#########################',
 '#.......................#',
-'#.......................#',
-'#..####........###.###..#',
-'#..####........###.###..#',
-'#.......................#',
-'#..####.........#####...#',
-'#..####.........#####...#',
+'#..####.........####....#',
+'#..####.........####....#',
 '#.......................#',
 '#.......................#',
+'#...###.................#',
+'#...###.................#',
 '#.......................#',
 '#.......................#',
+'#..................####.#',
+'#..................####.#',
+'#.........####....####..#',
+'#.........####..........#',
 '#.......................#',
-'#......####.....####....#',
-'#......####.....####....#',
 '#.......................#',
 '#.......................#',
 '#########################',
 ];
 const DECOR3_SOLID=[
-  {x:2, y:2,w:1,h:1},{x:22,y:2,w:1,h:1},   // pohon sudut (fasad)
-  {x:2, y:16,w:1,h:1},{x:22,y:16,w:1,h:1}, // pohon sudut (bawah)
+  {x:1, y:4,w:1,h:1},{x:1, y:12,w:1,h:1},  // batang pohon besar (pinggir kiri)
+  {x:23,y:3,w:1,h:1},{x:23,y:14,w:1,h:1},  // batang pohon besar (pinggir kanan)
+  {x:7, y:16,w:1,h:1},                     // pohon besar (bawah)
 ];
 
 /* ---------- peta kepadatan per-lantai ---------- */
@@ -582,23 +583,7 @@ function buildBG(){
     P(g,'rgba(255,222,150,.09)',6*T+4,14*T+2,3*T-2,3*T-6);            // cahaya hangat lampu
     P(g,'rgba(255,222,150,.06)',6*T,14*T,4*T-2,3*T-2);
   })();
-  /* staging lapangan — bekas planning bay; AREA SAMPLING & COOPERSTOWN pindah ke luar,
-     kini pangkalan siaga menuju pintu utama: stensil arah + jejak sepatu ke lorong */
-  (function(){
-    const rx=2*T-2, ry=8*T-2, rw=8*T+4, rh=2*T+12;
-    P(g,'#181f2a',rx,ry,rw,rh);                                       // dasar slate
-    P(g,'#243244',rx,ry,rw,1);P(g,'#243244',rx,ry+rh-1,rw,1);         // tepi
-    P(g,'#243244',rx,ry,1,rh);P(g,'#243244',rx+rw-1,ry,1,rh);
-    for(let x=rx+8;x<rx+rw-4;x+=12)P(g,'rgba(76,201,224,.05)',x,ry+2,1,rh-4); // grid halus
-    drawText(g,'STAGING LAPANGAN',rx+6,ry+5,'#3f5a52');               // label stensil
-    /* panah stensil kuning menunjuk keluar (ke lorong → pintu utama) */
-    const ax=rx+rw-20, ay=ry+18;
-    for(let i=0;i<7;i++)P(g,'#8a7a3a',ax+i*3,ay,10,2);               // batang panah putus-putus
-    P(g,'#8a7a3a',ax+21,ay-4,2,10);P(g,'#8a7a3a',ax+19,ay-2,2,6);P(g,'#8a7a3a',ax+23,ay-2,2,6); // kepala
-  })();
-  /* jejak sepatu menuju lorong keluar */
-  for(let i=0;i<5;i++){const jx=9*T+i*7,jy=10*T+2+i*8;
-    P(g,'rgba(180,150,90,.16)',jx,jy,3,2);P(g,'rgba(180,150,90,.16)',jx+4,jy+3,3,2);}
+  /* (bekas planning bay dikosongkan — kini dipisah tembok partisi row 9, lihat divider2) */
   /* ventilasi besar (dinding kanan-atas) */
   P(g,'#10141c',21*T+2,8*T+3,24,8);
   for(let i=0;i<5;i++)P(g,'#39414f',21*T+5+i*4,8*T+4,2,6);            // kisi ventilasi
@@ -626,7 +611,6 @@ function buildBG(){
   pool(g, 4*T+4,3*T, 40, 9,'76,201,224', .10);   // papan EVIDENCE (cyan)
   pool(g,20*T+4,3*T, 40, 9,'224,122,208',.09);   // TV DIFFUSION (merah muda)
   pool(g,11*T+3,3*T, 42,10,'160,90,224', .12);   // lampu tumbuh hidroponik (ungu)
-  pool(g, 4*T,10*T,64, 9,'120,150,120', .06);    // cahaya netral staging lapangan
   pool(g,17*T+4,11*T,40,12,'224,124,58', .16);   // bara tungku ESC FORGE (oranye)
   pool(g,17*T+4,14*T,40,12,'159,184,208', .12);   // meja bengkel WORKSHOP (netral)
   drawWindows(g,WINDOWS);
@@ -866,8 +850,6 @@ const potPaint=g=>{
 const potA=furn({x:7, y:2, w:1,h:1},4,potPaint);
 const potB=furn({x:1, y:7, w:1,h:1},4,potPaint);
 const potC=furn({x:19,y:2, w:1,h:1},4,potPaint);
-const potD=furn({x:2, y:9, w:1,h:1},4,potPaint);   // isi staging lapangan (kiri)
-const potE=furn({x:8, y:8, w:1,h:1},4,potPaint);   // isi staging lapangan (kanan)
 const bench=furn({x:8,y:16,w:2,h:1},6,(g,w,h)=>{
   P(g,'#39414f',2,8,w-4,5);P(g,'#4a5468',2,8,w-4,2);                         // dudukan logam
   P(g,'#2a303c',3,13,3,h-14);P(g,'#2a303c',w-6,13,3,h-14);                   // kaki
@@ -972,6 +954,16 @@ const divider=furn({x:4,y:13,w:4,h:1},10,(g,w,h)=>{
   for(let x=0;x<w;x+=15){P(g,'#455063',x,yt,3,yb-yt+3);P(g,'#5a6675',x,yt,3,2);} // tiang tiap ubin
 });
 FURN.push(divider);
+/* partisi kedua — memisahkan zona EVIDENCE (atas) dari lounge (bawah), celah masuk di kanan (kolom 8-9) */
+const divider2=furn({x:2,y:9,w:6,h:1},10,(g,w,h)=>{
+  const yt=4, yb=h-3;
+  P(g,'rgba(120,170,200,.20)',1,yt+3,w-2,yb-yt-5);           // panel kaca beku
+  P(g,'rgba(190,220,238,.12)',1,yt+3,w-2,3);                  // kilau atas kaca
+  P(g,'#3a4453',0,yt,w,3);P(g,'#4cc9e0',0,yt+1,w,1);          // rel atas + neon cyan
+  P(g,'#2b3340',0,yb,w,3);P(g,'#1a2029',0,yb+2,w,1);          // rel bawah
+  for(let x=0;x<w;x+=15){P(g,'#455063',x,yt,3,yb-yt+3);P(g,'#5a6675',x,yt,3,2);} // tiang
+});
+FURN.push(divider2);
 /* --- pengisi kamar kanan-atas (pelaporan) --- */
 const rackC=furn({x:23,y:4,w:1,h:1},4,g=>{rackPaint(g);});   // rak data (dinding kanan)
 const potRA=furn({x:17,y:7,w:1,h:1},4,potPaint);             // tanaman sudut
@@ -1004,7 +996,7 @@ const jukebox=furn({x:4,y:16,w:1,h:1},14,(g,w,h)=>{          // h=30
   P(g,'#e8c05a',5,22,2,2);P(g,'#7ee06a',8,22,2,2);P(g,'#4cc9e0',11,22,1,2); // tombol
   P(g,'#2a1810',2,h-3,12,3);                                  // dasar
 });
-FURN.push(potA,potB,potC,potD,potE,bench,drum,kabinet,toolRack,lamp,cooler,boxes,locker,
+FURN.push(potA,potB,potC,bench,drum,kabinet,toolRack,lamp,cooler,boxes,locker,
           rackC,potRA,shelfR,gasCyl,tires,jukebox);
 anims.push({fn:(g,t)=>{                                       // layar & equalizer jukebox
   const jx=jukebox.px,jy=jukebox.py,dx=jx+4,dy=jy+6;
@@ -1704,78 +1696,66 @@ FURNS.push(FURN);ANIMS.push(anims);
 /* =========================================================================
    AREA LUAR (indeks 2) — sawah & desa poktan di balik pintu utama
    ========================================================================= */
-const IN_HUT=(tx,ty)=>tx>=15&&tx<=21&&ty>=4&&ty<=8;      // kluster gubuk desa (kanan-atas)
-const OUT_PATH=new Set();                                 // jalan tanah: tulang tengah + 2 cabang
-for(let y=2;y<=17;y++)OUT_PATH.add('12,'+y);
-for(let x=3;x<=12;x++)OUT_PATH.add(x+',10');             // cabang ke AREA SAMPLING (kiri)
-for(let x=12;x<=20;x++)OUT_PATH.add(x+',9');             // cabang ke COOPERSTOWN (kanan)
+const OUT_PATH=new Set();                                 // jalan tanah: tulang tengah + 2 cabang (asimetris)
+for(let y=2;y<=16;y++)OUT_PATH.add('12,'+y);
+for(let x=3;x<=12;x++)OUT_PATH.add(x+',10');             // cabang kiri → AREA SAMPLING
+for(let x=12;x<=19;x++)OUT_PATH.add(x+',8');             // cabang kanan → tiang COOPERSTOWN
 function buildBG3(){
   const g=bg3c;
   P(g,'#1c2f1a',0,0,W,H);                                 // dasar rumput gelap
-  /* tanah, sawah, fasad */
-  for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
+  /* tanah & sawah (baris 0-1 = fasad, digambar terpisah setelah ini) */
+  for(let ty=2;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
     const px=tx*T,py=ty*T,r=rnd(tx,ty)%16,cell=MAP3[ty][tx];
-    if(cell==='#'){
-      if(ty<=1){                                           // fasad markas (bangunan baja)
-        P(g,'#2a313d',px,py,T,T);
-        for(let x=0;x<T;x+=6)P(g,'#232a34',px+x,py,1,T);
-        if(ty===1)P(g,'#171d26',px,py+T-3,T,3);
-      }else if(IN_HUT(tx,ty)){
-        P(g,'#4d6f38',px,py,T,T);                          // rumput di bawah gubuk (gubuk digambar nanti)
-      }else{                                               // petak sawah (air keruh kehijauan)
-        P(g,'#37625f',px,py,T,T);P(g,'#2e5350',px,py+T-2,T,2);
-        for(let i=2;i<T;i+=4)P(g,'#4f7f52',px+1,py+i,T-2,1);            // baris padi
-        if(r<3)P(g,'rgba(200,230,220,.14)',px+3,py+3,4,1);             // kilau air
-      }
-    }else{                                                 // tanah bisa dilewati
-      if(OUT_PATH.has(tx+','+ty)){
-        P(g,'#7a5c3a',px,py,T,T);P(g,'#6e5233',px,py+T-2,T,2);         // jalan tanah
-        if(r<4)P(g,'#8a6a44',px+(r%12),py+((r*3)%12),2,1);            // kerikil
-      }else{
-        const a=(tx+ty)&1;
-        P(g,a?'#3f6b39':'#456f3e',px,py,T,T);                          // rumput
-        if(r===0)P(g,'#548146',px+4,py+7,3,2);
-        if(r===5)P(g,'#2f5230',px+9,py+3,2,3);
-        if(r===9)P(g,'#6f9a52',px+2,py+10,2,1);                        // rumpun cerah
-      }
+    if(cell==='#'){                                        // petak sawah (air keruh kehijauan)
+      P(g,'#37625f',px,py,T,T);P(g,'#2e5350',px,py+T-2,T,2);
+      for(let i=2;i<T;i+=4)P(g,'#4f7f52',px+1,py+i,T-2,1);              // baris padi
+      if(r<3)P(g,'rgba(200,230,220,.14)',px+3,py+3,4,1);               // kilau air
+    }else if(OUT_PATH.has(tx+','+ty)){
+      P(g,'#7a5c3a',px,py,T,T);P(g,'#6e5233',px,py+T-2,T,2);           // jalan tanah
+      if(r<4)P(g,'#8a6a44',px+(r%12),py+((r*3)%12),2,1);              // kerikil
+    }else{
+      const a=(tx+ty)&1;
+      P(g,a?'#3f6b39':'#456f3e',px,py,T,T);                            // rumput
+      if(r===0)P(g,'#548146',px+4,py+7,3,2);
+      if(r===5)P(g,'#2f5230',px+9,py+3,2,3);
+      if(r===9)P(g,'#6f9a52',px+2,py+10,2,1);                          // rumpun cerah
     }
   }
   /* pematang: garis tanah terang di batas air ↔ jalan/rumput */
   for(let ty=2;ty<ROWS-1;ty++)for(let tx=1;tx<COLS-1;tx++){
-    if(MAP3[ty][tx]!=='#'||IN_HUT(tx,ty))continue;
+    if(MAP3[ty][tx]!=='#')continue;
     const px=tx*T,py=ty*T;
     if(MAP3[ty-1][tx]==='.')P(g,'#6e5836',px,py,T,2);
     if(MAP3[ty+1][tx]==='.')P(g,'#6e5836',px,py+T-2,T,2);
     if(MAP3[ty][tx-1]==='.')P(g,'#6e5836',px,py,2,T);
     if(MAP3[ty][tx+1]==='.')P(g,'#6e5836',px+T-2,py,2,T);
   }
-  /* semak pinggir peta (pagar hidup) */
-  for(let tx=0;tx<COLS;tx++){P(g,'#25451f',tx*T,1*T+12,T,4);P(g,'#25451f',tx*T,17*T,T,6);}
+  /* semak pinggir peta (kiri/kanan/bawah) */
+  for(let tx=0;tx<COLS;tx++)P(g,'#25451f',tx*T,17*T,T,6);
   for(let ty=2;ty<18;ty++){P(g,'#25451f',0*T,ty*T,4,T);P(g,'#25451f',24*T-4,ty*T,4,T);}
-  /* bush sudut (petak solid DECOR3) */
-  const bush=(tx,ty)=>{const px=tx*T,py=ty*T;
-    P(g,'#2f5a28',px+2,py+4,12,10);P(g,'#3f7334',px+3,py+4,10,4);P(g,'#59934a',px+5,py+5,5,2);
-    P(g,'#20401b',px+2,py+13,12,2);};
-  bush(2,2);bush(22,2);bush(2,16);bush(22,16);
-  /* gubuk desa — COOPERSTOWN */
-  const hut=(tx,ty,tw,th)=>{
-    const px=tx*T,py=ty*T,w=tw*T,h=th*T,rh=Math.floor(h*0.52);
-    for(let ry=0;ry<rh;ry++){const ins=Math.floor((rh-ry)*(w/2)/rh);   // atap jerami segitiga
-      P(g,ry<2?'#c2a052':(ry&1?'#a8853f':'#997634'),px+ins,py+ry,w-2*ins,1);}
-    P(g,'#7a5a26',px,py+rh-1,w,2);                                      // bubungan bawah
-    P(g,'#6e4a2a',px+1,py+rh+1,w-2,h-rh-1);                             // dinding kayu
-    for(let x=px+3;x<px+w-2;x+=5)P(g,'#5a3c20',x,py+rh+2,1,h-rh-3);     // papan vertikal
-    P(g,'#3a2416',px+Math.floor(w/2)-2,py+h-8,4,8);                     // pintu
-    P(g,'#ffd878',px+3,py+rh+3,3,3);                                    // jendela menyala
-    P(g,'#2a1c12',px+1,py+h-1,w-2,1);                                   // bayang dasar
-  };
-  hut(15,4,3,2);hut(19,4,3,2);hut(16,7,5,2);
-  /* pintu balik ke markas (fasad, kolom 11-13 baris 1) */
-  (function(){const dx=11*T,dy=1*T;
-    P(g,'#0f1620',dx+3,dy+2,3*T-6,T-2);                                 // rongga pintu gelap
-    P(g,'#3a4658',dx+1,dy,2,T);P(g,'#3a4658',dx+3*T-3,dy,2,T);          // kusen
-    P(g,'#7ee06a',dx+7,dy+T-4,3*T-14,2);                                // cahaya hijau ambang
-    P(g,'#141a24',dx+T-3,dy-7,T+6,6);drawText(g,'HQ',dx+T+4,dy-6,'#8fd4e8'); // papan HQ
+  /* --- fasad markas: tampak depan bangunan (baris 0-1) --- */
+  (function(){
+    const bx=1*T, bw=23*T;
+    P(g,'#cbb894',bx,8,bw,24);                                         // dinding krem
+    P(g,'#ddcfb0',bx,8,bw,2);P(g,'#b7a17c',bx,30,bw,2);               // garis atas & sokel
+    P(g,'#8a4a34',bx-2,0,bw+4,9);                                      // bidang atap genteng
+    for(let x=bx-2;x<bx+bw+2;x+=5)P(g,'#6e3826',x,0,1,9);             // alur genteng
+    P(g,'#a55c40',bx-2,0,bw+4,2);P(g,'#2e1710',bx-2,9,bw+4,2);        // bubungan & tritisan
+    const win=(wx)=>{P(g,'#5a4224',wx-1,13,14,12);                    // bingkai kayu
+      P(g,'#9fd0e0',wx,14,12,10);P(g,'#c4e6f0',wx,14,12,3);            // kaca + kilau
+      P(g,'#5a4224',wx+5,14,2,10);P(g,'#5a4224',wx,18,12,1);};        // palang
+    [3*T,6*T,16*T,20*T].forEach(win);
+    const dx=11*T, dm=dx+Math.floor(3*T/2);                           // pintu masuk (tengah)
+    P(g,'#4a3218',dx-1,10,3*T+2,22);P(g,'#2a1c0e',dx+1,12,3*T-2,20);  // kusen + panel
+    P(g,'#ffdd9a',dx+3,13,3*T-6,17);                                  // cahaya hangat dari dalam
+    for(let x=dx+3;x<dx+3*T-3;x+=6)P(g,'#caa25a',x,13,1,17);          // bilah kaca
+    P(g,'#3a2616',dm-1,12,2,20);                                       // daun pintu tengah
+    P(g,'#ffe6b0',dm-4,21,2,2);P(g,'#ffe6b0',dm+3,21,2,2);            // gagang
+    P(g,'#2e6f5a',dx-4,8,3*T+8,4);                                     // kanopi hijau
+    for(let x=dx-4;x<dx+3*T+4;x+=6)P(g,'#245a48',x,8,3,4);
+    P(g,'#173d31',dx-4,12,3*T+8,1);
+    P(g,'#173026',dx+2,3,3*T-4,4);P(g,'#2e6f5a',dx+3,4,3*T-6,2);      // papan nama kosong (tanpa teks)
+    P(g,'rgba(0,0,0,.22)',bx,32,bw,3);                                 // bayang bangunan ke tanah
   })();
 }
 buildBG3();
@@ -1802,29 +1782,35 @@ anims.push({fn:(g,t)=>{                                     // peta sampel: gari
     if(Math.floor(t/380+i)%2)P(g,'#eef06a',mx+d[0],my+d[1],2,2);});
   if(Math.floor(t/650)%2){P(g,'#e8c05a',ksaT.px+12,ksaT.py+6,3,2);P(g,'#8a6a42',ksaT.px+11,ksaT.py+6,1,5);}
 }});
-/* COOPERSTOWN — meja navigasi FARM AXIS */
-const navT=furn(TOOLS[5].rect,4,(g,w,h)=>{
-  P(g,'#1c212b',2,h-6,4,6);P(g,'#1c212b',w-6,h-6,4,6);
-  P(g,'#2f3745',0,2,w,h-8);P(g,'#3a4454',0,2,w,1);P(g,'#20262f',0,h-9,w,2);
-  P(g,'#0d2030',3,7,w-6,h-15);
-  for(let i=6;i<w-12;i+=8)P(g,'#12405a',3+i,7,1,h-15);
-  for(let j=4;j<h-15;j+=6)P(g,'#12405a',3,7+j,w-6,1);
-  P(g,'#2f7a4a',6,10,10,6);P(g,'#2f7a4a',24,15,11,5);P(g,'#4cc9e0',3,13,w-6,1);
-  P(g,'#e8c05a',19,9,3,3);P(g,'#10141c',34,8,10,10);P(g,'#1a7f99',34,8,10,1);
-  P(g,'#2a303c',35,20,6,5);P(g,'#5a6675',36,21,4,3);P(g,'#8f9aa8',37,21,2,1);
-  P(g,'#c04a3a',43,20,1,5);P(g,'#7ee06a',45,20,1,5);P(g,'#1a7f99',0,2,w,1);
+/* COOPERSTOWN — tiang papan-nama jalan (mengganti meja peta); tetap membuka peta poktan */
+const navT=furn(TOOLS[5].rect,44,(g,w,h)=>{
+  /* papan panah teal + label kecil */
+  const sign=(cy,dir,label)=>{
+    const bodyW=18,tip=5;
+    if(dir<0){                                             // menunjuk kiri
+      P(g,'#0f4a50',24-bodyW-tip-1,cy-1,bodyW+tip+2,11);   // outline
+      for(let i=0;i<tip;i++){const hh=Math.round((i+1)/tip*4);P(g,'#1f7d86',24-bodyW-tip+i,cy+4-hh,1,2*hh+1);}
+      P(g,'#1f7d86',24-bodyW,cy,bodyW,9);P(g,'#2a99a2',24-bodyW,cy,bodyW,2);
+      drawText(g,label,24-bodyW+2,cy+2,'#eafcff');
+    }else{                                                 // menunjuk kanan
+      P(g,'#0f4a50',23,cy-1,bodyW+tip+2,11);
+      for(let i=0;i<tip;i++){const hh=Math.round((tip-i)/tip*4);P(g,'#1f7d86',24+bodyW+i,cy+4-hh,1,2*hh+1);}
+      P(g,'#1f7d86',24,cy,bodyW,9);P(g,'#2a99a2',24,cy,bodyW,2);
+      drawText(g,label,26,cy+2,'#eafcff');
+    }
+  };
+  P(g,'#173d31',22,4,4,h-6);P(g,'#245a48',22,4,2,h-6);     // tiang + sisi terang
+  P(g,'#2e6f5a',20,3,8,2);P(g,'#173d31',21,0,6,3);         // rim + finial
+  sign(8,+1,'TEH');sign(18,-1,'CAFE');sign(28,+1,'YOGA');sign(38,-1,'WC');
+  P(g,'#2a2018',19,h-4,10,4);P(g,'#3a2c1e',19,h-4,10,1);   // dasar cor
 });
 FURN.push(navT);
-anims.push({fn:(g,t)=>{                                     // jarum kompas berputar + blip survei
-  const DIRS=[[3,0],[2,2],[0,3],[-2,2],[-3,0],[-2,-2],[0,-3],[2,-2]];
-  const d=DIRS[Math.floor(t/300)%8],cxp=navT.px+39,cyp=navT.py+13;
-  P(g,'#5ee8c8',cxp,cyp,1,1);P(g,'#5ee8c8',cxp+d[0],cyp+d[1],1,1);P(g,'#2a8f78',cxp-d[0],cyp-d[1],1,1);
-  if(Math.floor(t/550)%2)P(g,'#ffd75e',navT.px+20,navT.py+10,1,1);
-  P(g,'#7fffe0',navT.px+4+Math.floor((t/110)%(navT.canvas.width-14)),navT.py+13,2,1);
-  if(Math.floor(t/900)%2)P(g,'rgba(94,232,200,.35)',navT.px+6,navT.py+10,10,6);
+anims.push({fn:(g,t)=>{                                     // lampu surya kecil di puncak tiang
+  const on=0.5+0.5*Math.sin(t/700);
+  P(g,`rgba(255,224,150,${(0.5+0.5*on).toFixed(2)})`,navT.px+23,navT.py+1,2,2);
 }});
-/* orang-orangan sawah (dekor, di petak air kiri) */
-const scarecrow=furn({x:9,y:5,w:1,h:1},14,(g,w,h)=>{
+/* orang-orangan sawah (dekor, berdiri di petak sawah tengah-bawah) */
+const scarecrow=furn({x:11,y:13,w:1,h:1},14,(g,w,h)=>{
   P(g,'#6e5233',7,10,2,h-10);                              // tiang
   P(g,'#8a6a42',2,13,12,2);                                // lengan
   P(g,'#c9b07a',4,4,8,7);P(g,'#b89a5a',4,4,8,2);           // baju karung
@@ -1832,10 +1818,22 @@ const scarecrow=furn({x:9,y:5,w:1,h:1},14,(g,w,h)=>{
   P(g,'#3a2a18',6,1,1,1);P(g,'#3a2a18',9,1,1,1);           // mata
 });
 FURN.push(scarecrow);
+/* pohon-pohon besar di pinggir (furnitur, urut kedalaman) */
+const treePaint=seed=>(g,w,h)=>{
+  P(g,'#5a3f28',20,h-16,8,16);P(g,'#6e4f34',20,h-16,3,16);           // batang
+  P(g,'rgba(0,0,0,.16)',12,h-4,26,3);                                // bayang akar
+  P(g,'#1c3f18',7,5,34,27);P(g,'#2a5f24',10,4,28,22);                // massa daun
+  P(g,'#357a2c',13,5,22,15);P(g,'#4a9640',17,6,12,8);                // sorotan
+  const cols=['#22521e','#2f6a28','#3f8a34','#54a044'];
+  for(let k=0;k<14;k++){const rx=7+((k*97+seed*13)%32),ry=5+((k*53+seed*7)%24);
+    P(g,cols[(k+seed)%4],rx,ry,2,2);}                                // tekstur daun
+};
+const bigTree=(cx,cy,seed)=>furn({x:cx-1,y:cy,w:3,h:1},40,treePaint(seed));
+FURN.push(bigTree(1,4,1),bigTree(1,12,2),bigTree(23,3,3),bigTree(23,14,4),bigTree(7,16,5));
 /* --- ambience: kilau air, kupu-kupu, kawanan burung --- */
 anims.push({fn:(g,t)=>{                                     // kilau bergerak di permukaan sawah
   for(let ty=2;ty<ROWS;ty++)for(let tx=1;tx<COLS-1;tx++){
-    if(MAP3[ty][tx]!=='#'||ty<=1||IN_HUT(tx,ty))continue;
+    if(MAP3[ty][tx]!=='#')continue;
     if((tx*3+ty*7+Math.floor(t/280))%9!==0)continue;
     const px=tx*T+((tx*5+ty)%9)+2,py=ty*T+4+Math.floor(3*Math.sin(t/500+tx));
     P(g,`rgba(210,236,226,${(0.10+0.06*Math.sin(t/400+tx+ty)).toFixed(3)})`,px,py,2,1);
