@@ -1303,12 +1303,14 @@ function buildBG2(){
   for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
     if(MAP2[ty][tx]!=='.')continue;
     const px=tx*T,py=ty*T,r=rnd(tx,ty)%14;
-    const alt=(tx+ty)&1;                                       // pelat lambung kapal antariksa
+    const alt=(tx+ty)&1;                                       // pelat lambung — timbul (bervolume)
     P(g,alt?'#2a313d':'#262c37',px,py,T,T);
-    P(g,'#333c4a',px,py,T,1);P(g,'#181d26',px,py+T-1,T,1);     // bevel atas/bawah
-    P(g,'#181d26',px+T-1,py,1,T);                              // nat kanan
-    P(g,'#3a4452',px+1,py+1,1,1);P(g,'#3a4452',px+T-2,py+1,1,1);   // rivet sudut
-    P(g,'#3a4452',px+1,py+T-2,1,1);P(g,'#3a4452',px+T-2,py+T-2,1,1);
+    P(g,'#3f4959',px,py,T,1);P(g,'#3f4959',px,py,1,T);         // highlight atas+kiri (terangkat)
+    P(g,'#13171e',px,py+T-1,T,1);P(g,'#13171e',px+T-1,py,1,T); // bayang bawah+kanan (nat dalam)
+    P(g,'rgba(0,0,0,.16)',px+1,py+T-2,T-2,1);                  // ambient occlusion bawah
+    P(g,'rgba(120,140,165,.05)',px+1,py+1,T-2,1);              // sheen halus atas
+    P(g,'#3a4452',px+2,py+2,1,1);P(g,'#3a4452',px+T-3,py+2,1,1);   // rivet sudut
+    P(g,'#3a4452',px+2,py+T-3,1,1);P(g,'#3a4452',px+T-3,py+T-3,1,1);
     if(r===3)P(g,'#313a48',px+4,py+7,8,1);                     // goresan pelat
     if(r===9)P(g,'rgba(76,201,224,.045)',px+3,py+3,T-6,T-6);   // panel berpendar sesekali
   }
@@ -1354,14 +1356,21 @@ function buildBG2(){
     g.restore();
     P(g,'rgba(255,214,140,.06)',px,y0,T,12);                    // cahaya lt.1 merembes naik
   }
-  /* railing tepi dek: sisi selatan terbuka ke rongga lantai bawah */
+  /* railing tepi dek: pagar logam bervolume di atas rongga lantai bawah */
   for(let tx=0;tx<COLS;tx++){
     if(MAP2[8][tx]!=='.')continue;
     const px=tx*T,py=9*T;
-    P(g,'rgba(0,0,0,.45)',px,py,T,3);                           // bayang tepi lantai
-    for(let x=2;x<T;x+=7)P(g,'#39414f',px+x,py-5,2,7);          // tiang
-    P(g,'#4c5668',px,py-6,T,2);P(g,'#5a6675',px,py-6,T,1);      // rel atas
-    P(g,'#39414f',px,py-1,T,2);                                 // rel bawah
+    P(g,'rgba(0,0,0,.5)',px,py,T,3);                            // bayang tepi lantai (kuat)
+    for(let x=2;x<T;x+=7){                                       // tiang bulat (sisi terang/gelap)
+      P(g,'#2c3340',px+x,py-9,3,9);
+      P(g,'#4e5868',px+x,py-9,1,9);                              // sisi kena cahaya (kiri)
+      P(g,'#151a21',px+x+2,py-9,1,9);                            // sisi bayang (kanan)
+    }
+    P(g,'#616d7e',px,py-12,T,1);                                 // rel atas — highlight
+    P(g,'#485265',px,py-11,T,2);                                 // rel atas — badan bulat
+    P(g,'#1e232c',px,py-9,T,1);                                  // rel atas — bayang bawah
+    P(g,'#3a4453',px,py-5,T,1);P(g,'#22272f',px,py-4,T,1);       // rel tengah
+    P(g,'#414b5b',px,py-1,T,2);P(g,'#535e6f',px,py-1,T,1);       // kick bawah + highlight
   }
   /* ambang pintu serambi → aula (kolom 6) */
   P(g,'#171c24',6*T,4*T,T,2);P(g,'#4cc9e0',6*T+3,4*T,10,1);
@@ -1402,24 +1411,18 @@ function drawPeekLife(t){
   cx.fillStyle=`rgba(255,206,132,${(0.06+0.035*Math.sin(t/1100)).toFixed(3)})`;
   cx.fillRect(0,y0,W,18);
 
-  /* robot layanan meluncur di lorong lt.1 (bolak-balik pelan) */
+  /* robot pembersih lt.1 dilihat dari atas — GAYA SAMA dgn lt.1 (badan pipih +
+     bayangan menempel lantai, tanpa halo) supaya tak tampak mengambang */
   const span=PEEK_AX1-PEEK_AX0-24;
   const bx=Math.round(PEEK_AX0+12+(0.5+0.5*Math.sin(t/3400))*span);
-  const by=y0+Math.round(hh*0.36);
-  const dk=1-(by-y0)/hh*0.4;                        // makin dalam makin redup (halus)
+  const by=y0+Math.round(hh*0.44);
+  const dk=1-(by-y0)/hh*0.35;                       // makin dalam makin redup (halus)
   const C=(r,gg,b)=>`rgb(${Math.round(r*dk)},${Math.round(gg*dk)},${Math.round(b*dk)})`;
-  const halo=cx.createRadialGradient(bx,by,1,bx,by,11);   // pendar lampu robot
-  halo.addColorStop(0,`rgba(90,210,255,${(0.22*dk).toFixed(3)})`);
-  halo.addColorStop(1,'rgba(90,210,255,0)');
-  cx.fillStyle=halo;cx.fillRect(bx-11,by-11,22,22);
-  cx.fillStyle='rgba(0,0,0,.32)';cx.fillRect(bx-5,by+4,10,2);  // bayangan
-  cx.fillStyle=C(46,58,72);cx.fillRect(bx-5,by-3,10,6);        // badan
-  cx.fillStyle=C(78,98,120);cx.fillRect(bx-5,by-3,10,1);       // kilap atas
-  const on=Math.floor(t/380)%2;
-  cx.fillStyle=on?C(90,226,255):C(30,110,140);
-  cx.fillRect(bx-1,by-1,3,2);                                  // lampu kedip
-  cx.fillStyle=`rgba(120,230,255,${(0.14*dk).toFixed(3)})`;    // sapuan sinar ke lantai
-  cx.fillRect(bx-2,by+1,4,7);
+  cx.fillStyle='rgba(0,0,0,.26)';cx.fillRect(bx-5,by+3,10,2);   // bayangan di lantai
+  cx.fillStyle=C(38,48,60);cx.fillRect(bx-5,by-3,10,6);         // badan
+  cx.fillStyle=C(57,65,79);cx.fillRect(bx-5,by-3,10,2);         // kilap atas
+  cx.fillStyle=Math.floor(t/400)%2?C(46,224,255):C(26,127,153);
+  cx.fillRect(bx+2,by-1,2,2);                                   // lampu kedip cyan (sama lt.1)
 
   /* debu naik dalam berkas cahaya */
   const inner=PEEK_AX1-PEEK_AX0-12;
@@ -1764,10 +1767,10 @@ function buildBG3(){
       P(g,'#454c56',x-2,4,2,28);};                                                                  // mullion
     [bx+4,bx+18,right-28,right-14].forEach(winCol);                  // 2 jendela kiri, 2 kanan
     const dx=11*T, dw=3*T, dm=dx+Math.floor(dw/2);                    // pintu kaca modern tengah
-    P(g,'#3a414b',dx-2,4,dw+4,28);P(g,'#1a2a33',dx,10,dw,22);        // portal + kaca gelap
-    P(g,'#ffdd9a',dx+2,12,dw-4,18);                                   // cahaya lobi hangat
-    for(let x=dx+2;x<dx+dw-2;x+=5)P(g,'rgba(180,210,230,.18)',x,12,1,18);
-    P(g,'#2a3a44',dm-1,10,2,22);P(g,'#cfe0ea',dm-4,20,2,3);P(g,'#cfe0ea',dm+3,20,2,3); // pembagi + gagang
+    P(g,'#3a414b',dx-2,4,dw+4,28);P(g,'#23272e',dx,10,dw,22);        // portal + kaca abu gelap
+    P(g,'rgba(88,98,110,0.30)',dx+2,12,dw-4,18);                     // pantulan kaca abu transparan (bukan lampu terang)
+    for(let x=dx+2;x<dx+dw-2;x+=5)P(g,'rgba(150,170,190,.10)',x,12,1,18);
+    P(g,'#20242b',dm-1,10,2,22);P(g,'#8f9aa8',dm-4,20,2,3);P(g,'#8f9aa8',dm+3,20,2,3); // pembagi + gagang abu
     P(g,'#8a929c',dx-4,4,dw+8,3);P(g,'#6e7680',dx-4,7,dw+8,1);       // kanopi beton datar
     P(g,'#8a929c',dx-6,32,dw+12,4);P(g,'#727a86',dx-6,32,dw+12,1);   // teras/apron beton di depan pintu
   })();
