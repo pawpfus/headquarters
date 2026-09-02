@@ -1960,14 +1960,15 @@ anims.push({fn:(g,t)=>{                                     // kunang-kunang saa
     g.fillStyle=`rgba(190,240,120,${(0.28*a).toFixed(3)})`;
     g.fillRect(Math.round(x)-1,Math.round(y),3,1);g.fillRect(Math.round(x),Math.round(y)-1,1,3);}
 }});
-anims.push({fn:(g,t)=>{                                     // ayam mematuk & mengais
+/* ayam mematuk & mengais — digambar di render() SEBELUM furnitur (di BALIK pohon/objek) */
+function drawChickens(g,t){
   CHICK.forEach((ch,i)=>{const x=ch.x0*T+Math.round(5*Math.sin(t/2600+i*2)),
     y=ch.y0*T+Math.round(3*Math.sin(t/3100+i)), pk=Math.sin(t/500+i*3)>0.6?2:0;
     P(g,'rgba(0,0,0,.22)',x-2,y+3,5,1);                     // bayangan
     P(g,ch.c,x-2,y,5,4);P(g,ch.c,x+2,y-2+pk,2,3);           // badan + leher/kepala
     P(g,'#e8a030',x+4,y-1+pk,1,1);P(g,'#c0342a',x+2,y-3+pk,2,1); // paruh + jengger
     P(g,'#c9902a',x-1,y+4,1,1);P(g,'#c9902a',x+1,y+4,1,1);});    // kaki
-}});
+}
 anims.push({fn:(g,t)=>{                                     // pendar lentera saat gelap
   const lamp=daylight.lamp; if(lamp<0.08)return;
   for(const f of lanterns){const cx0=f.px+7,cy0=f.py+2,fl=0.85+0.15*Math.sin(t/300+cx0);
@@ -2607,6 +2608,7 @@ function render(t){
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   cx.drawImage([bg,bg2,bg3][floor],0,0);
   if(floor===1)drawPeekLife(t);                    // kehidupan di jendela intip lt.1
+  if(floor===2)drawChickens(cx,t);                 // ayam di BALIK furnitur (pohon/objek menutupinya)
   if(floor===0){
     /* bayangan drone — mengikuti posisinya (rapat saat parkir), di bawah semua objek */
     cx.fillStyle='rgba(0,0,0,.20)';
