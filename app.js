@@ -1404,6 +1404,21 @@ function buildBG2(){
   P(g,'rgba(120,170,230,.05)',7*T,2*T,17*T,7*T);              // ambience kabin biru dingin
 }
 
+/* railing dek digambar ULANG di depan pemain (render) supaya dino tampak BERDIRI
+   DI BALIK pagar saat di tepi dek — versi terpanggang di bg2 tetap ada untuk sela. */
+function drawDeckRail(g){
+  for(let tx=0;tx<COLS;tx++){
+    if(MAP2[8][tx]!=='.')continue;
+    const px=tx*T,py=9*T;
+    for(let x=2;x<T;x+=7){                                       // tiang bulat
+      P(g,'#2c3340',px+x,py-9,3,9);P(g,'#4e5868',px+x,py-9,1,9);P(g,'#151a21',px+x+2,py-9,1,9);
+    }
+    P(g,'#616d7e',px,py-12,T,1);P(g,'#485265',px,py-11,T,2);P(g,'#1e232c',px,py-9,T,1); // rel atas
+    P(g,'#3a4453',px,py-5,T,1);P(g,'#22272f',px,py-4,T,1);       // rel tengah
+    P(g,'#414b5b',px,py-1,T,2);P(g,'#535e6f',px,py-1,T,1);       // kick bawah
+  }
+}
+
 /* --- animasi hidup di jendela intip lantai 1 ---
    Latar lt.1 di jendela ini dipanggang statis (potret perabot), jadi supaya
    terasa "ada kehidupan di bawah" kita timpakan tiap frame: pendar hangat yang
@@ -1907,7 +1922,7 @@ const boardF=furn(NOTICE_RECT,14,(g,w,h)=>{
 });
 FURN.push(boardF);
 /* ayam mematuk dekat gerbang gedung */
-const CHICK=[{x0:9,y0:5,c:'#f0ead8'},{x0:15,y0:6,c:'#e8d8b0'},{x0:17,y0:5,c:'#d8c0a0'}];
+const CHICK=[{x0:8,y0:6,c:'#f0ead8'},{x0:10,y0:6,c:'#e8d8b0'},{x0:6,y0:9,c:'#d8c0a0'}]; // rumput terbuka (jauh dari gundukan/pohon)
 /* --- ambience: kupu-kupu, kawanan burung, kabut tipis --- */
 anims.push({fn:(g,t)=>{                                     // kupu-kupu + kawanan burung
   const CB=[[5,12,'#f2c94c'],[9,14,'#f2a2c9'],[14,12,'#a2d4f2'],[20,13,'#f0ead8']];
@@ -1946,8 +1961,8 @@ anims.push({fn:(g,t)=>{                                     // kunang-kunang saa
     g.fillRect(Math.round(x)-1,Math.round(y),3,1);g.fillRect(Math.round(x),Math.round(y)-1,1,3);}
 }});
 anims.push({fn:(g,t)=>{                                     // ayam mematuk & mengais
-  CHICK.forEach((ch,i)=>{const x=ch.x0*T+Math.round(10*Math.sin(t/2600+i*2)),
-    y=ch.y0*T+Math.round(5*Math.sin(t/3100+i)), pk=Math.sin(t/500+i*3)>0.6?2:0;
+  CHICK.forEach((ch,i)=>{const x=ch.x0*T+Math.round(5*Math.sin(t/2600+i*2)),
+    y=ch.y0*T+Math.round(3*Math.sin(t/3100+i)), pk=Math.sin(t/500+i*3)>0.6?2:0;
     P(g,'rgba(0,0,0,.22)',x-2,y+3,5,1);                     // bayangan
     P(g,ch.c,x-2,y,5,4);P(g,ch.c,x+2,y-2+pk,2,3);           // badan + leher/kepala
     P(g,'#e8a030',x+4,y-1+pk,1,1);P(g,'#c0342a',x+2,y-3+pk,2,1); // paruh + jengger
@@ -2653,6 +2668,12 @@ function render(t){
     }
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
+  if(floor===1)drawDeckRail(cx);                 // railing di depan pemain (dino di balik pagar)
+  if(floor!==2){                                 // ambang/sill pintu lift di depan pemain — dino berdiri di ambang, tak menembus bukaan
+    const lx=LIFT_RECT.x*T+5, lw=LIFT_RECT.w*T-10, ly=LIFT_RECT.y*T+13;
+    cx.fillStyle='#2b3039';cx.fillRect(lx,ly,lw,3);
+    cx.fillStyle='#454f5e';cx.fillRect(lx,ly,lw,1);
+  }
   /* drone kargo antar-panen — digambar setelah pemain (terbang di atas kepala) */
   if(floor===0){
     const d=drone,parked=d.state==='parked';
