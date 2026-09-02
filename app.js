@@ -2671,11 +2671,6 @@ function render(t){
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
   if(floor===1)drawDeckRail(cx);                 // railing di depan pemain (dino di balik pagar)
-  if(floor!==2){                                 // ambang/sill pintu lift di depan pemain — dino berdiri di ambang, tak menembus bukaan
-    const lx=LIFT_RECT.x*T+5, lw=LIFT_RECT.w*T-10, ly=LIFT_RECT.y*T+13;
-    cx.fillStyle='#2b3039';cx.fillRect(lx,ly,lw,3);
-    cx.fillStyle='#454f5e';cx.fillRect(lx,ly,lw,1);
-  }
   /* drone kargo antar-panen — digambar setelah pemain (terbang di atas kepala) */
   if(floor===0){
     const d=drone,parked=d.state==='parked';
