@@ -1451,7 +1451,7 @@ function drawPeekLife(t){
 buildBG2();
 
 /* --- LIFT lantai 2 (kabin yang sama, indikator menunjuk turun) --- */
-const lift2=mkLift(false);
+mkLift(false);   // kabin lift lantai 2 (furnitur di-push di dalam mkLift)
 
 /* --- MEJA ARSIP e-RDKK : PROJEKT-FER (satu ruangan dgn forge & bengkel) --- */
 const rdkkT=furn(TOOLS[7].rect,14,(g,w,h)=>{
@@ -1694,9 +1694,9 @@ anims.push({fn:(g,t)=>{                                         // robot arsipar
   P(g,Math.floor(t/500)%2?'#8fd4e8':'#3a4a52',ax,ay+3,1,1);     // emitter tengah
 }});
 
-/* --- ambience lantai 2: kilau jendela, cuaca & debu --- */
+/* --- ambience lantai 2: kilau jendela & debu (tanpa cuaca bumi — jendela ke
+   luar angkasa, jadi hujan/burung/kabut drawWeather tak dipakai di sini) --- */
 anims.push({fn:(g,t)=>winShimmer(g,t,WINDOWS2)});
-anims.push({fn:(g,t)=>drawWeather(g,t,WINDOWS2,9*T-4)});
 anims.push({fn:(g,t)=>{                                        // debu di atas lantai dek
   for(let i=0;i<12;i++){
     const x=(i*151)%(W-48)+24+Math.sin(t/2400+i*1.7)*7;
@@ -1962,7 +1962,6 @@ anims.push({fn:(g,t)=>{                                     // pendar lentera sa
     g.fillStyle=`rgba(255,224,150,${(0.9*lamp).toFixed(3)})`;g.fillRect(cx0-2,cy0-1,4,4); // bola cahaya
     g.fillStyle=`rgba(255,214,140,${(0.10*lamp).toFixed(3)})`;g.fillRect(f.px+1,f.py+13,13,6);} // kolam cahaya
 }});
-/* kabut area luar digambar di render() (ruang layar, dengan lubang bundar di sekitar dino) */
 FURNS.push(FURN);ANIMS.push(anims);
 
 /* kembalikan rujukan aktif ke lantai 1 */
