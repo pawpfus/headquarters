@@ -1753,17 +1753,14 @@ function buildBG3(){
     }else if(OUT_PATH.has(tx+','+ty)){
       P(g,'#7a5c3a',px,py,T,T);P(g,'#6e5233',px,py+T-2,T,2);           // jalan tanah
       if(r<4)P(g,'#8a6a44',px+(r%12),py+((r*3)%12),2,1);              // kerikil
-      // batu pijakan bulat kasar — hanya sebagian petak, rumput menyela di selanya
+      // batu pijakan PIPIH tertanam rata (flush) di tanah — pijakan, bukan penghalang
       const sn=rnd(tx+7,ty+2)%16;
-      const stone=(sx,sy)=>{P(g,'#453a31',sx,sy+5,5,1);              // bayang bawah
-        P(g,'#6f757b',sx,sy+1,5,3);                                   // badan gemuk
-        P(g,'#6f757b',sx+1,sy,3,1);P(g,'#6f757b',sx+1,sy+4,3,1);      // atas & dasar membulat
-        P(g,'#565c62',sx,sy+3,5,1);P(g,'#565c62',sx+4,sy+1,1,1);      // sisi gelap + takik kasar
-        P(g,'#8b9197',sx+1,sy,2,1);P(g,'#8b9197',sx,sy+1,1,2);        // punggung tersinari
-        P(g,'#9aa0a5',sx+1,sy+1,1,1);};                               // kilau
-      if(sn<10){stone(px+4+(sn%3),py+2);                              // batu utama (offset acak)
-        if(sn<5)stone(px+6+(sn%2),py+8);                              // batu ke-2
-        P(g,'#3f6b39',px+1,py+7,2,3);P(g,'#548146',px+12,py+2,2,2);} // rumput menyela di sela batu
+      const stone=(sx,sy)=>{P(g,'#6a5238',sx,sy+3,6,1);              // seam tanah bawah (tertanam)
+        P(g,'#9a938a',sx,sy,6,3);                                     // permukaan datar (kontras rendah)
+        P(g,'#a69d92',sx+1,sy,4,1);                                   // sorot atas tipis
+        P(g,'#857e75',sx,sy+2,6,1);P(g,'#8f887f',sx+5,sy,1,3);};      // sisi bawah/kanan datar
+      if(sn<9){stone(px+4+(sn%3),py+5);                               // pijakan utama (di tengah lajur)
+        if(sn<4)stone(px+7+(sn%2),py+10);}                            // pijakan ke-2
     }else{
       const a=(tx+ty)&1;
       P(g,a?'#3f6b39':'#456f3e',px,py,T,T);                            // rumput
