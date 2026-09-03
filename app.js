@@ -1751,19 +1751,27 @@ function buildBG3(){
       if(fl<3)P(g,FC[fl%4],px+((2+fl*3)%12)+1,py+2+((fl*5)%8),1,1);    // bunga
       if(fl===0)P(g,'#f2c94c',px+11,py+11,1,1);
     }else if(OUT_PATH.has(tx+','+ty)){
-      P(g,'#7a5c3a',px,py,T,T);P(g,'#6e5233',px,py+T-2,T,2);           // jalan tanah
-      if(r<4)P(g,'#8a6a44',px+(r%12),py+((r*3)%12),2,1);              // kerikil
-      // batu pijakan bulat kasar — hanya sebagian petak, rumput menyela di selanya
-      const sn=rnd(tx+7,ty+2)%16;
-      const stone=(sx,sy)=>{P(g,'#453a31',sx,sy+5,5,1);              // bayang bawah
-        P(g,'#6f757b',sx,sy+1,5,3);                                   // badan gemuk
-        P(g,'#6f757b',sx+1,sy,3,1);P(g,'#6f757b',sx+1,sy+4,3,1);      // atas & dasar membulat
-        P(g,'#565c62',sx,sy+3,5,1);P(g,'#565c62',sx+4,sy+1,1,1);      // sisi gelap + takik kasar
-        P(g,'#8b9197',sx+1,sy,2,1);P(g,'#8b9197',sx,sy+1,1,2);        // punggung tersinari
-        P(g,'#9aa0a5',sx+1,sy+1,1,1);};                               // kilau
-      if(sn<10){stone(px+4+(sn%3),py+2);                              // batu utama (offset acak)
-        if(sn<5)stone(px+6+(sn%2),py+8);                              // batu ke-2
-        P(g,'#3f6b39',px+1,py+7,2,3);P(g,'#548146',px+12,py+2,2,2);} // rumput menyela di sela batu
+      // jalur FLAGSTONE: batu pipih lebar tak beraturan tertanam di rumput, rumput menyela di celah
+      const a=(tx+ty)&1, grass=a?'#3f6b39':'#456f3e';
+      P(g,grass,px,py,T,T);                                             // rumput dasar = seam antar batu
+      const s=rnd(tx+7,ty+2), sm=s%6;
+      const inL=1+(sm&1), inT=1+((sm>>1)&1), inR=1+((s>>2)&1), inB=1+((s>>3)&1);
+      const x=px+inL, y=py+inT, w=T-inL-inR, h=T-inT-inB;              // lempeng ± 13×13, ukuran bervariasi
+      const warm=(s>>4)&1;
+      const cBody=warm?'#b3a892':'#a8a69c', cTop=warm?'#c7bca6':'#c0beb4',
+            cSh=warm?'#8f836c':'#8b897f', cRim=warm?'#7a715d':'#767469';
+      P(g,cRim,x,y,w,h);                                               // rim gelap
+      P(g,cBody,x,y,w,h-1);                                            // badan datar
+      P(g,cTop,x,y,w,2);P(g,cTop,x,y,1,h-2);                           // tepi tersinari (atas-kiri)
+      P(g,cSh,x,y+h-2,w,2);P(g,cSh,x+w-1,y,1,h);                       // bayang (bawah-kanan)
+      const cut=(cx,cy,cw,ch)=>P(g,grass,cx,cy,cw,ch);                 // takik rumput → bentuk tak beraturan
+      if(s&1){cut(x,y,2,1);cut(x,y,1,2);}                              // sudut kiri-atas
+      if(s&2){cut(x+w-2,y,2,1);cut(x+w-1,y,1,2);}                      // kanan-atas
+      if(s&4){cut(x,y+h-2,1,2);cut(x,y+h-1,2,1);}                      // kiri-bawah
+      if(s&8){cut(x+w-2,y+h-1,2,1);cut(x+w-1,y+h-2,1,2);}             // kanan-bawah
+      cut(x+2+(s%(w-3)),y,1,1);cut(x,y+2+(s%(h-3)),1,1);              // gigil tepi acak
+      P(g,cSh,x+2+(s%3),y+3,1,h-6);                                   // retak halus
+      P(g,cTop,x+w-3,y+2,1,1);                                        // bintik sorot
     }else{
       const a=(tx+ty)&1;
       P(g,a?'#3f6b39':'#456f3e',px,py,T,T);                            // rumput
