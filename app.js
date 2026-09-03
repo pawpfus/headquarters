@@ -1753,13 +1753,16 @@ function buildBG3(){
     }else if(OUT_PATH.has(tx+','+ty)){
       P(g,'#7a5c3a',px,py,T,T);P(g,'#6e5233',px,py+T-2,T,2);           // jalan tanah
       if(r<4)P(g,'#8a6a44',px+(r%12),py+((r*3)%12),2,1);              // kerikil
-      // batu pijakan pipih abu — hanya sebagian petak, rumput menyela di selanya
+      // batu pijakan bulat kasar — hanya sebagian petak, rumput menyela di selanya
       const sn=rnd(tx+7,ty+2)%16;
-      const stone=(sx,sy)=>{P(g,'#463b32',sx-1,sy+2,8,1);             // bayang bawah
-        P(g,'#6f757b',sx,sy,7,3);P(g,'#8b9197',sx,sy,7,1);            // badan + punggung tersinari
-        P(g,'#565c62',sx,sy+2,7,1);P(g,'#9aa0a5',sx+1,sy,2,1);};      // dasar gelap + kilau
-      if(sn<10){stone(px+3+(sn%3),py+3);                              // batu utama (offset acak)
-        if(sn<5)stone(px+5+(sn%2),py+9);                              // batu ke-2
+      const stone=(sx,sy)=>{P(g,'#453a31',sx,sy+5,5,1);              // bayang bawah
+        P(g,'#6f757b',sx,sy+1,5,3);                                   // badan gemuk
+        P(g,'#6f757b',sx+1,sy,3,1);P(g,'#6f757b',sx+1,sy+4,3,1);      // atas & dasar membulat
+        P(g,'#565c62',sx,sy+3,5,1);P(g,'#565c62',sx+4,sy+1,1,1);      // sisi gelap + takik kasar
+        P(g,'#8b9197',sx+1,sy,2,1);P(g,'#8b9197',sx,sy+1,1,2);        // punggung tersinari
+        P(g,'#9aa0a5',sx+1,sy+1,1,1);};                               // kilau
+      if(sn<10){stone(px+4+(sn%3),py+2);                              // batu utama (offset acak)
+        if(sn<5)stone(px+6+(sn%2),py+8);                              // batu ke-2
         P(g,'#3f6b39',px+1,py+7,2,3);P(g,'#548146',px+12,py+2,2,2);} // rumput menyela di sela batu
     }else{
       const a=(tx+ty)&1;
@@ -1771,9 +1774,10 @@ function buildBG3(){
       if(OUT_PATH.has((tx-1)+','+ty)||OUT_PATH.has((tx+1)+','+ty)||
          OUT_PATH.has(tx+','+(ty-1))||OUT_PATH.has(tx+','+(ty+1))){
         const d=rnd(tx+2,ty+9)%12;
-        if(d<3){                                                       // batu kecil abu
+        if(d<3){                                                       // batu kecil bulat
           const sx=px+3+((d*4)%9),sy=py+7+((d*3)%6);
-          P(g,'#43403a',sx,sy+2,4,1);P(g,'#787e84',sx,sy,4,2);P(g,'#9aa0a5',sx,sy,2,1);
+          P(g,'#43403a',sx,sy+3,3,1);P(g,'#787e84',sx,sy+1,3,2);
+          P(g,'#787e84',sx+1,sy,1,1);P(g,'#9aa0a5',sx,sy+1,1,1);P(g,'#565c62',sx,sy+2,3,1);
         }else if(d<5){                                                 // jamur mungil
           const sx=px+4+((d*5)%8),sy=py+5+((d*2)%8);
           P(g,'#25321d',sx,sy+3,3,1);                                  // bayang
