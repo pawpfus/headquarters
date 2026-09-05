@@ -1989,17 +1989,38 @@ for(let by=2;by<ROWS-1;by++)for(let bx=1;bx<COLS-1;bx++)
 function drawGardenPlants(g,t){
   for(const b of BED)for(let k=0;k<2;k++){
     const seed=b.s+k*137, cx0=b.x+4+k*7+((seed>>4)&1), rootY=b.y+T-3;
-    const per=8000+(seed%3000), ph=((t+seed*29)%per)/per;          // fase 0..1 per tanaman
-    const grow=ph<0.82?ph/0.82:1;                                   // tumbuh lalu matang bertahan
-    const gh=2+Math.round(grow*8), topY=rootY-gh;                   // tinggi batang 2..10
-    const sway=Math.round(grow*2*Math.sin(t/780+seed));
+    const per=45000+(seed%30000);                                   // siklus tumbuh LAMBAT ~45–75 dtk
+    const grow=Math.min(1,((t+seed*97)%per)/per/0.45);              // tumbuh di 45% awal lalu matang
+    const sway=Math.round(grow*2*Math.sin(t/900+seed));
+    const type=seed%4;
     P(g,'#2f5a28',cx0,rootY,1,1);                                   // pangkal
-    P(g,'#3f7a34',cx0,topY+1,1,gh);                                 // batang
-    const leaves=1+Math.floor(grow*3);                              // daun bertambah seiring tumbuh
-    for(let l=0;l<leaves;l++){const ly=rootY-2-l*3, dir=(l&1)?1:-1, lx=cx0+dir+(ly<rootY-4?sway:0);
-      P(g,'#4a8f3a',lx,ly,1,1);P(g,'#6fc04a',lx+dir,ly,1,1);}
-    P(g,'#6fc04a',cx0+sway,topY,1,1);                               // pucuk (goyang)
-    if(grow>0.8)P(g,(seed&1)?'#d94f3a':'#f2c94c',cx0+sway,topY-1,1,1); // buah/bunga saat matang
+    if(type===0){                                                   // (1) sayuran daun — rendah & rimbun
+      const h=1+Math.round(grow*3), w=Math.round(grow*2), ty0=rootY-h;
+      P(g,'#3f7a34',cx0,ty0,1,h);
+      for(let dx=-w;dx<=w;dx++)P(g,'#4a8f3a',cx0+dx,ty0,1,1);
+      for(let dx=-w+1;dx<=w-1;dx++)P(g,'#6fc04a',cx0+dx,ty0-1,1,1);
+      P(g,'#6fc04a',cx0+sway,ty0-2,1,1);
+    }else if(type===1){                                             // (2) tomat — batang + buah merah
+      const gh=2+Math.round(grow*8), topY=rootY-gh;
+      P(g,'#3f7a34',cx0,topY+1,1,gh);
+      const lv=1+Math.floor(grow*3);
+      for(let l=0;l<lv;l++){const ly=rootY-2-l*3,dir=(l&1)?1:-1,lx=cx0+dir+(ly<rootY-4?sway:0);
+        P(g,'#4a8f3a',lx,ly,1,1);P(g,'#6fc04a',lx+dir,ly,1,1);}
+      P(g,'#6fc04a',cx0+sway,topY,1,1);
+      if(grow>0.85){P(g,'#d94f3a',cx0+sway,topY,1,1);P(g,'#e0653a',cx0-1,topY+3,1,1);}
+    }else if(type===2){                                             // (3) jagung — tinggi, daun pita, malai
+      const gh=3+Math.round(grow*10), topY=rootY-gh;
+      P(g,'#4a8f3a',cx0,topY,1,gh);
+      for(let l=0;l<2;l++){const ly=rootY-4-l*4,dir=(l&1)?1:-1;
+        P(g,'#3f7a34',cx0+dir,ly,1,1);P(g,'#59a848',cx0+dir*2,ly-1,1,1);}
+      if(grow>0.8){P(g,'#e8d24a',cx0+sway,topY-1,1,2);P(g,'#c9b23a',cx0+sway+((seed&1)?1:-1),topY,1,1);}
+    }else{                                                          // (4) bunga/herba — mekar warna-warni
+      const gh=2+Math.round(grow*6), topY=rootY-gh;
+      P(g,'#3f7a34',cx0,topY+1,1,gh);
+      P(g,'#4a8f3a',cx0-1,rootY-3,1,1);P(g,'#4a8f3a',cx0+1,rootY-5,1,1);
+      if(grow>0.7){const FC=['#e8607a','#c98ce0','#f0ead8','#f2a03a'],fc=FC[seed%4];
+        P(g,fc,cx0+sway-1,topY+1,3,1);P(g,fc,cx0+sway,topY,1,3);P(g,'#f2c94c',cx0+sway,topY+1,1,1);}
+    }
   }
 }
 function drawChickens(g,t){
