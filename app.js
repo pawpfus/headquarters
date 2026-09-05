@@ -1743,10 +1743,7 @@ function buildBG3(){
       P(g,'#5a3f28',px,py,T,T);                                        // tanah
       P(g,'#6e4f34',px,py,T,3);P(g,'#7a5836',px+2,py,T-4,1);          // punggung gundukan tersinari
       P(g,'#4a3018',px,py+T-2,T,2);                                    // dasar gelap
-      for(let i=4;i<T;i+=5)P(g,'#4a3320',px,py+i,T,1);                 // alur/furrow
-      const gv=rnd(tx,ty+5)%5;
-      if(gv<3){P(g,'#3f7a34',px+3,py+4,4,4);P(g,'#59a848',px+4,py+4,2,2);}   // rumpun sayur
-      if(gv>1){P(g,'#4a8f3a',px+9,py+8,4,3);P(g,'#6fc04a',px+10,py+8,2,1);}  // sayur ke-2
+      for(let i=4;i<T;i+=5)P(g,'#4a3320',px,py+i,T,1);                 // alur/furrow (tanaman digambar animasi di atasnya)
       const fl=rnd(tx+3,ty)%6, FC=['#f2c94c','#e8607a','#f0ead8','#c98ce0'];
       if(fl<3)P(g,FC[fl%4],px+((2+fl*3)%12)+1,py+2+((fl*5)%8),1,1);    // bunga
       if(fl===0)P(g,'#f2c94c',px+11,py+11,1,1);
@@ -1985,6 +1982,26 @@ anims.push({fn:(g,t)=>{                                     // kunang-kunang saa
     g.fillRect(Math.round(x)-1,Math.round(y),3,1);g.fillRect(Math.round(x),Math.round(y)-1,1,3);}
 }});
 /* ayam mematuk & mengais — digambar di render() SEBELUM furnitur (di BALIK pohon/objek) */
+/* tanaman tumbuh di bedengan: siklus tumbuh→matang→tanam ulang, daun bertambah, pucuk & buah goyang */
+const BED=[];
+for(let by=2;by<ROWS-1;by++)for(let bx=1;bx<COLS-1;bx++)
+  if(MAP3[by][bx]==='#')BED.push({x:bx*T,y:by*T,s:rnd(bx+1,by+3)});
+function drawGardenPlants(g,t){
+  for(const b of BED)for(let k=0;k<2;k++){
+    const seed=b.s+k*137, cx0=b.x+4+k*7+((seed>>4)&1), rootY=b.y+T-3;
+    const per=8000+(seed%3000), ph=((t+seed*29)%per)/per;          // fase 0..1 per tanaman
+    const grow=ph<0.82?ph/0.82:1;                                   // tumbuh lalu matang bertahan
+    const gh=2+Math.round(grow*8), topY=rootY-gh;                   // tinggi batang 2..10
+    const sway=Math.round(grow*2*Math.sin(t/780+seed));
+    P(g,'#2f5a28',cx0,rootY,1,1);                                   // pangkal
+    P(g,'#3f7a34',cx0,topY+1,1,gh);                                 // batang
+    const leaves=1+Math.floor(grow*3);                              // daun bertambah seiring tumbuh
+    for(let l=0;l<leaves;l++){const ly=rootY-2-l*3, dir=(l&1)?1:-1, lx=cx0+dir+(ly<rootY-4?sway:0);
+      P(g,'#4a8f3a',lx,ly,1,1);P(g,'#6fc04a',lx+dir,ly,1,1);}
+    P(g,'#6fc04a',cx0+sway,topY,1,1);                               // pucuk (goyang)
+    if(grow>0.8)P(g,(seed&1)?'#d94f3a':'#f2c94c',cx0+sway,topY-1,1,1); // buah/bunga saat matang
+  }
+}
 function drawChickens(g,t){
   CHICK.forEach((ch,i)=>{const x=ch.x0*T+Math.round(5*Math.sin(t/2600+i*2)),
     y=ch.y0*T+Math.round(3*Math.sin(t/3100+i)), pk=Math.sin(t/500+i*3)>0.6?2:0;
@@ -2632,7 +2649,8 @@ function render(t){
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   cx.drawImage([bg,bg2,bg3][floor],0,0);
   if(floor===1)drawPeekLife(t);                    // kehidupan di jendela intip lt.1
-  if(floor===2)drawChickens(cx,t);                 // ayam di BALIK furnitur (pohon/objek menutupinya)
+  if(floor===2){drawGardenPlants(cx,t);            // tanaman tumbuh di bedengan (layer tanah)
+    drawChickens(cx,t);}                            // ayam di BALIK furnitur (pohon/objek menutupinya)
   if(floor===0){
     /* bayangan drone — mengikuti posisinya (rapat saat parkir), di bawah semua objek */
     cx.fillStyle='rgba(0,0,0,.20)';
