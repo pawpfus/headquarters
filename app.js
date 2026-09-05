@@ -1739,14 +1739,16 @@ function buildBG3(){
   /* tanah & sawah (baris 0-1 = fasad, digambar terpisah setelah ini) */
   for(let ty=2;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
     const px=tx*T,py=ty*T,r=rnd(tx,ty)%16,cell=MAP3[ty][tx];
-    if(cell==='#'){                                        // gundukan kebun: tanah + sayur + bunga
-      P(g,'#5a3f28',px,py,T,T);                                        // tanah
-      P(g,'#6e4f34',px,py,T,3);P(g,'#7a5836',px+2,py,T-4,1);          // punggung gundukan tersinari
-      P(g,'#4a3018',px,py+T-2,T,2);                                    // dasar gelap
-      for(let i=4;i<T;i+=5)P(g,'#4a3320',px,py+i,T,1);                 // alur/furrow (tanaman digambar animasi di atasnya)
-      const fl=rnd(tx+3,ty)%6, FC=['#f2c94c','#e8607a','#f0ead8','#c98ce0'];
-      if(fl<3)P(g,FC[fl%4],px+((2+fl*3)%12)+1,py+2+((fl*5)%8),1,1);    // bunga
-      if(fl===0)P(g,'#f2c94c',px+11,py+11,1,1);
+    if(cell==='#'){                                        // bedengan: tanah dibajak & disiram (tanaman = animasi di atasnya)
+      P(g,'#6b4a2e',px,py,T,T);                                        // tanah lembap
+      P(g,'#8d6a44',px,py,T,1);                                        // bibir tersinari
+      P(g,'#3a2817',px,py+T-1,T,1);                                    // dasar gelap
+      P(g,'#4f351f',px,py+5,T,1);P(g,'#4f351f',px,py+11,T,1);          // alur bajakan
+      P(g,'#7a5636',px,py+6,T,1);P(g,'#7a5636',px,py+12,T,1);
+      const rr=(tx*13+ty*7)>>>0;
+      P(g,'#8d6a44',px+2+(rr%11),py+2+((rr>>2)%3),1,1);                // butiran tanah
+      P(g,'#3a2817',px+3+((rr>>3)%10),py+8+((rr>>1)%3),1,1);
+      P(g,'#6f7f7a',px+4+((rr>>4)%8),py+3,1,1);P(g,'#6f7f7a',px+9+((rr>>5)%5),py+9,1,1); // kilau air
     }else if(OUT_PATH.has(tx+','+ty)){
       P(g,'#7a5c3a',px,py,T,T);P(g,'#6e5233',px,py+T-2,T,2);           // jalan tanah
       if(r<4)P(g,'#8a6a44',px+(r%12),py+((r*3)%12),2,1);              // kerikil
@@ -1986,41 +1988,75 @@ anims.push({fn:(g,t)=>{                                     // kunang-kunang saa
 const BED=[];
 for(let by=2;by<ROWS-1;by++)for(let bx=1;bx<COLS-1;bx++)
   if(MAP3[by][bx]==='#')BED.push({x:bx*T,y:by*T,s:rnd(bx+1,by+3)});
-function drawGardenPlants(g,t){
-  for(const b of BED)for(let k=0;k<2;k++){
-    const seed=b.s+k*137, cx0=b.x+4+k*7+((seed>>4)&1), rootY=b.y+T-3;
-    const per=45000+(seed%30000);                                   // siklus tumbuh LAMBAT ~45–75 dtk
-    const grow=Math.min(1,((t+seed*97)%per)/per/0.45);              // tumbuh di 45% awal lalu matang
-    const sway=Math.round(grow*2*Math.sin(t/900+seed));
-    const type=seed%4;
-    P(g,'#2f5a28',cx0,rootY,1,1);                                   // pangkal
-    if(type===0){                                                   // (1) sayuran daun — rendah & rimbun
-      const h=1+Math.round(grow*3), w=Math.round(grow*2), ty0=rootY-h;
-      P(g,'#3f7a34',cx0,ty0,1,h);
-      for(let dx=-w;dx<=w;dx++)P(g,'#4a8f3a',cx0+dx,ty0,1,1);
-      for(let dx=-w+1;dx<=w-1;dx++)P(g,'#6fc04a',cx0+dx,ty0-1,1,1);
-      P(g,'#6fc04a',cx0+sway,ty0-2,1,1);
-    }else if(type===1){                                             // (2) tomat — batang + buah merah
-      const gh=2+Math.round(grow*8), topY=rootY-gh;
-      P(g,'#3f7a34',cx0,topY+1,1,gh);
-      const lv=1+Math.floor(grow*3);
-      for(let l=0;l<lv;l++){const ly=rootY-2-l*3,dir=(l&1)?1:-1,lx=cx0+dir+(ly<rootY-4?sway:0);
-        P(g,'#4a8f3a',lx,ly,1,1);P(g,'#6fc04a',lx+dir,ly,1,1);}
-      P(g,'#6fc04a',cx0+sway,topY,1,1);
-      if(grow>0.85){P(g,'#d94f3a',cx0+sway,topY,1,1);P(g,'#e0653a',cx0-1,topY+3,1,1);}
-    }else if(type===2){                                             // (3) jagung — tinggi, daun pita, malai
-      const gh=3+Math.round(grow*10), topY=rootY-gh;
-      P(g,'#4a8f3a',cx0,topY,1,gh);
-      for(let l=0;l<2;l++){const ly=rootY-4-l*4,dir=(l&1)?1:-1;
-        P(g,'#3f7a34',cx0+dir,ly,1,1);P(g,'#59a848',cx0+dir*2,ly-1,1,1);}
-      if(grow>0.8){P(g,'#e8d24a',cx0+sway,topY-1,1,2);P(g,'#c9b23a',cx0+sway+((seed&1)?1:-1),topY,1,1);}
-    }else{                                                          // (4) bunga/herba — mekar warna-warni
-      const gh=2+Math.round(grow*6), topY=rootY-gh;
-      P(g,'#3f7a34',cx0,topY+1,1,gh);
-      P(g,'#4a8f3a',cx0-1,rootY-3,1,1);P(g,'#4a8f3a',cx0+1,rootY-5,1,1);
-      if(grow>0.7){const FC=['#e8607a','#c98ce0','#f0ead8','#f2a03a'],fc=FC[seed%4];
-        P(g,fc,cx0+sway-1,topY+1,3,1);P(g,fc,cx0+sway,topY,1,3);P(g,'#f2c94c',cx0+sway,topY+1,1,1);}
-    }
+/* --- sprite tanaman gaya "farm-sim" (outline selektif + shading 4-tingkat) --- */
+const GO='#1f3d1a',GD='#357a2c',GM='#4fa03c',GL='#79c94f',GH='#a6e46a';
+function pShadow(g,ax,ay,w){P(g,'rgba(30,18,8,.28)',ax-(w>>1),ay,w,2);P(g,'rgba(30,18,8,.16)',ax-(w>>1)-1,ay+1,w+2,1);}
+function cropCauli(g,ax,ay,sway,gr){                               // kembang kol: rosette daun + curd krem
+  pShadow(g,ax,ay,11);
+  const lw=2+Math.round(gr*4);
+  P(g,GO,ax-lw-1,ay-2,2*lw+3,3);
+  P(g,GD,ax-lw,ay-6,2*lw+1,5);
+  P(g,GM,ax-lw+1,ay-7,2*lw-1,3);
+  P(g,GL,ax-lw+1,ay-8,2,2);P(g,GL,ax+lw-2,ay-8,2,2);
+  P(g,GO,ax-lw-1,ay-5,1,4);P(g,GO,ax+lw+1,ay-5,1,4);
+  if(gr>0.55){const cw=Math.round((gr-0.4)*10);
+    P(g,'#c9cdaa',ax-(cw>>1)-1,ay-8,cw+2,5);
+    P(g,'#eaeed2',ax-(cw>>1)+sway,ay-10,cw,4);
+    P(g,'#fbfde9',ax-(cw>>1)+1+sway,ay-10,2,1);
+    P(g,'#d3d8b4',ax+(cw>>1)-2+sway,ay-7,1,1);}
+}
+function cropTomato(g,ax,ay,sway,gr){                              // tomat: berpancang + buah merah bertahap
+  pShadow(g,ax,ay,11);
+  const sh=Math.round(4+gr*10);
+  P(g,'#6b4a2e',ax+4,ay-sh,1,sh);P(g,'#8d6a44',ax+4,ay-sh,1,1);
+  const bh=Math.round(3+gr*7);
+  P(g,GO,ax-5,ay-3,11,3);
+  P(g,GD,ax-5,ay-3-bh,11,bh+1);
+  P(g,GM,ax-4+sway,ay-4-bh,9,bh);
+  P(g,GL,ax-3+sway,ay-4-bh,2,1);P(g,GH,ax+2+sway,ay-3-bh,1,1);
+  if(gr>0.6){const fr=(fx,fy)=>{P(g,'#5a1410',fx-1,fy-1,4,4);P(g,'#b0271d',fx-1,fy-1,3,3);P(g,'#e0453a',fx,fy,2,2);P(g,'#ff9070',fx,fy,1,1);};
+    fr(ax-3,ay-4);fr(ax+1,ay-7);}
+}
+function cropCorn(g,ax,ay,sway,gr){                               // jagung: batang tinggi, daun pita, tongkol, malai
+  pShadow(g,ax,ay,9);
+  const H=Math.round(6+gr*11);
+  P(g,'#357a2c',ax,ay-H,2,H);P(g,'#4fa03c',ax,ay-H,1,H);
+  for(let i=0;i<3;i++){const ly=ay-4-i*4,dir=i&1?1:-1;
+    P(g,GD,ax+(dir>0?2:-1),ly,1,1);P(g,GM,ax+dir*2,ly-1,1,1);P(g,GL,ax+dir*3+(i===2?sway:0),ly-1,1,1);}
+  if(gr>0.6){P(g,'#c9a03a',ax+1,ay-Math.round(8+gr*4),2,5);
+    P(g,'#e8c94a',ax+1,ay-Math.round(9+gr*4),2,4);
+    P(g,'#f7e37a',ax+1,ay-Math.round(9+gr*4),1,2);}
+  if(gr>0.5){P(g,'#d9c26a',ax+sway,ay-H-1,1,2);P(g,'#b89a48',ax-1+sway,ay-H,1,1);P(g,'#b89a48',ax+2+sway,ay-H,1,1);}
+}
+function cropPumpkin(g,ax,ay,sway,gr){                            // labu: daun merambat + buah oranye berusuk
+  pShadow(g,ax,ay,13);
+  P(g,GO,ax-7,ay-3,4,3);P(g,GD,ax-7,ay-4,4,2);P(g,GO,ax+4,ay-3,4,3);P(g,GD,ax+4,ay-4,4,2);
+  if(gr<0.55){P(g,GM,ax-1+sway,ay-5,2,2);return;}
+  const w=Math.round(5+(gr-0.4)*8), h=Math.round(4+(gr-0.4)*6), hw=w>>1, top=ay-h;
+  P(g,'#8a3f14',ax-hw,top-1,w,h+1);                                // badan + puncak membulat
+  P(g,'#8a3f14',ax-hw-1,top+1,1,h-2);P(g,'#8a3f14',ax+hw,top+1,1,h-2); // sisi menonjol (bulat)
+  P(g,'#d97a28',ax-hw,top,w,h-1);
+  P(g,'#f0973a',ax-hw+1,top,w-2,Math.max(2,h-3));
+  for(let rx=-hw+2;rx<hw;rx+=3)P(g,'#c9691f',ax+rx,top,1,h-1);     // rusuk
+  P(g,'#ffc46a',ax-hw+1,top+1,2,2);                                // kilau
+  P(g,'#5a3f24',ax-1+sway,top-2,2,2);P(g,'#4fa03c',ax+1+sway,top-2,1,1); // tangkai
+}
+function cropJazz(g,ax,ay,sway,gr){                               // Blue Jazz: bunga bintang biru + putik kuning
+  pShadow(g,ax,ay,7);
+  const H=Math.round(3+gr*5);
+  P(g,'#357a2c',ax,ay-H,1,H);P(g,GM,ax-1,ay-2,1,1);P(g,GM,ax+1,ay-4,1,1);
+  if(gr<0.55)return;
+  const flor=(fx,fy)=>{P(g,'#4a6fca',fx-1,fy,3,1);P(g,'#4a6fca',fx,fy-1,1,3);P(g,'#88a6ef',fx,fy,1,1);P(g,'#f2d24a',fx,fy,1,1);};
+  flor(ax+sway,ay-H-1);flor(ax-2+sway,ay-H+1);flor(ax+2+sway,ay-H);
+}
+const CROPS=[cropCauli,cropTomato,cropCorn,cropPumpkin,cropJazz];
+function drawGardenPlants(g,t){                                   // 1 tanaman per petak, siklus tumbuh lambat + goyang
+  for(const b of BED){
+    const ax=b.x+8, ay=b.y+14, seed=b.s;
+    const per=45000+(seed%30000);
+    const gr=Math.min(1,((t+seed*97)%per)/per/0.45);
+    const sway=Math.round(gr*Math.sin(t/900+seed));
+    CROPS[seed%CROPS.length](g,ax,ay,sway,gr);
   }
 }
 function drawChickens(g,t){
