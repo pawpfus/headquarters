@@ -138,8 +138,8 @@ const MAP3=[
 /* pepohonan: {x,y,big,seed} — batang jadi solid; `big` = pohon besar (kanopi lebar) */
 const OUT_TREES=[
   {x:1,y:4,big:1,s:1},{x:1,y:12,big:1,s:2},{x:23,y:4,big:1,s:3},{x:23,y:14,big:1,s:4},{x:7,y:16,big:1,s:5},
-  {x:1,y:8,s:6},{x:2,y:7,s:7},{x:1,y:16,s:8},{x:23,y:8,s:9},{x:22,y:12,s:10},{x:23,y:16,s:11},
-  {x:6,y:6,s:12},{x:9,y:8,s:13},{x:14,y:11,s:14},{x:22,y:9,s:15},{x:21,y:16,s:16},{x:13,y:4,s:17},{x:6,y:13,s:18},
+  {x:1,y:8,s:6},{x:2,y:7,s:7},{x:1,y:16,s:8},{x:23,y:8,s:9},{x:20,y:6,s:10},{x:23,y:16,s:11},
+  {x:6,y:6,s:12},{x:9,y:8,s:13},{x:14,y:11,s:14},{x:22,y:9,s:15},{x:18,y:12,s:16},{x:13,y:4,s:17},{x:6,y:13,s:18},
   {x:5,y:5,s:19},{x:9,y:11,s:20},{x:11,y:17,s:21},{x:16,y:16,s:22},{x:4,y:17,s:23},
 ];
 /* papan info poktan — objek yang bisa "dibaca" (banner memutar pesan) */
@@ -1768,7 +1768,13 @@ function buildBG3(){
   /* tanah & sawah (baris 0-1 = fasad, digambar terpisah setelah ini) */
   for(let ty=2;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
     const px=tx*T,py=ty*T,r=rnd(tx,ty)%16,cell=MAP3[ty][tx];
-    if(cell==='#'){                                        // bedengan: tanah dibajak & disiram (tanaman = animasi di atasnya)
+    if(cell==='#'&&(tx===0||tx===COLS-1||ty>=ROWS-1)){     // PINGGIR peta = rimbun hutan (bukan bedengan)
+      P(g,SS.jungle[0],px,py,T,T);
+      const rb=(tx*29+ty*17)>>>0;
+      P(g,SS.jungle[1],px+1+(rb%5),py,6,T);                            // batang semak gelap
+      P(g,SS.jungle[2],px+3+((rb>>2)%6),py+3+((rb>>4)%4),4,6);         // rumpun
+      P(g,SS.fern,px+2+((rb>>3)%9),py+6+((rb>>5)%5),3,3);              // pucuk pakis
+    }else if(cell==='#'){                                  // bedengan: tanah dibajak & disiram (tanaman = animasi di atasnya)
       P(g,'#6b4a2e',px,py,T,T);                                        // tanah lembap
       P(g,'#8d6a44',px,py,T,1);                                        // bibir tersinari
       P(g,'#3a2817',px,py+T-1,T,1);                                    // dasar gelap
@@ -1836,12 +1842,19 @@ function buildBG3(){
     P(g,'#2f6b30',px+30,py+17,5,3);P(g,'#3f8a3c',px+31,py+17,3,2);
     P(g,'#e8607a',px+8,py+7,2,2);P(g,'#f2a2c9',px+8,py+7,1,1);           // bunga teratai
   })();
-  /* rimbun hutan hujan di pinggir (kiri/kanan/bawah) + pakis */
-  for(let tx=0;tx<COLS;tx++){P(g,SS.jungle[1],tx*T,17*T,T,7);
-    if(tx%2===0)P(g,SS.fern,tx*T+3,17*T-2,4,4);}                      // pucuk pakis (bawah)
-  for(let ty=2;ty<18;ty++){
-    P(g,SS.jungle[1],0,ty*T,5,T);P(g,SS.jungle[1],24*T-5,ty*T,5,T);
-    if(ty%2===0){P(g,SS.fern,3,ty*T+4,4,4);P(g,SS.fern,24*T-7,ty*T+4,4,4);}} // pakis tepi
+  /* tepi hutan hujan: rimbun BERGERIGI yang menjulur dari pinggir peta ke dalam
+     (dulu strip lurus 5/7px → terbaca sebagai garis hijau mengelilingi peta) */
+  for(let tx=1;tx<COLS-1;tx++){                                       // bawah: naik dari baris pinggir
+    const hh=2+((tx*11+5)%8);                                         // 2..9 px, tinggi bervariasi
+    P(g,SS.jungle[1],tx*T,(ROWS-1)*T-hh,T,hh);
+    P(g,SS.jungle[2],tx*T+2+((tx*7)%8),(ROWS-1)*T-hh,4,Math.max(2,hh-2));
+    if(tx%2===0)P(g,SS.fern,tx*T+3+((tx*5)%7),(ROWS-1)*T-hh-2,4,4);}  // pucuk pakis
+  for(let ty=2;ty<ROWS-1;ty++){                                       // kiri & kanan: masuk dari kolom pinggir
+    const wl=2+((ty*13+2)%7), wr=2+((ty*17+7)%7);
+    P(g,SS.jungle[1],T,ty*T,wl,T);P(g,SS.jungle[1],(COLS-1)*T-wr,ty*T,wr,T);
+    P(g,SS.jungle[2],T,ty*T+3+((ty*5)%6),Math.max(2,wl-1),5);
+    P(g,SS.jungle[2],(COLS-1)*T-wr,ty*T+4+((ty*3)%6),Math.max(2,wr-1),5);
+    if(ty%2===0){P(g,SS.fern,T+1,ty*T+4,4,4);P(g,SS.fern,(COLS-1)*T-wr,ty*T+5,4,4);}}
   /* --- tepi HUTAN HUJAN di sepanjang atas (backdrop berlapis) --- */
   (function(){
     const J=SS.jungle;
