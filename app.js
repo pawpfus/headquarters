@@ -148,9 +148,36 @@ const noticeBoard={id:'board',name:'PAPAN INFO POKTAN',color:'#e8c05a',btn:'BACA
   msgs:['JADWAL TANAM SERENTAK PEKAN DEPAN','RAPAT POKTAN JUMAT 15:30 DI BALAI',
         'BANTUAN BENIH PADI SUDAH TERSEDIA','WASPADA WERENG - LAPOR SEGERA','UBINAN KSA BLOK 3 HARI KAMIS']};
 noticeBoard.desc=noticeBoard.msgs[0];
+/* --- MUSIM: palet dedaunan bergeser tiap hari (semi → kemarau → gugur → peralihan) --- */
+const SEASONS=[
+  {id:'SEMI',    mass:'#1e4a1c',mid:'#2f6b28',hi:'#3f8a34',hi2:'#5cb04a',
+   dots:['#2a5f24','#3f8a34','#57a048','#7cc45c'],
+   jungle:['#0f2a14','#183c1a','#245222','#31682e','#43883a','#63ac52'],
+   fern:'#33632c',grassA:'#41703a',grassB:'#48753f',floor:'#1e3320',leaf:'#7cc45c'},
+  {id:'KEMARAU', mass:'#1c3f18',mid:'#2a5f24',hi:'#357a2c',hi2:'#4a9640',
+   dots:['#22521e','#2f6a28','#3f8a34','#54a044'],
+   jungle:['#0e2412','#163417','#20481f','#2c5e2b','#3a7a34','#57a048'],
+   fern:'#2f5a28',grassA:'#3f6b39',grassB:'#456f3e',floor:'#1c2f1a',leaf:'#54a044'},
+  {id:'GUGUR',   mass:'#4a2a12',mid:'#7a4a18',hi:'#a86a1e',hi2:'#d9922c',
+   dots:['#8a4a16','#b06820','#d98a28','#e8b040'],
+   jungle:['#241505','#3a220a','#573312','#7a4a18','#a86a1e','#d9a03a'],
+   fern:'#7a5218',grassA:'#5d6630',grassB:'#646a34',floor:'#3a3a1c',leaf:'#d9922c'},
+  {id:'PERALIHAN',mass:'#20321c',mid:'#33502a',hi:'#456a34',hi2:'#5c8446',
+   dots:['#2a4222','#3b5c2e','#4d7038','#6b9050'],
+   jungle:['#101c10','#1a2c18','#26401f','#33522a','#456a34','#5f8a4a'],
+   fern:'#2e4826',grassA:'#40603a',grassB:'#46653e',floor:'#182718',leaf:'#6b9050'},
+];
+let forcedSeason=null;                                             // dipakai HQDBG untuk pratinjau
+const curSeason=()=>forcedSeason!==null?forcedSeason
+                    :Math.floor(Date.now()/864e5)%SEASONS.length;   // bergeser tiap hari
+let season=curSeason();
+const SN=()=>SEASONS[season];
+/* --- kolam kecil di tenggara: pantulan langit + ikan (padat, tak bisa dilewati) --- */
+const POND={x:17,y:15,w:3,h:2};
 const DECOR3_SOLID=[
   ...OUT_TREES.map(t=>({x:t.x,y:t.y,w:1,h:1})),        // batang pohon = solid
   {x:NOTICE_RECT.x,y:NOTICE_RECT.y,w:NOTICE_RECT.w,h:NOTICE_RECT.h},   // papan info
+  POND,                                                 // air kolam
 ];
 
 /* ---------- peta kepadatan per-lantai ---------- */
@@ -1734,8 +1761,8 @@ for(let y=2;y<=16;y++)OUT_PATH.add('12,'+y);
 for(let x=3;x<=12;x++)OUT_PATH.add(x+',10');             // cabang kiri → AREA SAMPLING
 for(let x=12;x<=19;x++)OUT_PATH.add(x+',8');             // cabang kanan → tiang COOPERSTOWN
 function buildBG3(){
-  const g=bg3c;
-  P(g,'#1c2f1a',0,0,W,H);                                 // dasar rumput gelap
+  const g=bg3c, SS=SN();                                  // SS = palet musim aktif
+  P(g,SS.floor,0,0,W,H);                                  // dasar rumput gelap
   /* tanah & sawah (baris 0-1 = fasad, digambar terpisah setelah ini) */
   for(let ty=2;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
     const px=tx*T,py=ty*T,r=rnd(tx,ty)%16,cell=MAP3[ty][tx];
@@ -1762,10 +1789,10 @@ function buildBG3(){
         if(sn<4)stone(px+7+(sn%2),py+10);}                            // pijakan ke-2
     }else{
       const a=(tx+ty)&1;
-      P(g,a?'#3f6b39':'#456f3e',px,py,T,T);                            // rumput
-      if(r===0)P(g,'#548146',px+4,py+7,3,2);
-      if(r===5)P(g,'#2f5230',px+9,py+3,2,3);
-      if(r===9)P(g,'#6f9a52',px+2,py+10,2,1);                          // rumpun cerah
+      P(g,a?SS.grassA:SS.grassB,px,py,T,T);                            // rumput (ikut musim)
+      if(r===0)P(g,SS.dots[2],px+4,py+7,3,2);
+      if(r===5)P(g,SS.mass,px+9,py+3,2,3);
+      if(r===9)P(g,SS.dots[3],px+2,py+10,2,1);                         // rumpun cerah
       // dekor tepi jalur: batu kecil acak + jamur mungil (hanya petak bersebelahan jalan)
       if(OUT_PATH.has((tx-1)+','+ty)||OUT_PATH.has((tx+1)+','+ty)||
          OUT_PATH.has(tx+','+(ty-1))||OUT_PATH.has(tx+','+(ty+1))){
@@ -1793,22 +1820,37 @@ function buildBG3(){
     if(MAP3[ty][tx-1]==='.')P(g,'#6e5836',px,py,2,T);
     if(MAP3[ty][tx+1]==='.')P(g,'#6e5836',px+T-2,py,2,T);
   }
+  /* --- KOLAM kecil: tepian batu + air berlapis (riak/ikan digambar per-frame) --- */
+  (function(){
+    const px=POND.x*T, py=POND.y*T, pw=POND.w*T, ph=POND.h*T;
+    P(g,'#4a3a26',px-2,py-2,pw+4,ph+4);P(g,'#5c4a30',px-2,py-2,pw+4,2);   // tanah basah tepi
+    for(let i=0;i<pw+4;i+=7)P(g,'#6f757b',px-2+i,py-3,4,3);               // batu tepi atas
+    for(let i=3;i<pw+4;i+=8)P(g,'#5b6167',px-2+i,py+ph,4,3);              // batu tepi bawah
+    P(g,'#16333f',px,py,pw,ph);                                           // air dalam (tepi gelap)
+    P(g,'#1d4657',px+1,py+1,pw-2,ph-2);
+    P(g,'#255a6e',px+3,py+3,pw-6,ph-6);
+    P(g,'#2e7186',px+6,py+6,pw-12,ph-12);                                 // bagian dangkal/terang
+    P(g,'#2f6b30',px+6,py+8,6,4);P(g,'#3f8a3c',px+7,py+8,4,2);           // daun teratai
+    P(g,'#2f6b30',px+30,py+17,5,3);P(g,'#3f8a3c',px+31,py+17,3,2);
+    P(g,'#e8607a',px+8,py+7,2,2);P(g,'#f2a2c9',px+8,py+7,1,1);           // bunga teratai
+  })();
   /* rimbun hutan hujan di pinggir (kiri/kanan/bawah) + pakis */
-  for(let tx=0;tx<COLS;tx++){P(g,'#1c3a18',tx*T,17*T,T,7);
-    if(tx%2===0)P(g,'#2f5a28',tx*T+3,17*T-2,4,4);}                    // pucuk pakis (bawah)
+  for(let tx=0;tx<COLS;tx++){P(g,SS.jungle[1],tx*T,17*T,T,7);
+    if(tx%2===0)P(g,SS.fern,tx*T+3,17*T-2,4,4);}                      // pucuk pakis (bawah)
   for(let ty=2;ty<18;ty++){
-    P(g,'#1c3a18',0,ty*T,5,T);P(g,'#1c3a18',24*T-5,ty*T,5,T);
-    if(ty%2===0){P(g,'#2f5a28',3,ty*T+4,4,4);P(g,'#2f5a28',24*T-7,ty*T+4,4,4);}} // pakis tepi
+    P(g,SS.jungle[1],0,ty*T,5,T);P(g,SS.jungle[1],24*T-5,ty*T,5,T);
+    if(ty%2===0){P(g,SS.fern,3,ty*T+4,4,4);P(g,SS.fern,24*T-7,ty*T+4,4,4);}} // pakis tepi
   /* --- tepi HUTAN HUJAN di sepanjang atas (backdrop berlapis) --- */
   (function(){
-    P(g,'#0e2412',0,0,W,26);                                          // massa hutan gelap (tinggi)
-    for(let x=-3;x<W;x+=9){const hh=14+((x*13+7)%10);P(g,'#163417',x,0,7,hh);}    // lapis belakang
+    const J=SS.jungle;
+    P(g,J[0],0,0,W,26);                                               // massa hutan gelap (tinggi)
+    for(let x=-3;x<W;x+=9){const hh=14+((x*13+7)%10);P(g,J[1],x,0,7,hh);}         // lapis belakang
     for(let x=-2;x<W;x+=7){const hh=11+((x*17+5)%9);
-      P(g,'#20481f',x,0,5,hh);P(g,'#2c5e2b',x+1,2,3,Math.max(1,hh-5));}           // lapis tengah
+      P(g,J[2],x,0,5,hh);P(g,J[3],x+1,2,3,Math.max(1,hh-5));}                     // lapis tengah
     for(let x=2;x<W;x+=13){const hh=8+((x*7)%6);
-      P(g,'#3a7a34',x,1,3,hh);P(g,'#57a048',x+1,1,1,Math.max(1,hh-3));}           // pucuk tersorot
-    for(let x=10;x<W;x+=46)P(g,'#1c3a1a',x,20,1,8);                   // sulur menggantung
-    P(g,'#0a1a0d',0,24,W,3);                                          // bayang dasar hutan
+      P(g,J[4],x,1,3,hh);P(g,J[5],x+1,1,1,Math.max(1,hh-3));}                     // pucuk tersorot
+    for(let x=10;x<W;x+=46)P(g,J[1],x,20,1,8);                        // sulur menggantung
+    P(g,J[0],0,24,W,3);                                               // bayang dasar hutan
   })();
   /* --- GEDUNG markas modern: berdiri di lapangan (± kolom 8-16) --- */
   (function(){
@@ -1910,20 +1952,27 @@ const scarecrow=furn({x:11,y:13,w:1,h:1},14,(g,w,h)=>{
 FURN.push(scarecrow);
 /* pepohonan mengisi lapangan (furnitur, urut kedalaman) — kanopi menyesuaikan ukuran kanvas */
 const treePaint=seed=>(g,w,h)=>{
+  const S=SN();                                                      // palet ikut musim
   const cx=w>>1, tw=Math.max(3,w>>3), ch=h-14;                       // pusat, lebar batang, tinggi kanopi
   P(g,'rgba(0,0,0,.16)',cx-(w>>2),h-3,w>>1,3);                       // bayang akar
   P(g,'#5a3f28',cx-(tw>>1),h-14,tw,14);P(g,'#6e4f34',cx-(tw>>1),h-14,Math.max(1,tw>>1),14); // batang
-  P(g,'#1c3f18',2,3,w-4,ch-2);P(g,'#2a5f24',4,2,w-8,ch-6);          // massa daun
-  P(g,'#357a2c',6,3,w-12,Math.floor(ch*0.5));P(g,'#4a9640',cx-4,4,8,Math.floor(ch*0.32)); // sorotan
-  P(g,'#173015',3,ch-2,w-6,2);                                       // dasar kanopi gelap
-  const cols=['#22521e','#2f6a28','#3f8a34','#54a044'];
+  P(g,S.mass,2,3,w-4,ch-2);P(g,S.mid,4,2,w-8,ch-6);                 // massa daun
+  P(g,S.hi,6,3,w-12,Math.floor(ch*0.5));P(g,S.hi2,cx-4,4,8,Math.floor(ch*0.32)); // sorotan
+  P(g,S.mass,3,ch-2,w-6,2);                                          // dasar kanopi gelap
+  const cols=S.dots;
   for(let k=0;k<(w>>1);k++){const rx=3+((k*97+seed*13)%(w-5)),ry=2+((k*53+seed*7)%(ch-2));
     P(g,cols[(k+seed)%4],rx,ry,2,2);}                                // tekstur daun
 };
+const TREEF=[];
 OUT_TREES.forEach(t=>{                                               // besar: 3-lebar/tinggi · kecil: 2-lebar
   const rect=t.big?{x:t.x-1,y:t.y,w:3,h:1}:{x:t.x,y:t.y,w:2,h:1};
-  FURN.push(furn(rect,t.big?42:28,treePaint(t.s)));
+  const f=furn(rect,t.big?42:28,treePaint(t.s));
+  FURN.push(f);TREEF.push({f,s:t.s});
 });
+function repaintTrees(){                                             // gambar ulang kanopi saat musim berganti
+  for(const T of TREEF){const c=T.f.canvas,g=c.getContext('2d');
+    g.clearRect(0,0,c.width,c.height);treePaint(T.s)(g,c.width,c.height);}
+}
 /* lentera jalan — menyala saat gelap (glow di anims) */
 const lanternPaint=(g,w,h)=>{
   P(g,'#2a2f38',6,6,3,h-6);P(g,'#3a4250',6,6,1,h-6);                 // tiang
@@ -2059,13 +2108,59 @@ function drawGardenPlants(g,t){                                   // 1 tanaman p
     CROPS[seed%CROPS.length](g,ax,ay,sway,gr);
   }
 }
+/* --- KOLAM: pantulan langit ikut waktu, kilau, ikan berenang, riak melingkar --- */
+function drawPond(g,t){
+  const px=POND.x*T, py=POND.y*T, pw=POND.w*T, ph=POND.h*T;
+  const lamp=daylight.lamp;                                    // 0 siang .. 1 malam
+  const sky=a=>`rgba(${Math.round(158-78*lamp)},${Math.round(205-125*lamp)},${Math.round(238-120*lamp)},${a.toFixed(3)})`;
+  for(let i=0;i<3;i++){                                        // pita pantulan langit bergoyang
+    const yy=py+6+i*7+Math.round(1.5*Math.sin(t/1100+i*2));
+    const xx=px+7+i*3+Math.round(2*Math.sin(t/900+i));
+    g.fillStyle=sky(0.13+0.05*Math.sin(t/700+i*2));g.fillRect(xx,yy,pw-16-i*5,1);
+  }
+  for(let i=0;i<6;i++){                                        // kilau titik di permukaan
+    const a=0.08+0.16*Math.sin(t/500+i*1.9); if(a<0.13)continue;
+    g.fillStyle=sky(a);g.fillRect(px+5+((i*11)%(pw-10)),py+5+((i*7)%(ph-10)),1,1);
+  }
+  const FC=['#d9762c','#c94f3a','#c9a03a'];
+  for(let i=0;i<3;i++){                                        // ikan kecil hilir-mudik
+    const per=9000+i*2600, k=((t+i*3000)%per)/per, dir=i%2?1:-1;
+    const fx=px+5+Math.round((pw-12)*(dir>0?k:1-k));
+    const fy=py+9+i*6+Math.round(2*Math.sin(t/600+i*2));
+    const wig=Math.sin(t/180+i)>0?1:0;
+    P(g,'rgba(10,30,40,.35)',fx-1,fy+2,5,1);                   // bayang di air
+    P(g,FC[i],fx,fy,3,2);P(g,FC[i],fx-dir,fy+wig,1,1);         // badan + ekor
+    P(g,'rgba(255,255,255,.55)',fx+(dir>0?1:1),fy,1,1);        // kilau punggung
+  }
+  const rp=6500, rt=(t%rp)/rp;                                 // riak melingkar sesekali
+  if(rt<0.5){const r=1+rt*13, a=0.34*(1-rt/0.5);
+    const cxp=px+Math.round(pw*0.62), cyp=py+Math.round(ph*0.45);
+    g.fillStyle=`rgba(205,238,248,${a.toFixed(3)})`;
+    for(let k=0;k<10;k++){const an=k/10*6.283;
+      g.fillRect(Math.round(cxp+Math.cos(an)*r),Math.round(cyp+Math.sin(an)*r*0.5),1,1);}}
+}
+const chickAt=(ch,i,t)=>({x:ch.x0*T+Math.round(5*Math.sin(t/2600+i*2)),
+                          y:ch.y0*T+Math.round(3*Math.sin(t/3100+i))});
 function drawChickens(g,t){
-  CHICK.forEach((ch,i)=>{const x=ch.x0*T+Math.round(5*Math.sin(t/2600+i*2)),
-    y=ch.y0*T+Math.round(3*Math.sin(t/3100+i)), pk=Math.sin(t/500+i*3)>0.6?2:0;
+  CHICK.forEach((ch,i)=>{
+    /* telur: tiap ayam bertelur berkala di tempat ia berdiri, telur memudar lalu "diambil" */
+    const per=26000+i*7000, lay=Math.floor(t/per)*per, age=t-lay;
+    if(age<15000){
+      const e=chickAt(ch,i,lay), ex=e.x-1, ey=e.y+5;
+      g.globalAlpha=age>13000?(15000-age)/2000:1;
+      P(g,'rgba(0,0,0,.22)',ex-1,ey+4,5,1);                    // bayangan
+      P(g,'#efe7d2',ex,ey,3,4);P(g,'#efe7d2',ex+1,ey-1,1,1);   // cangkang (puncak membulat)
+      P(g,'#fbf7ea',ex,ey,2,2);P(g,'#d8cdb2',ex+2,ey+2,1,2);   // sorot + sisi gelap
+      g.globalAlpha=1;
+      if(age<700){P(g,'#fff3b0',ex+1,ey-3,1,1);                // kilau sesaat saat baru bertelur
+        P(g,'#fff3b0',ex-2,ey-1,1,1);P(g,'#fff3b0',ex+4,ey-1,1,1);}
+    }
+    const p=chickAt(ch,i,t), x=p.x, y=p.y, pk=Math.sin(t/500+i*3)>0.6?2:0;
     P(g,'rgba(0,0,0,.22)',x-2,y+3,5,1);                     // bayangan
     P(g,ch.c,x-2,y,5,4);P(g,ch.c,x+2,y-2+pk,2,3);           // badan + leher/kepala
     P(g,'#e8a030',x+4,y-1+pk,1,1);P(g,'#c0342a',x+2,y-3+pk,2,1); // paruh + jengger
-    P(g,'#c9902a',x-1,y+4,1,1);P(g,'#c9902a',x+1,y+4,1,1);});    // kaki
+    P(g,'#c9902a',x-1,y+4,1,1);P(g,'#c9902a',x+1,y+4,1,1);      // kaki
+  });
 }
 anims.push({fn:(g,t)=>{                                     // pendar lentera saat gelap
   const lamp=daylight.lamp; if(lamp<0.08)return;
@@ -2706,8 +2801,9 @@ function render(t){
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   cx.drawImage([bg,bg2,bg3][floor],0,0);
   if(floor===1)drawPeekLife(t);                    // kehidupan di jendela intip lt.1
-  if(floor===2){drawGardenPlants(cx,t);            // tanaman tumbuh di bedengan (layer tanah)
-    drawChickens(cx,t);}                            // ayam di BALIK furnitur (pohon/objek menutupinya)
+  if(floor===2){drawPond(cx,t);                    // riak/ikan kolam (layer tanah)
+    drawGardenPlants(cx,t);                         // tanaman tumbuh di bedengan
+    drawChickens(cx,t);}                            // ayam + telur di BALIK furnitur (pohon/objek menutupinya)
   if(floor===0){
     /* bayangan drone — mengikuti posisinya (rapat saat parkir), di bawah semua objek */
     cx.fillStyle='rgba(0,0,0,.20)';
@@ -2840,6 +2936,8 @@ function render(t){
 let last=0, skyBucket=-1, rafId=0;
 function tickSky(){
   daylight=daylightAt(curHour());                 // halus tiap frame (untuk grade warna)
+  const sNow=curSeason();                         // musim bergeser tiap hari → kanopi dicat ulang
+  if(sNow!==season){season=sNow;repaintTrees();skyBucket=-1;}
   const b=Math.round(curHour()*10);               // langit terpanggang ulang tiap ~6 menit
   if(b!==skyBucket){skyBucket=b;buildBG();buildBG2();buildBG3();}
 }
@@ -2889,8 +2987,11 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               fog:()=>fogOn,SEATS,goToSeat,sitDown,standUp,seatAtFront,
               music,jukebox,jukeCycle,jukeAtFront,goToJuke,TRACKS,
               setHour:h=>{forcedHour=h;skyBucket=-1;tickSky();render(performance.now());},
+              setSeason:n=>{forcedSeason=n===null?null:((n%SEASONS.length)+SEASONS.length)%SEASONS.length;
+                            skyBucket=-1;tickSky();render(performance.now());},
+              season:()=>season,SEASONS,POND,
               daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,
-              render:()=>render(performance.now()),
+              render:tt=>render(tt===undefined?performance.now():tt),
               step:(n=1,d=1/60)=>{for(let i=0;i<n;i++){update(d);render(performance.now());}}};
 
 /* ---------- service worker (offline / PWA) ---------- */
