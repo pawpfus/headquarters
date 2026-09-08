@@ -1768,12 +1768,22 @@ function buildBG3(){
   /* tanah & sawah (baris 0-1 = fasad, digambar terpisah setelah ini) */
   for(let ty=2;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
     const px=tx*T,py=ty*T,r=rnd(tx,ty)%16,cell=MAP3[ty][tx];
-    if(cell==='#'&&(tx===0||tx===COLS-1||ty>=ROWS-1)){     // PINGGIR peta = rimbun hutan (bukan bedengan)
-      P(g,SS.jungle[0],px,py,T,T);
-      const rb=(tx*29+ty*17)>>>0;
-      P(g,SS.jungle[1],px+1+(rb%5),py,6,T);                            // batang semak gelap
-      P(g,SS.jungle[2],px+3+((rb>>2)%6),py+3+((rb>>4)%4),4,6);         // rumpun
-      P(g,SS.fern,px+2+((rb>>3)%9),py+6+((rb>>5)%5),3,3);              // pucuk pakis
+    if(cell==='#'&&(tx===0||tx===COLS-1||ty>=ROWS-1)){     // PINGGIR peta = PAGAR KAYU (menghadap ke dalam)
+      const PD='#4a3018',PB='#6b4a2e',PR='#7a5636',PH='#9a7550';
+      P(g,SS.floor,px,py,T,T);                                         // tanah gelap di luar pagar
+      if(ty>=ROWS-1){                                                  // BAWAH: rel mendatar, sorot di sisi ATAS
+        P(g,PD,px,py+3,T,4);P(g,PR,px,py+2,T,4);P(g,PH,px,py+2,T,1);
+        P(g,PD,px,py+10,T,4);P(g,PR,px,py+9,T,4);P(g,PH,px,py+9,T,1);
+        if(tx%2===0){P(g,PD,px+5,py,4,T);P(g,PB,px+5,py,3,T);P(g,PH,px+5,py,1,T);}   // tiang
+      }else if(tx===0){                                                // KIRI: rel tegak, sorot di sisi KANAN
+        P(g,PD,px+3,py,4,T);P(g,PR,px+3,py,3,T);P(g,PH,px+5,py,1,T);
+        P(g,PD,px+10,py,4,T);P(g,PR,px+10,py,3,T);P(g,PH,px+12,py,1,T);
+        if(ty%2===0){P(g,PD,px,py+5,T,4);P(g,PB,px,py+5,T,3);P(g,PH,px,py+5,T,1);}   // tiang
+      }else{                                                           // KANAN: rel tegak, sorot di sisi KIRI
+        P(g,PD,px+2,py,4,T);P(g,PR,px+3,py,3,T);P(g,PH,px+3,py,1,T);
+        P(g,PD,px+9,py,4,T);P(g,PR,px+10,py,3,T);P(g,PH,px+10,py,1,T);
+        if(ty%2===0){P(g,PD,px,py+5,T,4);P(g,PB,px,py+5,T,3);P(g,PH,px,py+5,T,1);}   // tiang
+      }
     }else if(cell==='#'){                                  // bedengan: tanah dibajak & disiram (tanaman = animasi di atasnya)
       P(g,'#6b4a2e',px,py,T,T);                                        // tanah lembap
       P(g,'#8d6a44',px,py,T,1);                                        // bibir tersinari
@@ -1842,19 +1852,16 @@ function buildBG3(){
     P(g,'#2f6b30',px+30,py+17,5,3);P(g,'#3f8a3c',px+31,py+17,3,2);
     P(g,'#e8607a',px+8,py+7,2,2);P(g,'#f2a2c9',px+8,py+7,1,1);           // bunga teratai
   })();
-  /* tepi hutan hujan: rimbun BERGERIGI yang menjulur dari pinggir peta ke dalam
-     (dulu strip lurus 5/7px → terbaca sebagai garis hijau mengelilingi peta) */
-  for(let tx=1;tx<COLS-1;tx++){                                       // bawah: naik dari baris pinggir
-    const hh=2+((tx*11+5)%8);                                         // 2..9 px, tinggi bervariasi
-    P(g,SS.jungle[1],tx*T,(ROWS-1)*T-hh,T,hh);
-    P(g,SS.jungle[2],tx*T+2+((tx*7)%8),(ROWS-1)*T-hh,4,Math.max(2,hh-2));
-    if(tx%2===0)P(g,SS.fern,tx*T+3+((tx*5)%7),(ROWS-1)*T-hh-2,4,4);}  // pucuk pakis
-  for(let ty=2;ty<ROWS-1;ty++){                                       // kiri & kanan: masuk dari kolom pinggir
-    const wl=2+((ty*13+2)%7), wr=2+((ty*17+7)%7);
-    P(g,SS.jungle[1],T,ty*T,wl,T);P(g,SS.jungle[1],(COLS-1)*T-wr,ty*T,wr,T);
-    P(g,SS.jungle[2],T,ty*T+3+((ty*5)%6),Math.max(2,wl-1),5);
-    P(g,SS.jungle[2],(COLS-1)*T-wr,ty*T+4+((ty*3)%6),Math.max(2,wr-1),5);
-    if(ty%2===0){P(g,SS.fern,T+1,ty*T+4,4,4);P(g,SS.fern,(COLS-1)*T-wr,ty*T+5,4,4);}}
+  /* kaki pagar: bayangan tipis ke arah lapangan + rumput liar, agar pagar membumi */
+  for(let tx=1;tx<COLS-1;tx++){
+    P(g,'rgba(0,0,0,.18)',tx*T,(ROWS-1)*T-2,T,2);                     // bayang pagar bawah
+    if(tx%3===0)P(g,SS.dots[1],tx*T+3+((tx*5)%8),(ROWS-1)*T-4,3,3);   // rumput liar
+    if(tx%4===1)P(g,SS.dots[2],tx*T+7+((tx*3)%5),(ROWS-1)*T-3,2,2);}
+  for(let ty=2;ty<ROWS-1;ty++){
+    P(g,'rgba(0,0,0,.18)',T,ty*T,2,T);                                // bayang pagar kiri
+    P(g,'rgba(0,0,0,.18)',(COLS-1)*T-2,ty*T,2,T);                     // bayang pagar kanan
+    if(ty%3===0){P(g,SS.dots[1],T+1,ty*T+5+((ty*3)%6),3,3);
+                 P(g,SS.dots[1],(COLS-1)*T-4,ty*T+4+((ty*5)%7),3,3);}}
   /* --- tepi HUTAN HUJAN di sepanjang atas (backdrop berlapis) --- */
   (function(){
     const J=SS.jungle;
