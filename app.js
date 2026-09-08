@@ -139,7 +139,7 @@ const MAP3=[
 const OUT_TREES=[
   {x:1,y:4,big:1,s:1},{x:1,y:12,big:1,s:2},{x:23,y:4,big:1,s:3},{x:23,y:14,big:1,s:4},{x:7,y:16,big:1,s:5},
   {x:1,y:8,s:6},{x:2,y:7,s:7},{x:1,y:16,s:8},{x:23,y:8,s:9},{x:22,y:12,s:10},{x:23,y:16,s:11},
-  {x:6,y:6,s:12},{x:9,y:8,s:13},{x:14,y:11,s:14},{x:22,y:9,s:15},{x:15,y:15,s:16},{x:13,y:4,s:17},{x:6,y:13,s:18},
+  {x:6,y:6,s:12},{x:9,y:8,s:13},{x:14,y:11,s:14},{x:22,y:9,s:15},{x:21,y:16,s:16},{x:13,y:4,s:17},{x:6,y:13,s:18},
   {x:5,y:5,s:19},{x:9,y:11,s:20},{x:11,y:17,s:21},{x:16,y:16,s:22},{x:4,y:17,s:23},
 ];
 /* papan info poktan — objek yang bisa "dibaca" (banner memutar pesan) */
@@ -172,8 +172,10 @@ const curSeason=()=>forcedSeason!==null?forcedSeason
                     :Math.floor(Date.now()/864e5)%SEASONS.length;   // bergeser tiap hari
 let season=curSeason();
 const SN=()=>SEASONS[season];
-/* --- kolam kecil di tenggara: pantulan langit + ikan (padat, tak bisa dilewati) --- */
-const POND={x:17,y:15,w:3,h:2};
+/* --- kolam kecil di tengah lapangan: pantulan langit + ikan (padat, tak bisa dilewati).
+       Dipilih karena terbuka (tak menempel bedengan), sepelemparan dari jalan utama,
+       dinaungi pohon (14,11) di tepinya, dan lentera (13,13) memantul di air saat malam. --- */
+const POND={x:14,y:12,w:3,h:2};
 const DECOR3_SOLID=[
   ...OUT_TREES.map(t=>({x:t.x,y:t.y,w:1,h:1})),        // batang pohon = solid
   {x:NOTICE_RECT.x,y:NOTICE_RECT.y,w:NOTICE_RECT.w,h:NOTICE_RECT.h},   // papan info
