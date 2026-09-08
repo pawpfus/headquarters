@@ -1775,22 +1775,22 @@ function buildBG3(){
         P(g,PD,px,py+3,T,4);P(g,PR,px,py+2,T,4);P(g,PH,px,py+2,T,1);
         P(g,PD,px,py+10,T,4);P(g,PR,px,py+9,T,4);P(g,PH,px,py+9,T,1);
         if(tx%2===0){P(g,PD,px+5,py,4,T);P(g,PB,px+5,py,3,T);P(g,PH,px+5,py,1,T);}   // tiang
-      }else if(tx===0){        // KIRI: pagar membujur → dari atas hanya SATU rel; muka kanan (ke lapangan) di bayangan
-        P(g,PD,px+4,py,9,T);                                           // massa rel
-        P(g,PH,px+4,py,1,T);P(g,'#8d6a44',px+5,py,4,T);                // permukaan atas kena cahaya
-        P(g,'#5f4128',px+9,py,3,T);                                    // muka menghadap lapangan (membelakangi cahaya)
-        P(g,'#3a2817',px+12,py,1,T);                                   // garis kaki
-        if(ty%2===0){                                                  // tiang: tutup atas tampak dari atas
-          P(g,PD,px+2,py+3,12,10);P(g,PB,px+3,py+3,9,8);
-          P(g,PH,px+3,py+3,9,1);P(g,'#5f4128',px+9,py+4,3,8);}
+      }else if(tx===0){        // KIRI: pagar membujur → dari atas hanya SATU rel tipis; muka kanan (ke lapangan) membayang
+        P(g,PD,px+8,py,5,T);                                           // massa rel (tipis, 5px)
+        P(g,PH,px+8,py,1,T);                                           // kilau tepi luar
+        P(g,'#8d6a44',px+9,py,2,T);                                    // permukaan atas kena cahaya
+        P(g,'#5f4128',px+11,py,2,T);                                   // muka menghadap lapangan (membelakangi cahaya)
+        if(ty%2===0){                                                  // tiang: tutup atas sedikit lebih lebar
+          P(g,PD,px+7,py+4,7,8);P(g,PB,px+8,py+4,4,7);
+          P(g,PH,px+8,py+4,4,1);P(g,'#5f4128',px+11,py+5,2,6);}
       }else{                   // KANAN: cermin — muka kiri (ke lapangan) justru kena cahaya, sisi luar gelap
-        P(g,PD,px+3,py,9,T);                                           // massa rel
-        P(g,'#7a5636',px+4,py,3,T);                                    // muka menghadap lapangan (kena cahaya)
-        P(g,'#8d6a44',px+7,py,4,T);P(g,PH,px+7,py,1,T);                // permukaan atas
-        P(g,'#3a2817',px+11,py,1,T);                                   // sisi luar gelap
+        P(g,PD,px+3,py,5,T);                                           // massa rel (tipis, 5px)
+        P(g,'#7a5636',px+3,py,2,T);                                    // muka menghadap lapangan (kena cahaya)
+        P(g,'#8d6a44',px+5,py,2,T);P(g,PH,px+5,py,1,T);                // permukaan atas
+        P(g,'#3a2817',px+7,py,1,T);                                    // sisi luar gelap
         if(ty%2===0){
-          P(g,PD,px+2,py+3,12,10);P(g,PB,px+4,py+3,9,8);
-          P(g,'#7a5636',px+4,py+4,2,7);P(g,PH,px+4,py+3,9,1);}
+          P(g,PD,px+2,py+4,7,8);P(g,PB,px+5,py+4,3,7);
+          P(g,'#7a5636',px+3,py+4,2,7);P(g,PH,px+4,py+4,4,1);}
       }
     }else if(cell==='#'){                                  // bedengan: tanah dibajak & disiram (tanaman = animasi di atasnya)
       P(g,'#6b4a2e',px,py,T,T);                                        // tanah lembap
