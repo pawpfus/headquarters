@@ -219,8 +219,8 @@ const PRIME_DOOR={x:12,y:18,w:2,h:1};      // pintu keluar lt.1 (sudah digambar 
 const OUT_DOOR ={x:11,y:1, w:3,h:1};       // pintu balik ke markas di fasad luar
 const DOOR_OUT={id:'door-out',name:'MAIN GATE', btn:'KELUAR &#9660;', isPortal:true, to:2,
   spawn:{x:12.5*T,y:2*T+12,dir:'down'}, color:'#7ee06a', desc:''};   // tanpa subtitle
-const DOOR_IN ={id:'door-in', name:'PINTU MARKAS',btn:'MASUK &#9650;',  isPortal:true, to:0,
-  spawn:{x:12.5*T,y:17*T+12,dir:'up'},  color:'#4cc9e0', desc:'Kembali ke markas'};
+const DOOR_IN ={id:'door-in', name:'MAIN GATE',btn:'MASUK &#9650;',  isPortal:true, to:0,
+  spawn:{x:12.5*T,y:17*T+12,dir:'up'},  color:'#4cc9e0', desc:''};   // tanpa subtitle
 
 /* zona interaksi = ring tile berjalan di sekeliling furnitur */
 function makeZones(tools,sl,liftTool){
