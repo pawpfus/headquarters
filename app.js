@@ -153,19 +153,23 @@ const SEASONS=[
   {id:'SEMI',    mass:'#1e4a1c',mid:'#2f6b28',hi:'#3f8a34',hi2:'#5cb04a',
    dots:['#2a5f24','#3f8a34','#57a048','#7cc45c'],
    jungle:['#0f2a14','#183c1a','#245222','#31682e','#43883a','#63ac52'],
-   fern:'#33632c',grassA:'#41703a',grassB:'#48753f',floor:'#1e3320',leaf:'#7cc45c'},
+   fern:'#33632c',grassA:'#41703a',grassB:'#48753f',floor:'#1e3320',leaf:'#7cc45c',
+   wet:0.35,crops:[4,4,0,1,0]},                  // gerimis tipis · bunga & sayuran muda
   {id:'KEMARAU', mass:'#1c3f18',mid:'#2a5f24',hi:'#357a2c',hi2:'#4a9640',
    dots:['#22521e','#2f6a28','#3f8a34','#54a044'],
    jungle:['#0e2412','#163417','#20481f','#2c5e2b','#3a7a34','#57a048'],
-   fern:'#2f5a28',grassA:'#3f6b39',grassB:'#456f3e',floor:'#1c2f1a',leaf:'#54a044'},
+   fern:'#2f5a28',grassA:'#3f6b39',grassB:'#456f3e',floor:'#1c2f1a',leaf:'#54a044',
+   wet:0,crops:[0,1,2,3,4]},                     // kering · kebun paling beragam
   {id:'GUGUR',   mass:'#4a2a12',mid:'#7a4a18',hi:'#a86a1e',hi2:'#d9922c',
    dots:['#8a4a16','#b06820','#d98a28','#e8b040'],
    jungle:['#241505','#3a220a','#573312','#7a4a18','#a86a1e','#d9a03a'],
-   fern:'#7a5218',grassA:'#5d6630',grassB:'#646a34',floor:'#3a3a1c',leaf:'#d9922c'},
+   fern:'#7a5218',grassA:'#5d6630',grassB:'#646a34',floor:'#3a3a1c',leaf:'#d9922c',
+   wet:0,crops:[3,3,2,2,1]},                     // musim panen · labu & jagung mendominasi
   {id:'PERALIHAN',mass:'#20321c',mid:'#33502a',hi:'#456a34',hi2:'#5c8446',
    dots:['#2a4222','#3b5c2e','#4d7038','#6b9050'],
    jungle:['#101c10','#1a2c18','#26401f','#33522a','#456a34','#5f8a4a'],
-   fern:'#2e4826',grassA:'#40603a',grassB:'#46653e',floor:'#182718',leaf:'#6b9050'},
+   fern:'#2e4826',grassA:'#40603a',grassB:'#46653e',floor:'#182718',leaf:'#6b9050',
+   wet:1,crops:[-1,0,-1,4,-1]},                  // musim hujan · banyak bedengan bera (jerami)
 ];
 let forcedSeason=null;                                             // dipakai HQDBG untuk pratinjau
 const curSeason=()=>forcedSeason!==null?forcedSeason
@@ -2074,7 +2078,47 @@ anims.push({fn:(g,t)=>{                                     // kunang-kunang saa
 /* tanaman tumbuh di bedengan: siklus tumbuh→matang→tanam ulang, daun bertambah, pucuk & buah goyang */
 const BED=[];
 for(let by=2;by<ROWS-1;by++)for(let bx=1;bx<COLS-1;bx++)
-  if(MAP3[by][bx]==='#')BED.push({x:bx*T,y:by*T,s:rnd(bx+1,by+3)});
+  if(MAP3[by][bx]==='#'){const s=rnd(bx+1,by+3),per=45000+(s%30000);
+    BED.push({x:bx*T,y:by*T,tx:bx,ty:by,s,per,t0:-((s*97)%per)});}   // t0 digeser saat dipanen
+const bedPhase=(b,t)=>((((t-b.t0)%b.per)+b.per)%b.per)/b.per;
+const bedGrow=(b,t)=>Math.min(1,bedPhase(b,t)/0.45);                 // tumbuh di 45% awal lalu matang
+const bedKind=b=>{const CS=SN().crops;return CS[b.s%CS.length];};    // jenis tanaman ikut musim (-1 = bera)
+
+/* --- PANEN interaktif: berdiri di sisi bedengan matang lalu tekan aksi --- */
+const BED_AT={};for(const b of BED)BED_AT[b.tx+','+b.ty]=b;
+const HARVEST_C=['#eaeed2','#e0453a','#e8c94a','#f0973a','#88a6ef'];  // warna hasil per jenis
+const bedTool={id:'bed',name:'THE FIELD',short:'THE FIELD',color:'#7cc45c',btn:'PANEN &#9656;',
+               isBed:true,desc:''};                                  // tanpa subtitle
+for(const b of BED)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ // petak di sisi bedengan
+  const nx=b.tx+dx,ny=b.ty+dy,k=nx+','+ny;
+  if(nx<1||ny<2||nx>=COLS-1||ny>=ROWS-1)continue;
+  if(SOLIDS[2][ny*COLS+nx])continue;
+  if(!ZONES[2][k])ZONES[2][k]=bedTool;                               // jangan timpa zona pintu/papan/alat
+}
+const popFx=[];                                                      // hasil panen melayang naik
+function harvestNear(){
+  let best=null;
+  const [ptx,pty]=ptile();
+  for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
+    const b=BED_AT[(ptx+dx)+','+(pty+dy)];if(!b)continue;
+    const kind=bedKind(b);if(kind<0)continue;                        // petak bera: tak ada yang dipanen
+    const gr=bedGrow(b,last);if(gr<0.9)continue;
+    if(!best||gr>best.gr)best={b,gr,kind};
+  }
+  if(!best){beep(220,.09,.045,'sine');return;}                       // belum matang: nada rendah saja
+  best.b.t0=last;                                                    // tanam ulang: siklus balik ke tunas
+  popFx.push({x:best.b.x+8,y:best.b.y+6,t0:last,c:HARVEST_C[best.kind]});
+  beep(880,.06,.05);beep(1320,.09,.05,'square',.07);
+}
+function drawPopFx(g,t){
+  for(let i=popFx.length-1;i>=0;i--){const p=popFx[i],a=(t-p.t0)/900;
+    if(!(a>=0&&a<1)){popFx.splice(i,1);continue;}
+    const y=p.y-Math.round(a*13);
+    g.globalAlpha=1-a;
+    P(g,'rgba(0,0,0,.25)',p.x-2,y+4,5,1);
+    P(g,p.c,p.x-2,y,5,4);P(g,'#ffffff',p.x-1,y,2,1);
+    g.globalAlpha=1;}
+}
 /* --- sprite tanaman gaya "farm-sim" (outline selektif + shading 4-tingkat) --- */
 const GO='#1f3d1a',GD='#357a2c',GM='#4fa03c',GL='#79c94f',GH='#a6e46a';
 function pShadow(g,ax,ay,w){P(g,'rgba(30,18,8,.28)',ax-(w>>1),ay,w,2);P(g,'rgba(30,18,8,.16)',ax-(w>>1)-1,ay+1,w+2,1);}
@@ -2137,13 +2181,21 @@ function cropJazz(g,ax,ay,sway,gr){                               // Blue Jazz: 
   flor(ax+sway,ay-H-1);flor(ax-2+sway,ay-H+1);flor(ax+2+sway,ay-H);
 }
 const CROPS=[cropCauli,cropTomato,cropCorn,cropPumpkin,cropJazz];
-function drawGardenPlants(g,t){                                   // 1 tanaman per petak, siklus tumbuh lambat + goyang
+function drawFallow(g,ax,ay,seed){                                // bedengan bera: tertutup jerami
+  const st=['#b9a068','#a88f57','#cbb47c'];
+  for(let i=0;i<5;i++){const o=(seed>>(i*2))&7;
+    P(g,st[i%3],ax-6+((o*3)%11),ay-1-((o*2)%6),5,1);}
+  P(g,'#8f7a45',ax-6,ay+1,12,1);
+}
+function drawGardenPlants(g,t){                                   // 1 tanaman per petak, jenis ikut musim
   for(const b of BED){
-    const ax=b.x+8, ay=b.y+14, seed=b.s;
-    const per=45000+(seed%30000);
-    const gr=Math.min(1,((t+seed*97)%per)/per/0.45);
-    const sway=Math.round(gr*Math.sin(t/900+seed));
-    CROPS[seed%CROPS.length](g,ax,ay,sway,gr);
+    const ax=b.x+8, ay=b.y+14, kind=bedKind(b);
+    if(kind<0){drawFallow(g,ax,ay,b.s);continue;}
+    const gr=bedGrow(b,t);
+    const sway=Math.round(gr*Math.sin(t/900+b.s));
+    CROPS[kind](g,ax,ay,sway,gr);
+    if(gr>=0.9){const bl=0.35+0.35*Math.sin(t/420+b.s);           // kerlip halus: tanda siap panen
+      g.globalAlpha=bl;P(g,'#fff3b0',ax+5,ay-13,1,1);g.globalAlpha=1;}
   }
 }
 /* --- KOLAM: pantulan langit ikut waktu, kilau, ikan berenang, riak melingkar --- */
@@ -2160,12 +2212,20 @@ function drawPond(g,t){
     const a=0.08+0.16*Math.sin(t/500+i*1.9); if(a<0.13)continue;
     g.fillStyle=sky(a);g.fillRect(px+5+((i*11)%(pw-10)),py+5+((i*7)%(ph-10)),1,1);
   }
+  /* ikan buyar saat dino mendekat: terdorong menjauh + ekor mengibas lebih cepat */
+  const ccx=px+pw/2, ccy=py+ph/2;
+  const ddx=player.x-ccx, ddy=player.y-ccy, dd=Math.hypot(ddx,ddy);
+  const flee=floor===2?Math.max(0,Math.min(1,(58-dd)/40)):0;
+  const ux=dd>1?ddx/dd:0, uy=dd>1?ddy/dd:1;
   const FC=['#d9762c','#c94f3a','#c9a03a'];
   for(let i=0;i<3;i++){                                        // ikan kecil hilir-mudik
     const per=9000+i*2600, k=((t+i*3000)%per)/per, dir=i%2?1:-1;
-    const fx=px+5+Math.round((pw-12)*(dir>0?k:1-k));
-    const fy=py+9+i*6+Math.round(2*Math.sin(t/600+i*2));
-    const wig=Math.sin(t/180+i)>0?1:0;
+    const push=flee*9;
+    const fx=Math.max(px+3,Math.min(px+pw-6,
+              px+5+Math.round((pw-12)*(dir>0?k:1-k)-ux*push)));
+    const fy=Math.max(py+4,Math.min(py+ph-5,
+              py+9+i*6+Math.round(2*Math.sin(t/600+i*2)-uy*push)));
+    const wig=Math.sin(t/(180-flee*110)+i)>0?1:0;
     P(g,'rgba(10,30,40,.35)',fx-1,fy+2,5,1);                   // bayang di air
     P(g,FC[i],fx,fy,3,2);P(g,FC[i],fx-dir,fy+wig,1,1);         // badan + ekor
     P(g,'rgba(255,255,255,.55)',fx+(dir>0?1:1),fy,1,1);        // kilau punggung
@@ -2176,6 +2236,64 @@ function drawPond(g,t){
     g.fillStyle=`rgba(205,238,248,${a.toFixed(3)})`;
     for(let k=0;k<10;k++){const an=k/10*6.283;
       g.fillRect(Math.round(cxp+Math.cos(an)*r),Math.round(cyp+Math.sin(an)*r*0.5),1,1);}}
+}
+/* --- CUACA MUSIMAN: genangan di jalur batu (lapisan tanah) + gerimis (lapisan depan) --- */
+const PUDDLE=[[12,4],[12,9],[12,14],[7,10],[15,8],[12,12],[5,10],[11,10]]; // hindari petak tertutup sprite
+function drawPuddles(g,t){
+  const w=SN().wet; if(!w)return;
+  for(const [ptx,pty] of PUDDLE){
+    const x=ptx*T+3,y=pty*T+7;
+    P(g,`rgba(70,95,115,${(0.30*w).toFixed(3)})`,x,y,10,4);          // cekungan basah
+    P(g,`rgba(150,190,220,${(0.22*w).toFixed(3)})`,x+1,y+1,8,2);     // air
+    const sh=0.10+0.12*Math.sin(t/520+ptx*2);                        // pantulan langit bergoyang
+    P(g,`rgba(215,238,255,${(sh*w).toFixed(3)})`,x+2,y+1,6,1);
+  }
+}
+function drawRain(g,t){
+  const w=SN().wet; if(!w)return;
+  const n=Math.round(40*w);
+  g.fillStyle=`rgba(190,215,235,${(0.15+0.10*w).toFixed(3)})`;
+  for(let i=0;i<n;i++){                                              // garis gerimis miring tipis
+    const sp=0.34+((i*7)%5)*0.04;
+    const x=((i*53)%(W+30))-15+Math.round(((t*sp/9)%20));
+    const y=(((i*89)+t*sp)%(H+26))-13;
+    g.fillRect(x|0,y|0,1,4);
+  }
+  for(let i=0;i<Math.round(12*w);i++){                               // percik saat menyentuh tanah
+    const k=((t/300+i*0.83)%1);
+    if(k>=0.4)continue;
+    const x=(i*97+31)%W, y=(i*61+17)%H, r=1+Math.round(k*5);
+    g.fillStyle=`rgba(205,230,250,${(0.24*(1-k/0.4)).toFixed(3)})`;
+    g.fillRect(x-r,y,r*2,1);
+  }
+}
+/* --- JEJAK LANGKAH: debu/percik berbeda per permukaan --- */
+const stepFx=[];let stepDist=0;
+const STEP_C={batu:'#bdb7aa',tanah:'#8d6a44',rumput:'#6f9a52',lantai:'#8f9aa8'};
+function surfaceAt(tx,ty){
+  if(floor!==2)return 'lantai';
+  if(OUT_PATH.has(tx+','+ty))return 'batu';
+  if(MAP3[ty]&&MAP3[ty][tx]==='#')return 'tanah';
+  return 'rumput';
+}
+function emitStep(){
+  const [tx,ty]=ptile(), s=surfaceAt(tx,ty);
+  stepFx.push({x:Math.round(player.x)+((stepDist|0)%2?-3:3),y:Math.round(player.y)+2,
+               t0:last,c:STEP_C[s],s});
+  if(AC){                                                            // bunyi hanya bila audio sudah hidup
+    if(s==='batu')beep(1500,.025,.012,'square');
+    else if(s==='tanah')beep(180,.05,.016,'sine');
+    else if(s==='rumput')beep(2600,.018,.008,'square');
+    else beep(900,.025,.010,'square');
+  }
+}
+function drawStepFx(g,t){
+  for(let i=stepFx.length-1;i>=0;i--){const p=stepFx[i],a=(t-p.t0)/520;
+    if(!(a>=0&&a<1)){stepFx.splice(i,1);continue;}
+    g.globalAlpha=(1-a)*0.55;
+    if(p.s==='rumput')P(g,p.c,p.x,p.y-Math.round(a*3),1,2);          // helai rumput tersibak
+    else{const r=1+Math.round(a*2);P(g,p.c,p.x-(r>>1),p.y-Math.round(a*2),r,1);} // debu memuai
+    g.globalAlpha=1;}
 }
 const chickAt=(ch,i,t)=>({x:ch.x0*T+Math.round(5*Math.sin(t/2600+i*2)),
                           y:ch.y0*T+Math.round(3*Math.sin(t/3100+i))});
@@ -2533,11 +2651,14 @@ function setBanner(tool){
   if(tool===activeTool)return;
   activeTool=tool;
   if(!tool){banner.classList.remove('show');return;}
-  bName.textContent=tool.name;bDesc.textContent=tool.desc;
+  bName.textContent=tool.name;
+  bDesc.textContent=tool.desc||'';
+  bDesc.style.display=tool.desc?'':'none';           // tanpa subtitle → barisnya ikut hilang
   btnOpen.innerHTML=tool.btn||'BUKA &#9656;';
   bKey.textContent=tool.isLift?'[ENTER] UNTUK BERPINDAH LANTAI':
     tool.isPortal?'[ENTER] UNTUK LEWATI PINTU':
-    tool.isBoard?'[ENTER] BACA PENGUMUMAN BERIKUTNYA':'[ENTER] UNTUK MEMBUKA';
+    tool.isBoard?'[ENTER] BACA PENGUMUMAN BERIKUTNYA':
+    tool.isBed?'[ENTER] UNTUK MEMANEN':'[ENTER] UNTUK MEMBUKA';
   bSw.style.background=tool.color;bSw.style.color=tool.color;
   banner.classList.add('show');
   beep(520,.05,.03);
@@ -2547,6 +2668,7 @@ function openTool(tool){
   if(tool.isPortal){startTravel(tool.to,tool.spawn);return;}    // pintu utama ↔ area luar
   if(tool.isBoard){tool.idx=(tool.idx+1)%tool.msgs.length;tool.desc=tool.msgs[tool.idx]; // baca pengumuman berikutnya
     bDesc.textContent=tool.desc;beep(680,.05,.04);return;}
+  if(tool.isBed){harvestNear();return;}                                                  // panen bedengan terdekat
   beep(880,.07,.06);beep(1320,.1,.06,'square',.08);
   setTimeout(()=>{window.location.href=tool.url;},180);
 }
@@ -2808,7 +2930,10 @@ function update(dt){
     if(Math.abs(vx)>=Math.abs(vy))player.dir=vx<0?'left':'right';
     else player.dir=vy<0?'up':'down';
     const step=SPEED*dt;
+    const sx0=player.x,sy0=player.y;
     tryMove(vx*step,vy*step);
+    stepDist+=Math.hypot(player.x-sx0,player.y-sy0);   // jejak dari perpindahan NYATA (tak jalan saat mentok)
+    if(stepDist>=16){stepDist-=16;emitStep();}
     player.animT+=dt*Math.min(1.2,mag+.2);
   }else player.animT=0;
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
@@ -2845,9 +2970,11 @@ function render(t){
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
   cx.drawImage([bg,bg2,bg3][floor],0,0);
   if(floor===1)drawPeekLife(t);                    // kehidupan di jendela intip lt.1
-  if(floor===2){drawPond(cx,t);                    // riak/ikan kolam (layer tanah)
+  if(floor===2){drawPuddles(cx,t);                 // genangan musim hujan (paling bawah)
+    drawPond(cx,t);                                 // riak/ikan kolam (layer tanah)
     drawGardenPlants(cx,t);                         // tanaman tumbuh di bedengan
     drawChickens(cx,t);}                            // ayam + telur di BALIK furnitur (pohon/objek menutupinya)
+  drawStepFx(cx,t);                                 // jejak langkah di semua lantai
   if(floor===0){
     /* bayangan drone — mengikuti posisinya (rapat saat parkir), di bawah semua objek */
     cx.fillStyle='rgba(0,0,0,.20)';
@@ -2937,6 +3064,8 @@ function render(t){
   }
   /* overlay animasi furnitur (layar, api, dll) */
   for(const a of anims)a.fn(cx,t);
+  drawPopFx(cx,t);                                  // hasil panen melayang naik
+  if(floor===2)drawRain(cx,t);                      // gerimis musiman, di depan semua objek
   /* penanda zona aktif: panah kecil di atas kepala */
   if(activeTool){
     const jpNow=player.jumpT>0?Math.sin(Math.PI*(1-player.jumpT/JUMP_DUR))*10:0;
@@ -3054,6 +3183,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               setSeason:n=>{forcedSeason=n===null?null:((n%SEASONS.length)+SEASONS.length)%SEASONS.length;
                             skyBucket=-1;tickSky();render(performance.now());},
               season:()=>season,SEASONS,POND,
+              BED,bedTool,bedGrow,bedKind,harvestNear,popFx,stepFx,
               daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,
               render:tt=>render(tt===undefined?performance.now():tt),
               step:(n=1,d=1/60)=>{for(let i=0;i<n;i++){update(d);render(performance.now());}}};
