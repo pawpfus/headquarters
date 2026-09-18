@@ -2080,8 +2080,9 @@ const BED=[];
 for(let by=2;by<ROWS-1;by++)for(let bx=1;bx<COLS-1;bx++)
   if(MAP3[by][bx]==='#'){const s=rnd(bx+1,by+3),per=45000+(s%30000);
     BED.push({x:bx*T,y:by*T,tx:bx,ty:by,s,per,t0:-((s*97)%per)});}   // t0 digeser saat dipanen
-const bedPhase=(b,t)=>((((t-b.t0)%b.per)+b.per)%b.per)/b.per;
-const bedGrow=(b,t)=>Math.min(1,bedPhase(b,t)/0.45);                 // tumbuh di 45% awal lalu matang
+/* Tumbuh SEKALI lalu TETAP matang sampai dipanen — tanpa modulo, supaya tanaman
+   matang tidak lenyap sendiri saat siklus habis. Hanya panen yang menggeser t0. */
+const bedGrow=(b,t)=>Math.min(1,Math.max(0,(t-b.t0)/(b.per*0.45)));
 const bedKind=b=>{const CS=SN().crops;return CS[b.s%CS.length];};    // jenis tanaman ikut musim (-1 = bera)
 
 /* --- PANEN interaktif: berdiri di sisi bedengan matang lalu tekan aksi --- */
@@ -2096,21 +2097,22 @@ for(const b of BED)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ // petak d
 }
 function harvestNear(){
   let best=null;
-  const [ptx,pty]=ptile();
+  const now=performance.now();     // aksi pemain pakai waktu SEKARANG, bukan stempel frame
+  const [ptx,pty]=ptile();         // terakhir (`last` beku saat loop berhenti, mis. tab tersembunyi)
   for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){
     const b=BED_AT[(ptx+dx)+','+(pty+dy)];if(!b)continue;
     const kind=bedKind(b);if(kind<0)continue;                        // petak bera: tak ada yang dipanen
-    const gr=bedGrow(b,last);if(gr<0.9)continue;
+    const gr=bedGrow(b,now);if(gr<0.9)continue;
     if(!best||gr>best.gr)best={b,gr,kind};
   }
   if(!best){beep(220,.09,.045,'sine');return;}                       // belum matang: nada rendah saja
   const bx=best.b.x+8, by=best.b.y+7;
   const fx=bx-player.x, fy=by-player.y;                              // dino menoleh ke bedengan
   player.dir=Math.abs(fx)>Math.abs(fy)?(fx>0?'right':'left'):(fy>0?'down':'up');
-  player.pick={kind:best.kind,t0:last,fx:bx,fy:by};                  // mulai gerakan memetik
-  best.b.t0=last;                                                    // tanam ulang: siklus balik ke tunas
-  stepFx.push({x:Math.round(player.x)-3,y:Math.round(player.y)+2,t0:last,c:'#8d6a44',s:'tanah'},
-              {x:Math.round(player.x)+3,y:Math.round(player.y)+2,t0:last,c:'#8d6a44',s:'tanah'});
+  player.pick={kind:best.kind,t0:now,fx:bx,fy:by};                   // mulai gerakan memetik
+  best.b.t0=now;                                                     // tanam ulang: siklus balik ke tunas
+  stepFx.push({x:Math.round(player.x)-3,y:Math.round(player.y)+2,t0:now,c:'#8d6a44',s:'tanah'},
+              {x:Math.round(player.x)+3,y:Math.round(player.y)+2,t0:now,c:'#8d6a44',s:'tanah'});
   beep(880,.06,.05);beep(1320,.09,.05,'square',.07);
 }
 /* sprite hasil panen yang dijinjing dino (6x6-an, dipusatkan di x,y) */
@@ -2229,8 +2231,21 @@ function drawGardenPlants(g,t){                                   // 1 tanaman p
     const gr=bedGrow(b,t);
     const sway=Math.round(gr*Math.sin(t/900+b.s));
     CROPS[kind](g,ax,ay,sway,gr);
-    if(gr>=0.9){const bl=0.35+0.35*Math.sin(t/420+b.s);           // kerlip halus: tanda siap panen
-      g.globalAlpha=bl;P(g,'#fff3b0',ax+5,ay-13,1,1);g.globalAlpha=1;}
+  }
+  /* penanda SIAP PANEN: bintang berkedip, digambar setelah semua tanaman agar tak tertutup */
+  for(const b of BED){
+    if(bedKind(b)<0||bedGrow(b,t)<0.9)continue;
+    const sx=b.x+13, sy=b.y+3;                                    // pojok kanan-atas petak
+    const ph=(b.s%997)/997, k=((t/1600)+ph)%1;                     // berkedip berkala, fase per petak
+    if(k>0.40)continue;                                            // padam 60% siklus → tidak ramai
+    const s=Math.sin((k/0.40)*Math.PI);                            // 0→1→0
+    g.globalAlpha=0.5+0.5*s;
+    P(g,'#fff6c0',sx,sy,1,1);                                     // inti
+    if(s>0.30){P(g,'#ffe98a',sx-1,sy,1,1);P(g,'#ffe98a',sx+1,sy,1,1);
+               P(g,'#ffe98a',sx,sy-1,1,1);P(g,'#ffe98a',sx,sy+1,1,1);}   // 4 arah
+    if(s>0.70){P(g,'#fff6c0',sx-2,sy,1,1);P(g,'#fff6c0',sx+2,sy,1,1);
+               P(g,'#fff6c0',sx,sy-2,1,1);P(g,'#fff6c0',sx,sy+2,1,1);}   // puncak kilau
+    g.globalAlpha=1;
   }
 }
 /* --- KOLAM: pantulan langit ikut waktu, kilau, ikan berenang, riak melingkar --- */
@@ -2314,7 +2329,7 @@ function surfaceAt(tx,ty){
 function emitStep(){
   const [tx,ty]=ptile(), s=surfaceAt(tx,ty);
   stepFx.push({x:Math.round(player.x)+((stepDist|0)%2?-3:3),y:Math.round(player.y)+2,
-               t0:last,c:STEP_C[s],s});
+               t0:performance.now(),c:STEP_C[s],s});
   if(AC){                                                            // bunyi hanya bila audio sudah hidup
     if(s==='batu')beep(1500,.025,.012,'square');
     else if(s==='tanah')beep(180,.05,.016,'sine');
