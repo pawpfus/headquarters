@@ -264,6 +264,14 @@ const ROOMSETS=[
 let ROOMS=ROOMSETS[0];
 let fogOn=false;
 const fogCv=document.createElement('canvas');   // lapisan gelap + lubang halo dino
+/* sprite pendar dipanggang sekali — dulu createRadialGradient dialokasikan tiap frame
+   (3 lentera + 1 halo kabut ≈ 240 objek/detik → GC sibuk di perangkat lemah) */
+const mkGlow=(r,rgb)=>{const c=document.createElement('canvas');c.width=c.height=r*2;
+  const g=c.getContext('2d'),gr=g.createRadialGradient(r,r,Math.max(1,r*0.08),r,r,r);
+  gr.addColorStop(0,`rgba(${rgb},1)`);gr.addColorStop(1,`rgba(${rgb},0)`);
+  g.fillStyle=gr;g.fillRect(0,0,r*2,r*2);return c;};
+const LAMP_GLOW=mkGlow(13,'255,206,120');       // pendar lentera
+const FOG_HALO=mkGlow(34,'0,0,0');              // lubang halo kabut-perang
 
 /* ---------- jendela dinding luar ----------
    Kaca langit di dinding perimeter (barat/timur) + berkas cahaya siang
@@ -2195,9 +2203,7 @@ function drawChickens(g,t){
 anims.push({fn:(g,t)=>{                                     // pendar lentera saat gelap
   const lamp=daylight.lamp; if(lamp<0.08)return;
   for(const f of lanterns){const cx0=f.px+7,cy0=f.py+2,fl=0.85+0.15*Math.sin(t/300+cx0);
-    const gr=g.createRadialGradient(cx0,cy0+1,1,cx0,cy0+1,13);
-    gr.addColorStop(0,`rgba(255,206,120,${(0.5*lamp*fl).toFixed(3)})`);gr.addColorStop(1,'rgba(255,206,120,0)');
-    g.fillStyle=gr;g.fillRect(cx0-13,cy0-12,26,26);
+    g.globalAlpha=Math.min(1,0.5*lamp*fl);g.drawImage(LAMP_GLOW,cx0-13,cy0-12);g.globalAlpha=1;
     g.fillStyle=`rgba(255,224,150,${(0.9*lamp).toFixed(3)})`;g.fillRect(cx0-2,cy0-1,4,4); // bola cahaya
     g.fillStyle=`rgba(255,214,140,${(0.10*lamp).toFixed(3)})`;g.fillRect(f.px+1,f.py+13,13,6);} // kolam cahaya
 }});
@@ -2490,7 +2496,9 @@ function kick(t){const o=AC.createOscillator(),g=AC.createGain();o.type='sine';
 function hat(t){const o=AC.createOscillator(),g=AC.createGain();o.type='square';o.frequency.value=7400;
   g.gain.setValueAtTime(.03,t);g.gain.exponentialRampToValueAtTime(.001,t+.025);
   o.connect(g);g.connect(music.gain);o.start(t);o.stop(t+.03);}
-function musicSched(){const tr=TRACKS[music.track],sd=30/tr.bpm;   // durasi not 1/8
+function musicSched(){if(!AC||!music.on)return;
+  const tr=TRACKS[music.track],sd=30/tr.bpm;                      // durasi not 1/8
+  if(music.next<AC.currentTime)music.next=AC.currentTime+.03;     // jangan kejar ketertinggalan (burst not)
   while(music.next<AC.currentTime+0.15){
     const s=music.step%16,t=music.next;
     tone(HZ(tr.bass[s]),t,sd*.95,'triangle',.06);
@@ -2501,6 +2509,11 @@ function musicSched(){const tr=TRACKS[music.track],sd=30/tr.bpm;   // durasi not
 function musicStart(){music.on=true;music.step=0;music.next=AC.currentTime+.06;
   clearInterval(music.timer);music.timer=setInterval(musicSched,25);musicSched();}
 function musicStop(){music.on=false;clearInterval(music.timer);music.timer=null;}
+/* jeda hanya penjadwalnya — status music.on (dan tampilan HUD) tidak berubah */
+function musicPause(){if(music.timer){clearInterval(music.timer);music.timer=null;}}
+function musicResume(){if(!music.on||music.timer||!AC)return;
+  ensureAudio();music.next=AC.currentTime+.06;
+  music.timer=setInterval(musicSched,25);musicSched();}
 function jukeCycle(){ensureAudio();
   if(!music.on){music.track=0;musicStart();beep(660,.05,.05);}
   else if(music.track<TRACKS.length-1){music.track++;music.step=0;music.next=AC.currentTime+.04;beep(780,.05,.05);}
@@ -2569,6 +2582,7 @@ const floorName=n=>['LANTAI 1 · RUANG KERJA','',''][n];   // lt.2 & area luar t
    atau default tepat di depan pintu lift. spawn={x,y,dir} dalam piksel. */
 function setFloor(n,spawn){
   floor=n;
+  syncFloorBG(n);                                 // latar lantai ini mungkin tertinggal (dibangun malas)
   solid=SOLIDS[n];zoneOf=ZONES[n];FURN=FURNS[n];anims=ANIMS[n];ROOMS=ROOMSETS[n];
   ROOMS.forEach(r=>r.a=1);                        // kabut pekat lagi di area baru
   player.path=null;player.pendTool=null;player.pendSeat=null;
@@ -2952,11 +2966,8 @@ function render(t){
       g.fillRect(r.x*T-ox,r.y*T-oy,r.w*T,r.h*T);
     }
     const hx=Math.round(player.x)-ox,hy=Math.round(player.y)-8-oy,R=34;
-    const grd=g.createRadialGradient(hx,hy,6,hx,hy,R);   // halo ikut ke mana dino pergi
-    grd.addColorStop(0,'rgba(0,0,0,1)');
-    grd.addColorStop(1,'rgba(0,0,0,0)');
-    g.globalCompositeOperation='destination-out';
-    g.fillStyle=grd;g.fillRect(hx-R,hy-R,R*2,R*2);
+    g.globalCompositeOperation='destination-out';        // halo ikut ke mana dino pergi
+    g.drawImage(FOG_HALO,hx-R,hy-R);
     cx.setTransform(1,0,0,1,0,0);
     cx.drawImage(fogCv,0,0);
   }
@@ -2964,24 +2975,47 @@ function render(t){
 }
 
 let last=0, skyBucket=-1, rafId=0;
+/* Latar dipanggang ulang MALAS: hanya lantai yang sedang terlihat dibangun saat
+   bucket langit berganti; dua lainnya ditandai kotor dan dibangun saat dikunjungi.
+   (Dulu ketiganya dibangun sekaligus → hitch 3× repaint 400x304 dalam satu frame.) */
+const bgBuild=[()=>buildBG(),()=>buildBG2(),()=>buildBG3()];
+const bgDirty=[false,false,false];
+function buildFloorBG(n){bgBuild[n]();bgDirty[n]=false;}
+function syncFloorBG(n){if(bgDirty[n])buildFloorBG(n);}
 function tickSky(){
   daylight=daylightAt(curHour());                 // halus tiap frame (untuk grade warna)
   const sNow=curSeason();                         // musim bergeser tiap hari → kanopi dicat ulang
   if(sNow!==season){season=sNow;repaintTrees();skyBucket=-1;}
   const b=Math.round(curHour()*10);               // langit terpanggang ulang tiap ~6 menit
-  if(b!==skyBucket){skyBucket=b;buildBG();buildBG2();buildBG3();}
+  if(b!==skyBucket){skyBucket=b;
+    bgDirty[0]=bgDirty[1]=bgDirty[2]=true;
+    buildFloorBG(floor);}                         // sisanya menyusul saat lantainya dibuka
 }
 tickSky();
+let frameErrs=0;
 function loop(ts){
   rafId=0;
   const dt=Math.min(.05,(ts-last)/1000)||0;last=ts;
-  tickSky();update(dt);render(ts);
-  if(!document.hidden)rafId=requestAnimationFrame(loop);   // berhenti saat tab tersembunyi
+  /* Satu frame gagal TIDAK boleh mematikan halaman: dulu exception di sini membuat
+     baris penjadwalan di bawah tak pernah tercapai → rafId tetap 0 → layar beku permanen. */
+  try{ tickSky();update(dt);render(ts); frameErrs=0; }
+  catch(err){ if(++frameErrs<=3)console.error('[HQ] frame gagal, loop tetap jalan:',err); }
+  if(!document.hidden)rafId=requestAnimationFrame(loop);   // SELALU dijadwalkan ulang
+}
+function kickLoop(){                                       // hidupkan lagi bila loop sempat berhenti
+  if(!rafId&&!document.hidden){last=performance.now();rafId=requestAnimationFrame(loop);}
 }
 document.addEventListener('visibilitychange',()=>{         // lanjut render saat tab kembali aktif
-  if(document.hidden){if(rafId)cancelAnimationFrame(rafId);rafId=0;return;}
-  if(!rafId){last=performance.now();rafId=requestAnimationFrame(loop);}
+  if(document.hidden){
+    if(rafId)cancelAnimationFrame(rafId);rafId=0;
+    musicPause();                                          // penjadwal musik ikut berhenti
+    return;}
+  musicResume();                                           // AudioContext bisa tersuspensi saat tersembunyi
+  kickLoop();
 });
+addEventListener('error',e=>{console.error('[HQ] galat:',e.error||e.message);kickLoop();});
+addEventListener('unhandledrejection',e=>{console.error('[HQ] promise ditolak:',e.reason);});
+setInterval(kickLoop,2000);                                // pengawas: loop tak pernah mati diam-diam
 rafId=requestAnimationFrame(loop);
 
 /* ---------- skala kanvas ----------

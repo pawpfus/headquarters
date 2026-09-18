@@ -3,7 +3,7 @@
    - Navigasi: network-first, fallback cache saat offline
    - Aset lain same-origin: stale-while-revalidate
    - Link keluar ke tools (origin lain) tidak disentuh */
-const VERSION = 'v1.66.2';
+const VERSION = 'v1.67.0';
 const CACHE = `hq-${VERSION}`;
 
 const ASSETS = [
@@ -44,13 +44,23 @@ self.addEventListener('fetch', (event) => {
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
-      try {
-        const res = await fetch(req.url, { cache: 'no-cache' });
+      // Jaringan tetap diutamakan, TAPI dibatasi waktu: di sinyal buruk halaman
+      // tidak boleh menggantung padahal salinan cache yang sehat sudah ada.
+      const net = fetch(req.url, { cache: 'no-cache' }).then((res) => {
         if (res.ok) cache.put('./index.html', res.clone());
         return res;
+      });
+      net.catch(() => {});            // cegah unhandledrejection saat kita memilih cache
+      const TIMEOUT = 3000;
+      try {
+        return await Promise.race([
+          net,
+          new Promise((_, rej) => setTimeout(() => rej(new Error('slow-network')), TIMEOUT)),
+        ]);
       } catch (err) {
-        const hit = await cache.match('./index.html', { ignoreSearch: true });
-        return hit || cache.match('./');
+        const hit = (await cache.match('./index.html', { ignoreSearch: true }))
+                 || (await cache.match('./'));
+        return hit || net;            // tanpa cache → tetap tunggu jaringan apa adanya
       }
     })());
     return;
