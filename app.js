@@ -2086,7 +2086,6 @@ const bedKind=b=>{const CS=SN().crops;return CS[b.s%CS.length];};    // jenis ta
 
 /* --- PANEN interaktif: berdiri di sisi bedengan matang lalu tekan aksi --- */
 const BED_AT={};for(const b of BED)BED_AT[b.tx+','+b.ty]=b;
-const HARVEST_C=['#eaeed2','#e0453a','#e8c94a','#f0973a','#88a6ef'];  // warna hasil per jenis
 const bedTool={id:'bed',name:'THE FIELD',short:'THE FIELD',color:'#7cc45c',btn:'PANEN &#9656;',
                isBed:true,desc:''};                                  // tanpa subtitle
 for(const b of BED)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ // petak di sisi bedengan
@@ -2095,7 +2094,6 @@ for(const b of BED)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ // petak d
   if(SOLIDS[2][ny*COLS+nx])continue;
   if(!ZONES[2][k])ZONES[2][k]=bedTool;                               // jangan timpa zona pintu/papan/alat
 }
-const popFx=[];                                                      // hasil panen melayang naik
 function harvestNear(){
   let best=null;
   const [ptx,pty]=ptile();
@@ -2106,18 +2104,55 @@ function harvestNear(){
     if(!best||gr>best.gr)best={b,gr,kind};
   }
   if(!best){beep(220,.09,.045,'sine');return;}                       // belum matang: nada rendah saja
+  const bx=best.b.x+8, by=best.b.y+7;
+  const fx=bx-player.x, fy=by-player.y;                              // dino menoleh ke bedengan
+  player.dir=Math.abs(fx)>Math.abs(fy)?(fx>0?'right':'left'):(fy>0?'down':'up');
+  player.pick={kind:best.kind,t0:last,fx:bx,fy:by};                  // mulai gerakan memetik
   best.b.t0=last;                                                    // tanam ulang: siklus balik ke tunas
-  popFx.push({x:best.b.x+8,y:best.b.y+6,t0:last,c:HARVEST_C[best.kind]});
+  stepFx.push({x:Math.round(player.x)-3,y:Math.round(player.y)+2,t0:last,c:'#8d6a44',s:'tanah'},
+              {x:Math.round(player.x)+3,y:Math.round(player.y)+2,t0:last,c:'#8d6a44',s:'tanah'});
   beep(880,.06,.05);beep(1320,.09,.05,'square',.07);
 }
-function drawPopFx(g,t){
-  for(let i=popFx.length-1;i>=0;i--){const p=popFx[i],a=(t-p.t0)/900;
-    if(!(a>=0&&a<1)){popFx.splice(i,1);continue;}
-    const y=p.y-Math.round(a*13);
-    g.globalAlpha=1-a;
-    P(g,'rgba(0,0,0,.25)',p.x-2,y+4,5,1);
-    P(g,p.c,p.x-2,y,5,4);P(g,'#ffffff',p.x-1,y,2,1);
-    g.globalAlpha=1;}
+/* sprite hasil panen yang dijinjing dino (6x6-an, dipusatkan di x,y) */
+function drawProduce(g,x,y,kind){
+  P(g,'rgba(0,0,0,.18)',x-3,y+3,6,1);
+  if(kind===0){        P(g,'#3f7a34',x-4,y+1,8,2);P(g,'#c9cdaa',x-3,y-2,6,4);   // kembang kol
+                       P(g,'#eaeed2',x-3,y-3,5,3);P(g,'#fbfde9',x-2,y-3,2,1);}
+  else if(kind===1){   P(g,'#3f7a34',x-1,y-5,2,2);P(g,'#5a1410',x-3,y-3,6,6);   // tomat
+                       P(g,'#b0271d',x-3,y-3,5,5);P(g,'#e0453a',x-2,y-2,3,3);
+                       P(g,'#ff9070',x-2,y-2,1,1);}
+  else if(kind===2){   P(g,'#357a2c',x-3,y-4,2,7);P(g,'#c9a03a',x-2,y-4,4,7);   // jagung
+                       P(g,'#e8c94a',x-2,y-4,3,6);P(g,'#f7e37a',x-1,y-3,1,4);}
+  else if(kind===3){   P(g,'#8a3f14',x-4,y-3,8,6);P(g,'#d97a28',x-3,y-3,6,5);   // labu
+                       P(g,'#f0973a',x-3,y-3,5,3);P(g,'#ffc46a',x-2,y-2,2,1);
+                       P(g,'#5a3f24',x-1,y-5,2,2);P(g,'#4fa03c',x+1,y-5,1,1);}
+  else{                P(g,'#357a2c',x,y-1,1,4);P(g,'#4a6fca',x-2,y-3,5,1);     // bunga Blue Jazz
+                       P(g,'#4a6fca',x,y-5,1,5);P(g,'#88a6ef',x-1,y-3,1,1);
+                       P(g,'#f2d24a',x,y-3,1,1);}
+}
+/* gerakan panen: tanaman melengkung dari bedengan ke tangan dino, lalu diangkat di atas kepala */
+const PICK_DUR=1150;
+function drawPick(g,t){
+  const p=player.pick; if(!p)return;
+  const a=(t-p.t0)/PICK_DUR;
+  if(!(a>=0&&a<1)){player.pick=null;return;}
+  const hx=Math.round(player.x), hy=Math.round(player.y)-21;         // tepat di atas kepala
+  let x,y;
+  if(a<0.3){                                                         // fase 1: dipetik, melengkung naik
+    const k=a/0.3;
+    x=p.fx+(hx-p.fx)*k;
+    y=p.fy+(hy-p.fy)*k-Math.sin(k*Math.PI)*9;
+  }else{                                                             // fase 2: diangkat, sedikit memantul
+    const k=(a-0.3)/0.7;
+    x=hx; y=hy-Math.round(2*Math.sin(k*Math.PI*3));
+    if(k>0.72)g.globalAlpha=1-(k-0.72)/0.28;                         // memudar di akhir
+  }
+  drawProduce(g,Math.round(x),Math.round(y),p.kind);
+  if(a>=0.3&&a<0.55){                                                // kilau "dapat!" sesaat
+    const s=(a-0.3)/0.25;g.globalAlpha=(1-s)*0.9;
+    P(g,'#fff3b0',hx-6,hy-1,1,1);P(g,'#fff3b0',hx+6,hy-2,1,1);P(g,'#fff3b0',hx,hy-8,1,1);
+  }
+  g.globalAlpha=1;
 }
 /* --- sprite tanaman gaya "farm-sim" (outline selektif + shading 4-tingkat) --- */
 const GO='#1f3d1a',GD='#357a2c',GM='#4fa03c',GL='#79c94f',GH='#a6e46a';
@@ -2334,7 +2369,8 @@ FURN=FURNS[0];anims=ANIMS[0];
    PEMAIN
    ========================================================================= */
 const player={x:12.5*T,y:17*T+12,dir:'down',frame:0,animT:0,moving:false,path:null,
-              pendTool:null,jumpT:0,sitting:null,pendSeat:null,pendJuke:null,pendLift:false,pendPortal:null};
+              pendTool:null,jumpT:0,sitting:null,pendSeat:null,pendJuke:null,pendLift:false,pendPortal:null,
+              pick:null};                                   // hasil panen yang sedang dijinjing
 const SPEED=62, JUMP_DUR=.45;
 const cam={x:0,y:0};
 const keys=new Set();
@@ -3036,6 +3072,7 @@ function render(t){
     }
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
+  drawPick(cx,t);                                // hasil panen di tangan/atas kepala dino
   if(floor===1)drawDeckRail(cx);                 // railing di depan pemain (dino di balik pagar)
   /* drone kargo antar-panen — digambar setelah pemain (terbang di atas kepala) */
   if(floor===0){
@@ -3064,7 +3101,6 @@ function render(t){
   }
   /* overlay animasi furnitur (layar, api, dll) */
   for(const a of anims)a.fn(cx,t);
-  drawPopFx(cx,t);                                  // hasil panen melayang naik
   if(floor===2)drawRain(cx,t);                      // gerimis musiman, di depan semua objek
   /* penanda zona aktif: panah kecil di atas kepala */
   if(activeTool){
@@ -3183,7 +3219,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               setSeason:n=>{forcedSeason=n===null?null:((n%SEASONS.length)+SEASONS.length)%SEASONS.length;
                             skyBucket=-1;tickSky();render(performance.now());},
               season:()=>season,SEASONS,POND,
-              BED,bedTool,bedGrow,bedKind,harvestNear,popFx,stepFx,
+              BED,bedTool,bedGrow,bedKind,harvestNear,stepFx,
               daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,
               render:tt=>render(tt===undefined?performance.now():tt),
               step:(n=1,d=1/60)=>{for(let i=0;i<n;i++){update(d);render(performance.now());}}};
