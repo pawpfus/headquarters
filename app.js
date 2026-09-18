@@ -180,6 +180,7 @@ const SN=()=>SEASONS[season];
        Dipilih karena terbuka (tak menempel bedengan), sepelemparan dari jalan utama,
        dinaungi pohon (14,11) di tepinya, dan lentera (13,13) memantul di air saat malam. --- */
 const POND={x:14,y:12,w:3,h:2};
+const PONDIN=[];        // [inset kiri, inset kanan] per baris piksel → tepi tak beraturan
 const DECOR3_SOLID=[
   ...OUT_TREES.map(t=>({x:t.x,y:t.y,w:1,h:1})),        // batang pohon = solid
   {x:NOTICE_RECT.x,y:NOTICE_RECT.y,w:NOTICE_RECT.w,h:NOTICE_RECT.h},   // papan info
@@ -1858,19 +1859,38 @@ function buildBG3(){
     if(MAP3[ty][tx-1]==='.')P(g,'#6e5836',px,py,2,T);
     if(MAP3[ty][tx+1]==='.')P(g,'#6e5836',px+T-2,py,2,T);
   }
-  /* --- KOLAM kecil: tepian batu + air berlapis (riak/ikan digambar per-frame) --- */
+  /* --- KOLAM: tepian membulat TAK BERATURAN (bukan segi empat).
+         Lebar tiap baris = profil oval + deviasi acak deterministik. --- */
   (function(){
     const px=POND.x*T, py=POND.y*T, pw=POND.w*T, ph=POND.h*T;
-    P(g,'#4a3a26',px-2,py-2,pw+4,ph+4);P(g,'#5c4a30',px-2,py-2,pw+4,2);   // tanah basah tepi
-    for(let i=0;i<pw+4;i+=7)P(g,'#6f757b',px-2+i,py-3,4,3);               // batu tepi atas
-    for(let i=3;i<pw+4;i+=8)P(g,'#5b6167',px-2+i,py+ph,4,3);              // batu tepi bawah
-    P(g,'#16333f',px,py,pw,ph);                                           // air dalam (tepi gelap)
-    P(g,'#1d4657',px+1,py+1,pw-2,ph-2);
-    P(g,'#255a6e',px+3,py+3,pw-6,ph-6);
-    P(g,'#2e7186',px+6,py+6,pw-12,ph-12);                                 // bagian dangkal/terang
-    P(g,'#2f6b30',px+6,py+8,6,4);P(g,'#3f8a3c',px+7,py+8,4,2);           // daun teratai
-    P(g,'#2f6b30',px+30,py+17,5,3);P(g,'#3f8a3c',px+31,py+17,3,2);
-    P(g,'#e8607a',px+8,py+7,2,2);P(g,'#f2a2c9',px+8,py+7,1,1);           // bunga teratai
+    const cxp=(pw-1)/2, cyp=(ph-1)/2;
+    /* radius berubah menurut SUDUT → tepi bergelombang di seluruh keliling,
+       bukan sekadar persegi yang dibulatkan sudutnya */
+    const wob=a=>1+0.13*Math.sin(a*3+1.3)+0.08*Math.sin(a*5-0.6)+0.05*Math.sin(a*7+2.1);
+    const rel=(x,y)=>{const dx=(x-cxp)/(pw/2), dy=(y-cyp)/(ph/2);
+      return Math.hypot(dx,dy)/wob(Math.atan2(dy,dx));};
+    const spanAt=(j,lim)=>{let l=-1,r=-1;
+      for(let i=0;i<pw;i++)if(rel(i,j)<=lim){if(l<0)l=i;r=i;}
+      return l<0?null:[l,r-l+1];};
+    const layer=(lim,col)=>{for(let j=0;j<ph;j++){const s=spanAt(j,lim);
+      if(s)P(g,col,px+s[0],py+j,s[1],1);}};
+    layer(1.16,'#4a3a26');                                              // tanah basah tepian
+    layer(1.00,'#16333f');                                              // tepi air gelap
+    layer(0.90,'#1d4657');
+    layer(0.76,'#255a6e');
+    layer(0.52,'#2e7186');                                              // dangkal / terang
+    PONDIN.length=0;                                                    // buildBG3 bisa dipanggil ulang
+    for(let j=0;j<ph;j++)PONDIN.push(spanAt(j,0.94));                    // batas air utk ikan & pantulan
+    for(let a=0;a<6.28;a+=0.44){                                         // batu mengelilingi tepi berlekuk
+      const w=wob(a)*1.05;
+      const ex=Math.round(cxp+Math.cos(a)*w*(pw/2)), ey=Math.round(cyp+Math.sin(a)*w*(ph/2));
+      P(g,'#6f757b',px+ex-2,py+ey-1,4,3);P(g,'#4a4f55',px+ex-2,py+ey+1,4,1);}
+    const reed=(rx,ry)=>{for(let i=0;i<3;i++){const o=(i*7+rx)%3;        // alang-alang tepi
+      P(g,'#2f6b30',rx+i*2,ry-5-o,1,6+o);P(g,'#4a8f3a',rx+i*2,ry-6-o,1,2);}};
+    reed(px+4,py+7);reed(px+pw-9,py+9);reed(px+9,py+ph-1);reed(px+pw-13,py+ph-2);
+    P(g,'#2f6b30',px+13,py+11,6,4);P(g,'#3f8a3c',px+14,py+11,4,2);       // daun teratai
+    P(g,'#2f6b30',px+29,py+18,5,3);P(g,'#3f8a3c',px+30,py+18,3,2);
+    P(g,'#e8607a',px+15,py+10,2,2);P(g,'#f2a2c9',px+15,py+10,1,1);       // bunga teratai
   })();
   /* kaki pagar: bayangan tipis ke arah lapangan + rumput liar, agar pagar membumi */
   for(let tx=1;tx<COLS-1;tx++){
@@ -2253,14 +2273,20 @@ function drawPond(g,t){
   const px=POND.x*T, py=POND.y*T, pw=POND.w*T, ph=POND.h*T;
   const lamp=daylight.lamp;                                    // 0 siang .. 1 malam
   const sky=a=>`rgba(${Math.round(158-78*lamp)},${Math.round(205-125*lamp)},${Math.round(238-120*lamp)},${a.toFixed(3)})`;
+  /* batas air per baris — ikut tepi tak beraturan, bukan kotak */
+  const air=(j,pad)=>{const p=PONDIN[Math.max(0,Math.min(PONDIN.length-1,j))];
+    if(!p)return null;
+    const w=p[1]-pad*2; return w>0?[px+p[0]+pad,w]:null;};
   for(let i=0;i<3;i++){                                        // pita pantulan langit bergoyang
-    const yy=py+6+i*7+Math.round(1.5*Math.sin(t/1100+i*2));
-    const xx=px+7+i*3+Math.round(2*Math.sin(t/900+i));
-    g.fillStyle=sky(0.13+0.05*Math.sin(t/700+i*2));g.fillRect(xx,yy,pw-16-i*5,1);
+    const j=6+i*7+Math.round(1.5*Math.sin(t/1100+i*2));
+    const s=air(j,4+i*2); if(!s||s[1]<8)continue;
+    g.fillStyle=sky(0.13+0.05*Math.sin(t/700+i*2));
+    g.fillRect(s[0]+Math.round(2*Math.sin(t/900+i)),py+j,s[1]-4,1);
   }
   for(let i=0;i<6;i++){                                        // kilau titik di permukaan
     const a=0.08+0.16*Math.sin(t/500+i*1.9); if(a<0.13)continue;
-    g.fillStyle=sky(a);g.fillRect(px+5+((i*11)%(pw-10)),py+5+((i*7)%(ph-10)),1,1);
+    const j=5+((i*7)%(ph-10)), s=air(j,3); if(!s||s[1]<2)continue;
+    g.fillStyle=sky(a);g.fillRect(s[0]+((i*11)%s[1]),py+j,1,1);
   }
   /* ikan buyar saat dino mendekat: terdorong menjauh + ekor mengibas lebih cepat */
   const ccx=px+pw/2, ccy=py+ph/2;
@@ -2271,10 +2297,12 @@ function drawPond(g,t){
   for(let i=0;i<3;i++){                                        // ikan kecil hilir-mudik
     const per=9000+i*2600, k=((t+i*3000)%per)/per, dir=i%2?1:-1;
     const push=flee*9;
-    const fx=Math.max(px+3,Math.min(px+pw-6,
-              px+5+Math.round((pw-12)*(dir>0?k:1-k)-ux*push)));
-    const fy=Math.max(py+4,Math.min(py+ph-5,
-              py+9+i*6+Math.round(2*Math.sin(t/600+i*2)-uy*push)));
+    const j=Math.max(3,Math.min(ph-4,9+i*6+Math.round(2*Math.sin(t/600+i*2)-uy*push)));
+    const s=air(j,3)||air(Math.round(ph/2),3);                 // ikan tetap di dalam air, ikut lekuk
+    const aw=Math.max(2,s[1]-3);
+    const fx=Math.max(s[0],Math.min(s[0]+aw,
+              s[0]+Math.round(aw*(dir>0?k:1-k)-ux*push)));
+    const fy=py+j;
     const wig=Math.sin(t/(180-flee*110)+i)>0?1:0;
     P(g,'rgba(10,30,40,.35)',fx-1,fy+2,5,1);                   // bayang di air
     P(g,FC[i],fx,fy,3,2);P(g,FC[i],fx-dir,fy+wig,1,1);         // badan + ekor
@@ -3233,7 +3261,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               setHour:h=>{forcedHour=h;skyBucket=-1;tickSky();render(performance.now());},
               setSeason:n=>{forcedSeason=n===null?null:((n%SEASONS.length)+SEASONS.length)%SEASONS.length;
                             skyBucket=-1;tickSky();render(performance.now());},
-              season:()=>season,SEASONS,POND,
+              season:()=>season,SEASONS,POND,PONDIN,
               BED,bedTool,bedGrow,bedKind,harvestNear,stepFx,
               daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,
               render:tt=>render(tt===undefined?performance.now():tt),
