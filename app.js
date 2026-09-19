@@ -1772,10 +1772,32 @@ FURNS.push(FURN);ANIMS.push(anims);
 /* =========================================================================
    AREA LUAR (indeks 2) — sawah & desa poktan di balik pintu utama
    ========================================================================= */
-const OUT_PATH=new Set();                                 // jalan tanah: tulang tengah + 2 cabang (asimetris)
-for(let y=2;y<=16;y++)OUT_PATH.add('12,'+y);
-for(let x=3;x<=12;x++)OUT_PATH.add(x+',10');             // cabang kiri → AREA SAMPLING
-for(let x=12;x<=19;x++)OUT_PATH.add(x+',8');             // cabang kanan → tiang COOPERSTOWN
+/* Jalan tanah BERKELOK — dulu tiga garis lurus sempurna sehingga terasa kaku.
+   OUT_PATH murni kosmetik (dipakai untuk menggambar & jenis bunyi langkah, bukan
+   petak padat), jadi kelokan ini tidak mengubah keterjangkauan peta sama sekali. */
+const OUT_PATH=new Set(), SPINE={}, BR_L={}, BR_R={};
+const addP=(x,y)=>OUT_PATH.add(x+','+y);
+let pv=null;
+for(let y=2;y<=16;y++){                                   // tulang tengah: meliuk antar kolom 11-13
+  const x=12+Math.round(1.4*Math.sin(y*0.55+0.7));
+  SPINE[y]=x; addP(x,y);
+  if(pv!==null&&x!==pv)for(let i=Math.min(x,pv);i<=Math.max(x,pv);i++)addP(i,y); // sambung saat bergeser
+  pv=x;
+}
+pv=null;
+for(let x=3;x<=12;x++){                                   // cabang kiri → AREA SAMPLING
+  const y=10+Math.round(1.1*Math.sin(x*0.62+2.1));
+  BR_L[x]=y; addP(x,y);
+  if(pv!==null&&y!==pv)for(let j=Math.min(y,pv);j<=Math.max(y,pv);j++)addP(x,j);
+  pv=y;
+}
+pv=null;
+for(let x=12;x<=19;x++){                                  // cabang kanan → tiang COOPERSTOWN
+  const y=8+Math.round(1.1*Math.sin(x*0.5-1.2));
+  BR_R[x]=y; addP(x,y);
+  if(pv!==null&&y!==pv)for(let j=Math.min(y,pv);j<=Math.max(y,pv);j++)addP(x,j);
+  pv=y;
+}
 function buildBG3(){
   const g=bg3c, SS=SN();                                  // SS = palet musim aktif
   P(g,SS.floor,0,0,W,H);                                  // dasar rumput gelap
@@ -1827,6 +1849,18 @@ function buildBG3(){
         P(g,'#857e75',sx,sy+2,6,1);P(g,'#8f887f',sx+5,sy,1,3);};      // sisi bawah/kanan datar
       if(sn<9){stone(px+4+(sn%3),py+5);                               // pijakan utama (di tengah lajur)
         if(sn<4)stone(px+7+(sn%2),py+10);}                            // pijakan ke-2
+      /* tepi jalan BERGERIGI: rumput menjorok masuk di sisi yang berbatasan rumput */
+      const gc=((tx+ty)&1)?SS.grassA:SS.grassB;
+      const nz=(a,b)=>{let h=(a*374761393+b*668265263)>>>0;           // hash: acak, TIDAK periodik
+        h=Math.imul(h^(h>>>13),1274126177)>>>0; return ((h^(h>>>16))>>>0)%3;};
+      if(!OUT_PATH.has((tx-1)+','+ty))for(let j=0;j<T;j++){const n=nz(tx,py+j);
+        if(n)P(g,gc,px,py+j,n,1);}
+      if(!OUT_PATH.has((tx+1)+','+ty))for(let j=0;j<T;j++){const n=nz(tx+9,py+j);
+        if(n)P(g,gc,px+T-n,py+j,n,1);}
+      if(!OUT_PATH.has(tx+','+(ty-1)))for(let i=0;i<T;i++){const n=nz(px+i,ty+3);
+        if(n)P(g,gc,px+i,py,1,n);}
+      if(!OUT_PATH.has(tx+','+(ty+1)))for(let i=0;i<T;i++){const n=nz(px+i,ty+7);
+        if(n)P(g,gc,px+i,py+T-n,1,n);}
     }else{
       const a=(tx+ty)&1;
       P(g,a?SS.grassA:SS.grassB,px,py,T,T);                            // rumput (ikut musim)
@@ -2374,7 +2408,9 @@ function drawPond(g,t){
       g.fillRect(Math.round(cxp+Math.cos(an)*r),Math.round(cyp+Math.sin(an)*r*0.5),1,1);}}
 }
 /* --- CUACA MUSIMAN: genangan di jalur batu (lapisan tanah) + gerimis (lapisan depan) --- */
-const PUDDLE=[[12,4],[12,9],[12,14],[7,10],[15,8],[12,12],[5,10],[11,10]]; // hindari petak tertutup sprite
+/* genangan mengikuti jalur yang berkelok (bukan kolom tetap), pada petak yang tak tertutup sprite */
+const PUDDLE=[[SPINE[4],4],[SPINE[9],9],[SPINE[12],12],[SPINE[14],14],
+              [5,BR_L[5]],[7,BR_L[7]],[11,BR_L[11]],[15,BR_R[15]]];
 function drawPuddles(g,t){
   const w=SN().wet; if(!w)return;
   for(const [ptx,pty] of PUDDLE){
