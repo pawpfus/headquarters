@@ -686,7 +686,21 @@ function furn(rect,oy,paint){
   const c=document.createElement('canvas');
   c.width=rect.w*T;c.height=rect.h*T+oy;
   paint(c.getContext('2d'),c.width,c.height);
-  return {rect,oy,canvas:c,px:rect.x*T,py:rect.y*T-oy,baseY:(rect.y+rect.h)*T};
+  return {rect,oy,canvas:c,px:rect.x*T,py:rect.y*T-oy,baseY:(rect.y+rect.h)*T,paint};
+}
+/* --- MUSIM DI DALAM GEDUNG --------------------------------------------------
+   Kanvas furnitur dipanggang SEKALI, jadi perabot yang warnanya ikut musim
+   (pot tanaman di kedua lantai) didaftarkan ke sini dan dicat ulang oleh
+   repaintSeasonal() saat tickSky() melihat harinya berganti — pola yang sama
+   dengan repaintTrees() di area luar. */
+const SEASONAL=[];
+const seasonal=f=>{SEASONAL.push(f);return f;};
+function repaintSeasonal(){
+  for(const f of SEASONAL){
+    const c=f.canvas,g=c.getContext('2d');
+    g.clearRect(0,0,c.width,c.height);
+    f.paint(g,c.width,c.height);
+  }
 }
 let anims=[];     // {fn(g,t)} digambar tiap frame di atas furnitur (ditukar per lantai)
 let FURN=[];
@@ -899,15 +913,20 @@ const crates=furn({x:19,y:15,w:2,h:1},8,(g)=>{
 FURN.push(rackA,rackB,crates);
 
 /* --- dekor pengisi ruangan: pot, bangku, drum, kabinet, rak alat, tong --- */
+/* daun pot ikut palet musim yang sedang berjalan di luar — di dalam gedung pun
+   terasa musimnya bergeser (dicat ulang lewat SEASONAL saat harinya berganti) */
 const potPaint=g=>{
+  const S=SN();
   P(g,'#5f2d20',4,13,8,6);P(g,'#7a3a2a',4,13,8,2);P(g,'#3f1e15',4,18,8,1);   // pot tanah liat
-  P(g,'#2f7a4a',7,7,2,6);                                                    // batang
-  P(g,'#46a14e',3,4,4,4);P(g,'#46a14e',9,3,4,4);P(g,'#2f7a4a',6,2,4,3);      // daun
-  P(g,'#7ee06a',7,4,2,2);P(g,'#7ee06a',4,5,2,1);
+  P(g,S.mid,7,7,2,6);                                                        // batang
+  P(g,S.hi,3,4,4,4);P(g,S.hi,9,3,4,4);P(g,S.mid,6,2,4,3);                    // daun
+  P(g,S.leaf,7,4,2,2);P(g,S.leaf,4,5,2,1);
+  if(season===2){P(g,S.hi2,2,10,1,1);P(g,S.hi,12,11,1,1);}                   // gugur: sehelai daun luruh
+  if(season===3){P(g,S.hi2,5,2,1,1);P(g,S.hi2,11,5,1,1);}                    // peralihan: pucuk basah baru
 };
-const potA=furn({x:7, y:2, w:1,h:1},4,potPaint);
-const potB=furn({x:1, y:7, w:1,h:1},4,potPaint);
-const potC=furn({x:19,y:2, w:1,h:1},4,potPaint);
+const potA=seasonal(furn({x:7, y:2, w:1,h:1},4,potPaint));
+const potB=seasonal(furn({x:1, y:7, w:1,h:1},4,potPaint));
+const potC=seasonal(furn({x:19,y:2, w:1,h:1},4,potPaint));
 const bench=furn({x:8,y:16,w:2,h:1},6,(g,w,h)=>{
   P(g,'#39414f',2,8,w-4,5);P(g,'#4a5468',2,8,w-4,2);                         // dudukan logam
   P(g,'#2a303c',3,13,3,h-14);P(g,'#2a303c',w-6,13,3,h-14);                   // kaki
@@ -1024,7 +1043,7 @@ const divider2=furn({x:2,y:9,w:6,h:1},10,(g,w,h)=>{
 FURN.push(divider2);
 /* --- pengisi kamar kanan-atas (pelaporan) --- */
 const rackC=furn({x:23,y:4,w:1,h:1},4,g=>{rackPaint(g);});   // rak data (dinding kanan)
-const potRA=furn({x:17,y:7,w:1,h:1},4,potPaint);             // tanaman sudut
+const potRA=seasonal(furn({x:17,y:7,w:1,h:1},4,potPaint));             // tanaman sudut
 /* --- pengisi kamar kanan-bawah (bengkel) --- */
 const shelfR=furn({x:23,y:10,w:1,h:1},8,(g,w,h)=>{           // rak besi suku cadang
   P(g,'#3a4250',2,2,12,h-4);P(g,'#2a303c',2,2,12,2);           // rangka
@@ -1701,11 +1720,11 @@ const airT=furn({x:23,y:2,w:1,h:1},8,(g,w,h)=>{
   P(g,'#22262f',2,h-2,12,2);
   P(g,'#2ee0ff',5,11,2,2);P(g,'#e07a5a',9,11,2,2);             // kran dingin/panas
 });
-const potHall=furn({x:23,y:7,w:1,h:1},4,potPaint);
+const potHall=seasonal(furn({x:23,y:7,w:1,h:1},4,potPaint));
 FURN.push(airT,potHall);
 
 /* --- serambi lift: pot & peti kayu di sudut kanan pintu kabin --- */
-const potU=furn({x:1,y:5,w:1,h:1},4,potPaint);
+const potU=seasonal(furn({x:1,y:5,w:1,h:1},4,potPaint));
 const petiU=furn({x:5,y:2,w:1,h:1},6,(g,w,h)=>{
   P(g,'#5a4632',1,2,14,h-4);P(g,'#6b543c',1,2,14,1);           // peti kayu
   P(g,'#3f3222',1,h-2,14,2);
@@ -3329,7 +3348,7 @@ function syncFloorBG(n){if(bgDirty[n])buildFloorBG(n);}
 function tickSky(){
   daylight=daylightAt(curHour());                 // halus tiap frame (untuk grade warna)
   const sNow=curSeason();                         // musim bergeser tiap hari → kanopi dicat ulang
-  if(sNow!==season){season=sNow;repaintTrees();skyBucket=-1;}
+  if(sNow!==season){season=sNow;repaintTrees();repaintSeasonal();skyBucket=-1;}
   const b=Math.round(curHour()*10);               // langit terpanggang ulang tiap ~6 menit
   if(b!==skyBucket){skyBucket=b;
     bgDirty[0]=bgDirty[1]=bgDirty[2]=true;
@@ -3400,6 +3419,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               season:()=>season,SEASONS,POND,PONDIN,
               BED,bedTool,bedGrow,bedKind,harvestNear,stepFx,
               eggsNow,eggNear,pickEggNear,eggTool,TREEF,
+              SEASONAL,repaintSeasonal,
               daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,
               render:tt=>render(tt===undefined?performance.now():tt),
               step:(n=1,d=1/60)=>{for(let i=0;i<n;i++){update(d);render(performance.now());}}};
