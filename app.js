@@ -2131,7 +2131,9 @@ const lanternPaint=(g,w,h)=>{
   P(g,'#4a4a3a',3,0,6,5);P(g,'#6a6a4a',3,0,6,1);P(g,'#151a10',2,0,8,1); // rangka + atap lampu
   P(g,'#26261c',4,1,4,3);                                            // kaca (padam siang)
 };
-const lanterns=[{x:11,y:4},{x:13,y:9},{x:13,y:13}].map(L=>{   // (11,4): lampu di mulut jalan depan pintu
+/* Lampu jalan HARUS bersisian dengan jalur, tidak di atasnya. Kelokan jalan
+   sempat menaruh (13,13) tepat di tengah jalan dan membuat (13,9) terlantar. */
+const lanterns=[{x:11,y:4},{x:12,y:9},{x:12,y:13}].map(L=>{
   const f=furn({x:L.x,y:L.y,w:1,h:1},14,lanternPaint);FURN.push(f);return f;});
 /* papan info poktan (bisa dibaca — banner memutar pesan) */
 const boardF=furn(NOTICE_RECT,14,(g,w,h)=>{
