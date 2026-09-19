@@ -2018,12 +2018,28 @@ const treePaint=seed=>(g,w,h)=>{
   const cx=w>>1, tw=Math.max(3,w>>3), ch=h-14;                       // pusat, lebar batang, tinggi kanopi
   P(g,'rgba(0,0,0,.16)',cx-(w>>2),h-3,w>>1,3);                       // bayang akar
   P(g,'#5a3f28',cx-(tw>>1),h-14,tw,14);P(g,'#6e4f34',cx-(tw>>1),h-14,Math.max(1,tw>>1),14); // batang
-  P(g,S.mass,2,3,w-4,ch-2);P(g,S.mid,4,2,w-8,ch-6);                 // massa daun
-  P(g,S.hi,6,3,w-12,Math.floor(ch*0.5));P(g,S.hi2,cx-4,4,8,Math.floor(ch*0.32)); // sorotan
-  P(g,S.mass,3,ch-2,w-6,2);                                          // dasar kanopi gelap
+  /* KANOPI: radius berubah menurut sudut, fase diambil dari seed → tiap pohon
+     bersiluet membulat tak beraturan dan berbeda satu sama lain (dulu tumpukan persegi) */
+  const kx=(w-1)/2, ky=ch/2, phs=seed*1.7;
+  const wob=a=>{const v=1+0.15*Math.sin(a*3+phs)+0.09*Math.sin(a*5-phs*0.7)+0.06*Math.sin(a*7+phs*1.3);
+    return v>1?1+(v-1)*0.15:v;};   // tonjolan keluar ditekan (agar tak terpotong tepi kanvas),
+                                   // cekungan ke dalam dibiarkan penuh supaya bentuknya tetap organik
+  const rel=(x,y,ox,oy)=>{const dx=(x-kx-ox)/(w/2), dy=(y-ky-oy)/(ch/2);
+    return Math.hypot(dx,dy)/wob(Math.atan2(dy,dx));};
+  const fill=(lim,col,ox,oy,j0)=>{for(let j=j0||0;j<ch;j++){
+    let l=-1,r=-1;
+    for(let i=0;i<w;i++)if(rel(i,j,ox,oy)<=lim){if(l<0)l=i;r=i;}
+    if(l>=0)P(g,col,l,j,r-l+1,1);}};
+  fill(1.00,S.mass,0,0);                                             // massa daun gelap
+  fill(0.86,S.mid,-1,-1);                                            // isi
+  fill(0.58,S.hi,-2,-3);                                             // sisi kena cahaya (kiri-atas)
+  fill(0.28,S.hi2,-3,-4);                                            // sorot puncak
+  fill(0.86,S.mass,-1,-1,Math.floor(ch*0.74));                       // bawah kanopi membayang
   const cols=S.dots;
-  for(let k=0;k<(w>>1);k++){const rx=3+((k*97+seed*13)%(w-5)),ry=2+((k*53+seed*7)%(ch-2));
-    P(g,cols[(k+seed)%4],rx,ry,2,2);}                                // tekstur daun
+  for(let k=0;k<(w>>1);k++){                                         // tekstur daun, tetap di dalam siluet
+    const rx=2+((k*97+seed*13)%(w-4)), ry=2+((k*53+seed*7)%(ch-3));
+    if(rel(rx,ry,0,0)>0.90)continue;
+    P(g,cols[(k+seed)%4],rx,ry,2,2);}
 };
 const TREEF=[];
 OUT_TREES.forEach(t=>{                                               // besar: 3-lebar/tinggi · kecil: 2-lebar
