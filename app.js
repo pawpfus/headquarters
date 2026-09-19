@@ -2133,7 +2133,7 @@ const lanternPaint=(g,w,h)=>{
 };
 /* Lampu jalan HARUS bersisian dengan jalur, tidak di atasnya. Kelokan jalan
    sempat menaruh (13,13) tepat di tengah jalan dan membuat (13,9) terlantar. */
-const lanterns=[{x:11,y:4},{x:12,y:9},{x:12,y:13}].map(L=>{
+const lanterns=[{x:11,y:4},{x:12,y:9},{x:12,y:14}].map(L=>{
   const f=furn({x:L.x,y:L.y,w:1,h:1},14,lanternPaint);FURN.push(f);return f;});
 /* papan info poktan (bisa dibaca — banner memutar pesan) */
 const boardF=furn(NOTICE_RECT,14,(g,w,h)=>{
