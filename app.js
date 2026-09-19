@@ -2263,8 +2263,26 @@ function drawProduce(g,x,y,kind){
   else if(kind===4){   P(g,'#357a2c',x,y-1,1,4);P(g,'#4a6fca',x-2,y-3,5,1);     // bunga Blue Jazz
                        P(g,'#4a6fca',x,y-5,1,5);P(g,'#88a6ef',x-1,y-3,1,1);
                        P(g,'#f2d24a',x,y-3,1,1);}
-  else{                P(g,'#c2b697',x-2,y-4,5,7);P(g,'#efe7d2',x-2,y-4,4,6);   // telur ayam
+  else if(kind===5){   P(g,'#c2b697',x-2,y-4,5,7);P(g,'#efe7d2',x-2,y-4,4,6);   // telur ayam
                        P(g,'#fbf7ea',x-1,y-4,2,2);P(g,'#d8cdb2',x+1,y,2,2);}
+  else{                                                                          // ikan hasil pancingan
+    /* digambar KOLOM demi KOLOM: dengan lebar 12 px, badan berbentuk kotak
+       langsung terbaca sebagai balok — profil meruncing inilah yang membuatnya
+       terbaca sebagai ikan. HB = setengah tinggi badan di kolom x-4 .. x+4. */
+    const i=(kind-6)%3;
+    const FB=['#d9762c','#c94f3a','#c9a03a'][i], FD=['#9c4b13','#8e2f22','#8e6b18'][i];
+    P(g,FD,x-7,y-3,1,7);P(g,FD,x-6,y-2,1,5);P(g,FD,x-5,y-1,1,3);                 // ekor meruncing
+    P(g,FB,x-6,y-1,1,3);
+    P(g,FD,x-2,y-5,4,2);P(g,FD,x-1,y+3,3,2);                                     // sirip punggung & perut
+    const HB=[1,2,3,3,3,3,2,2,1];
+    for(let c=0;c<HB.length;c++){
+      const cx=x-4+c, hh=HB[c];
+      P(g,FD,cx,y-hh,1,hh*2);                                                    // garis luar gelap
+      if(hh>1)P(g,FB,cx,y-hh+1,1,hh*2-2);                                        // isi terang
+    }
+    P(g,'#f6d9a8',x-2,y+1,4,1);                                                  // perut terang
+    P(g,'#12212a',x+2,y-1,1,1);P(g,'#eaf2f7',x+2,y-2,1,1);                       // mata + kilau
+  }
 }
 /* gerakan panen: tanaman melengkung dari bedengan ke tangan dino, lalu diangkat di atas kepala */
 const PICK_DUR=1150;
@@ -2526,6 +2544,103 @@ function pickEggNear(){
   beep(990,.05,.05);beep(1480,.08,.05,'square',.06);
   return true;
 }
+
+/* =========================================================================
+   MEMANCING — lempar · tunggu · sambar · tarik
+   Petak di tepi kolam jadi zona pancing (petak yang sudah jadi zona bedengan
+   atau pintu dibiarkan). Lama penantian diundi SEKALI saat melempar supaya
+   iramanya tak bisa dihafal; tarikan hanya sah di dalam jendela sambaran, jadi
+   menarik kepagian atau kesiangan sama-sama meleset.
+   ========================================================================= */
+const fishTool={id:'fish',name:'KOLAM',short:'KOLAM',color:'#5ab0f2',
+                btn:'PANCING &#9656;',isFish:true,desc:''};
+for(let y=POND.y-1;y<=POND.y+POND.h;y++)for(let x=POND.x-1;x<=POND.x+POND.w;x++){
+  if(x<1||y<2||x>=COLS-1||y>=ROWS-1)continue;
+  const k=x+','+y;
+  if(SOLIDS[2][y*COLS+x]||ZONES[2][k])continue;                 // jangan timpa zona bedengan/pintu
+  ZONES[2][k]=fishTool;
+}
+const CAST_DUR=520, BITE_WIN=900, FISH_END=760;
+function fishStart(){
+  const now=performance.now();
+  const cx0=POND.x*T+POND.w*T/2, cy0=POND.y*T+POND.h*T/2;
+  const dx=cx0-player.x, dy=cy0-player.y;
+  player.dir=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
+  player.fish={t0:now, wait:1100+Math.random()*2100, kind:(Math.random()*3)|0,
+               bx:Math.round(cx0-dx*0.16), by:Math.round(cy0-dy*0.16), done:0, endT:0};
+  beep(300,.07,.045,'sine');beep(460,.09,.035,'sine',.06);
+}
+function fishHook(){
+  const f=player.fish; if(!f||f.done)return;
+  const now=performance.now(), el=now-f.t0, t1=CAST_DUR+f.wait;
+  if(el>=t1&&el<t1+BITE_WIN){                                   // tepat waktu → dapat
+    f.done=1;f.endT=now;
+    player.pick={kind:6+f.kind,t0:now,fx:f.bx,fy:f.by};
+    beep(880,.06,.05);beep(1320,.09,.05,'square',.07);beep(1760,.1,.04,'square',.15);
+  }else{                                                        // kepagian / kesiangan → ikan kabur
+    f.done=-1;f.endT=now;
+    beep(200,.12,.05,'sine');
+  }
+}
+/* umpan & joran digambar sebidang dengan drawPick (di depan dino) */
+function drawFishing(g,t){
+  const f=player.fish; if(!f)return;
+  const el=t-f.t0, px=Math.round(player.x), py=Math.round(player.y);
+  const side=f.bx>=px?1:-1;
+  const hx=px+side*4, hy=py-10;                                 // tangan dino
+  const tipx=hx+side*7, tipy=hy-8;                              // ujung joran
+  for(let i=0;i<=7;i++){                                        // joran bambu (pangkal gelap, ujung pucat)
+    const k=i/7;
+    P(g,i>5?'#d8c48a':'#8a6a3a',hx+Math.round(side*7*k),hy-Math.round(8*k),1,1);
+  }
+  const t1=CAST_DUR+f.wait, biting=!f.done&&el>=t1;
+  let bx,by;
+  if(el<CAST_DUR){                                              // umpan melayang ke air
+    const k=el/CAST_DUR;
+    bx=Math.round(tipx+(f.bx-tipx)*k);
+    by=Math.round(tipy+(f.by-tipy)*k-Math.sin(k*Math.PI)*14);
+  }else{
+    bx=f.bx;
+    by=f.by+(biting?Math.round(2+Math.sin(t/55)):Math.round(Math.sin(t/620)));
+  }
+  if(f.done!==1){                                               // senar dari ujung joran ke umpan
+    const n=Math.max(1,Math.round(Math.hypot(bx-tipx,by-tipy)/3));
+    g.globalAlpha=0.55;
+    for(let i=1;i<n;i++){const k=i/n;
+      P(g,'#cfe0ee',Math.round(tipx+(bx-tipx)*k),Math.round(tipy+(by-tipy)*k+Math.sin(k*Math.PI)*3),1,1);}
+    g.globalAlpha=1;
+    P(g,'#1b2b33',bx-1,by-1,3,3);                               // pelampung
+    P(g,'#e04a3a',bx-1,by-1,3,1);P(g,'#f7f2e4',bx-1,by,3,1);
+  }
+  if(el>=CAST_DUR&&!f.done){
+    if(el>t1-620&&!biting){                                     // bayangan ikan mendekat
+      const k=(el-(t1-620))/620;
+      const sx=Math.round(bx-side*(14-12*k));
+      g.globalAlpha=0.30+0.25*k;
+      P(g,'#0d2730',sx,by+2,4,2);P(g,'#0d2730',sx-side,by+2,1,1);
+      g.globalAlpha=1;
+    }
+    if(biting){                                                 // riak + seru "!" di atas kepala
+      const r=1+((el-t1)/110)%4;
+      g.fillStyle='rgba(205,238,248,.45)';
+      for(let k=0;k<8;k++){const an=k/8*6.283;
+        g.fillRect(Math.round(bx+Math.cos(an)*r),Math.round(by+2+Math.sin(an)*r*0.5),1,1);}
+      const ey=py-26-(Math.floor(t/110)%2);
+      P(g,'#101820',px-2,ey-1,5,10);
+      P(g,'#ffd23a',px-1,ey,3,5);P(g,'#ffd23a',px-1,ey+7,3,2);
+    }
+  }
+  if(f.done===-1){                                              // percik kecil: ikan lepas
+    const k=Math.min(1,(t-f.endT)/380);
+    g.globalAlpha=(1-k)*0.7;
+    const r=2+k*7;
+    g.fillStyle='rgba(190,225,240,1)';
+    for(let i=0;i<8;i++){const an=i/8*6.283;
+      g.fillRect(Math.round(f.bx+Math.cos(an)*r),Math.round(f.by+Math.sin(an)*r*0.5),1,1);}
+    g.globalAlpha=1;
+  }
+}
+
 function drawChickens(g,t){
   for(const e of eggsNow(t)){                                  // telur yang belum dipungut
     const ex=e.x, ey=e.y;
@@ -2564,16 +2679,37 @@ FURN=FURNS[0];anims=ANIMS[0];
    ========================================================================= */
 const player={x:12.5*T,y:17*T+12,dir:'down',frame:0,animT:0,moving:false,path:null,
               pendTool:null,jumpT:0,sitting:null,pendSeat:null,pendJuke:null,pendLift:false,pendPortal:null,
-              pick:null};                                   // hasil panen yang sedang dijinjing
+              pick:null,                                    // hasil panen yang sedang dijinjing
+              fish:null};                                   // keadaan pancing (umpan di air)
 const SPEED=62, JUMP_DUR=.45;
 const cam={x:0,y:0};
 const keys=new Set();
 const KEYMAP={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',
               w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
 
-/* anak dino peliharaan — berkeliaran acak antar tile bebas */
-const pet={x:6*T+8,y:15*T+12,tx:null,ty:null,timer:1,dir:1,frame:0,hopT:0,reactCd:0,
+/* anak dino peliharaan — berkeliaran acak antar tile bebas.
+   `floor` menandai ia sedang di lantai mana: ia ikut berpindah bila kebetulan
+   berada di dekat dino utama saat pintu/lift dipakai (lihat petArrive). */
+const pet={x:6*T+8,y:15*T+12,floor:0,tx:null,ty:null,timer:1,dir:1,frame:0,hopT:0,reactCd:0,
            mode:'wander',followT:0,repathT:0,path:null,moving:false,sleepT:0};
+/* dipanggil tepat setelah setFloor(): taruh anak dino di petak kosong terdekat
+   dari titik-muncul dino utama, lalu paksa mode membuntuti sebentar supaya ia
+   tidak langsung berkeliaran ke sudut asing. */
+function petArrive(){
+  const px=Math.floor(player.x/T), py=Math.floor(player.y/T);
+  let spot=null;
+  for(const [dx,dy] of [[0,1],[-1,0],[1,0],[0,0],[-1,1],[1,1],[0,2],[-1,2],[1,2]]){
+    const nx=px+dx,ny=py+dy;
+    if(nx<1||ny<1||nx>=COLS-1||ny>=ROWS-1||S(nx,ny))continue;
+    spot=[nx,ny];break;
+  }
+  if(!spot)spot=[px,py];
+  pet.floor=floor;
+  pet.x=spot[0]*T+8;pet.y=spot[1]*T+12;
+  pet.tx=null;pet.ty=null;pet.path=null;pet.repathT=0;pet.sleepT=0;
+  pet.hopT=.4;pet.mode='follow';pet.followT=9;pet.timer=1;
+  beep(1180,.05,.035,'square',.02);beep(1560,.07,.03,'square',.08);
+}
 function petUpdate(dt){
   pet.reactCd=Math.max(0,pet.reactCd-dt);
   if(pet.hopT>0)pet.hopT=Math.max(0,pet.hopT-dt);
@@ -2875,7 +3011,7 @@ const banner=document.getElementById('banner'),
       bSw=banner.querySelector('.swatch'),bKey=banner.querySelector('.key'),
       btnOpen=document.getElementById('btnOpen'),floorTag=document.getElementById('floorTag'),
       menu=document.getElementById('menu'),menuList=document.getElementById('menuList');
-let activeTool=null,lastZone=null;
+let activeTool=null,lastZone=null,fishBiting=false;
 
 function setBanner(tool){
   if(tool===activeTool)return;
@@ -2889,6 +3025,7 @@ function setBanner(tool){
     tool.isPortal?'[ENTER] UNTUK LEWATI PINTU':
     tool.isBoard?'[ENTER] BACA PENGUMUMAN BERIKUTNYA':
     tool.isBed?'[ENTER] UNTUK MEMANEN':
+    tool.isFish?'[ENTER] UNTUK MEMANCING':
     tool.isEgg?'[ENTER] UNTUK MENGAMBIL':'[ENTER] UNTUK MEMBUKA';
   bSw.style.background=tool.color;bSw.style.color=tool.color;
   banner.classList.add('show');
@@ -2901,6 +3038,7 @@ function openTool(tool){
     bDesc.textContent=tool.desc;beep(680,.05,.04);return;}
   if(tool.isBed){harvestNear();return;}                                                  // panen bedengan terdekat
   if(tool.isEgg){pickEggNear();return;}                                                  // pungut telur ayam
+  if(tool.isFish){player.fish?fishHook():fishStart();return;}   // lempar umpan, lalu tarik saat menyambar
   beep(880,.07,.06);beep(1320,.1,.06,'square',.08);
   setTimeout(()=>{window.location.href=tool.url;},180);
 }
@@ -2953,7 +3091,10 @@ function setFloor(n,spawn){
 function startTravel(to,spawn){
   if(fade.on||to===floor)return;
   if(player.sitting)standUp();
+  player.fish=null;                                  // pancing dibereskan dulu
   player.path=null;player.pendTool=null;player.pendLift=false;player.pendPortal=null;
+  /* anak dino ikut kalau kebetulan sedang menempel saat pintu dibuka */
+  fade.petGo=pet.floor===floor&&Math.hypot(pet.x-player.x,pet.y-player.y)<58;
   fade.on=true;fade.t=0;fade.to=to;fade.spawn=spawn||null;fade.swapped=false;
   beep(430,.07,.05);beep(660,.08,.05,'square',.1);beep(880,.14,.05,'square',.22);
 }
@@ -3121,7 +3262,9 @@ cv.addEventListener('pointerdown',e=>{
 function update(dt){
   if(fade.on){                                        // kabin lift berjalan: permainan membeku
     fade.t+=dt;
-    if(!fade.swapped&&fade.t>=FADE_HALF){setFloor(fade.to,fade.spawn);fade.swapped=true;}
+    if(!fade.swapped&&fade.t>=FADE_HALF){setFloor(fade.to,fade.spawn);
+      if(fade.petGo)petArrive();                     // anak dino menyusul lewat pintu yang sama
+      fade.swapped=true;}
     if(fade.t>=FADE_DUR)fade.on=false;
     return;
   }
@@ -3158,6 +3301,7 @@ function update(dt){
   }
   const mag=Math.hypot(vx,vy);
   player.moving=mag>.15;
+  if(player.moving&&player.fish&&!player.fish.done)player.fish=null;  // melangkah = umpan digulung
   if(player.moving){
     if(Math.abs(vx)>=Math.abs(vy))player.dir=vx<0?'left':'right';
     else player.dir=vy<0?'up':'down';
@@ -3169,7 +3313,8 @@ function update(dt){
     player.animT+=dt*Math.min(1.2,mag+.2);
   }else player.animT=0;
   if(player.jumpT>0)player.jumpT=Math.max(0,player.jumpT-dt);
-  if(floor===0){petUpdate(dt);botUpdate(dt);droneUpdate(dt);}   // penghuni lt.1
+  if(pet.floor===floor)petUpdate(dt);                          // anak dino: ikut ke mana pun ia dibawa
+  if(floor===0){botUpdate(dt);droneUpdate(dt);}                // penghuni lt.1
   else if(floor===1)arcbotUpdate(dt);                          // robot arsiparis lt.2
   /* area luar (2): kehidupan lewat anims (kilau air, kupu-kupu, burung) — tanpa update khusus */
   if(music.on){music.visT+=dt;const beat=60/TRACKS[music.track].bpm;   // pet ikut goyang tiap ketukan
@@ -3186,6 +3331,23 @@ function update(dt){
   let z=zoneOf[tx+','+ty]||null;
   if(!z&&floor===2&&eggNear(performance.now()))z=eggTool;   // telur di rumput: tak punya zona tetap
   if(z!==lastZone){lastZone=z;setBanner(z);}
+
+  /* pancing: umpan hangus kalau tak ditarik, lalu ajakan di banner ikut berubah
+     saat ikan menyambar — tanpa itu pemain tak tahu kapan harus menekan */
+  if(player.fish){
+    const f=player.fish, now=performance.now(), el=now-f.t0;
+    if(f.done){if(now-f.endT>FISH_END)player.fish=null;}
+    else if(el>CAST_DUR+f.wait+BITE_WIN){f.done=-1;f.endT=now;beep(200,.12,.05,'sine');}
+  }
+  if(activeTool===fishTool){
+    const f=player.fish;
+    const bite=!!f&&!f.done&&(performance.now()-f.t0)>=CAST_DUR+f.wait;
+    if(bite!==fishBiting){
+      fishBiting=bite;
+      bKey.textContent=bite?'[ENTER] TARIK SEKARANG!':'[ENTER] UNTUK MEMANCING';
+      btnOpen.innerHTML=bite?'TARIK! &#9656;':'PANCING &#9656;';
+    }
+  }else if(fishBiting)fishBiting=false;
 
   /* kabut perang: petak yang ditempati dino meredup, sisanya menggelap lagi */
   if(fogOn){
@@ -3256,7 +3418,7 @@ function render(t){
     const spr=SPR[player.dir][fr];
     cx.drawImage(spr,Math.round(player.x)-(spr.width>>1),Math.round(player.y)-16-Math.round(jp));
   }});
-  if(floor===0)items.push({y:pet.y,draw:()=>{
+  if(pet.floor===floor)items.push({y:pet.y,draw:()=>{
     const hop=pet.hopT>0?Math.sin(Math.PI*(1-pet.hopT/.4))*6:0;
     cx.fillStyle='rgba(0,0,0,.25)';
     cx.fillRect(Math.round(pet.x)-(hop>2?2:3),Math.round(pet.y)-1,hop>2?4:6,2);
@@ -3270,6 +3432,7 @@ function render(t){
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
   if(floor===2)drawTreeShimmer(cx,t);            // kilau daun tertiup angin
+  if(floor===2)drawFishing(cx,t);                // joran, senar & umpan di kolam
   drawPick(cx,t);                                // hasil panen di tangan/atas kepala dino
   if(floor===1)drawDeckRail(cx);                 // railing di depan pemain (dino di balik pagar)
   /* drone kargo antar-panen — digambar setelah pemain (terbang di atas kepala) */
@@ -3419,6 +3582,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               season:()=>season,SEASONS,POND,PONDIN,
               BED,bedTool,bedGrow,bedKind,harvestNear,stepFx,
               eggsNow,eggNear,pickEggNear,eggTool,TREEF,
+              fishTool,fishStart,fishHook,petArrive,
               SEASONAL,repaintSeasonal,
               daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,
               render:tt=>render(tt===undefined?performance.now():tt),
