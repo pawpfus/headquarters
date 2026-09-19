@@ -1779,7 +1779,8 @@ const OUT_PATH=new Set(), SPINE={}, BR_L={}, BR_R={};
 const addP=(x,y)=>OUT_PATH.add(x+','+y);
 let pv=null;
 for(let y=2;y<=16;y++){                                   // tulang tengah: meliuk antar kolom 11-13
-  const x=12+Math.round(1.4*Math.sin(y*0.55+0.7));
+  const ease=Math.min(1,(y-2)/3);                         // berangkat LURUS dari pintu, baru meliuk
+  const x=12+Math.round(1.4*ease*Math.sin(y*0.55+0.7));
   SPINE[y]=x; addP(x,y);
   if(pv!==null&&x!==pv)for(let i=Math.min(x,pv);i<=Math.max(x,pv);i++)addP(i,y); // sambung saat bergeser
   pv=x;
@@ -2130,7 +2131,7 @@ const lanternPaint=(g,w,h)=>{
   P(g,'#4a4a3a',3,0,6,5);P(g,'#6a6a4a',3,0,6,1);P(g,'#151a10',2,0,8,1); // rangka + atap lampu
   P(g,'#26261c',4,1,4,3);                                            // kaca (padam siang)
 };
-const lanterns=[{x:11,y:5},{x:13,y:9},{x:13,y:13}].map(L=>{
+const lanterns=[{x:11,y:4},{x:13,y:9},{x:13,y:13}].map(L=>{   // (11,4): lampu di mulut jalan depan pintu
   const f=furn({x:L.x,y:L.y,w:1,h:1},14,lanternPaint);FURN.push(f);return f;});
 /* papan info poktan (bisa dibaca — banner memutar pesan) */
 const boardF=furn(NOTICE_RECT,14,(g,w,h)=>{
