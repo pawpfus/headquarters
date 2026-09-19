@@ -138,9 +138,10 @@ const MAP3=[
 /* pepohonan: {x,y,big,seed} — batang jadi solid; `big` = pohon besar (kanopi lebar) */
 const OUT_TREES=[
   {x:1,y:4,big:1,s:1},{x:1,y:12,big:1,s:2},{x:23,y:4,big:1,s:3},{x:23,y:14,big:1,s:4},{x:7,y:16,big:1,s:5},
-  {x:1,y:8,s:6},{x:2,y:7,s:7},{x:1,y:16,s:8},{x:23,y:8,s:9},{x:20,y:6,s:10},{x:23,y:16,s:11},
-  {x:6,y:6,s:12},{x:9,y:8,s:13},{x:14,y:11,s:14},{x:22,y:9,s:15},{x:18,y:12,s:16},{x:13,y:4,s:17},{x:6,y:13,s:18},
-  {x:5,y:5,s:19},{x:9,y:11,s:20},{x:11,y:17,s:21},{x:16,y:16,s:22},{x:4,y:17,s:23},
+  {x:1,y:8,s:6},{x:2,y:7,sap:1,s:7},{x:1,y:16,s:8},{x:23,y:8,s:9},{x:20,y:6,mangga:1,s:10},{x:23,y:16,s:11},
+  {x:6,y:6,mangga:1,s:12},{x:9,y:8,s:13},{x:14,y:11,s:14},{x:22,y:9,s:15},{x:18,y:12,mangga:1,s:16},
+  {x:13,y:4,s:17},{x:6,y:13,s:18},
+  {x:5,y:5,sap:1,s:19},{x:9,y:11,sap:1,s:20},{x:11,y:17,s:21},{x:16,y:16,sap:1,s:22},{x:4,y:17,s:23},
 ];
 /* papan info poktan — objek yang bisa "dibaca" (banner memutar pesan) */
 const NOTICE_RECT={x:14,y:6,w:2,h:1};
@@ -2013,11 +2014,20 @@ const scarecrow=furn({x:11,y:13,w:1,h:1},14,(g,w,h)=>{
 });
 FURN.push(scarecrow);
 /* pepohonan mengisi lapangan (furnitur, urut kedalaman) — kanopi menyesuaikan ukuran kanvas */
-const treePaint=seed=>(g,w,h)=>{
-  const S=SN();                                                      // palet ikut musim
-  const cx=w>>1, tw=Math.max(3,w>>3), ch=h-14;                       // pusat, lebar batang, tinggi kanopi
+const treePaint=(seed,opt)=>(g,w,h)=>{
+  const S=SN(), o=opt||{};                                           // palet ikut musim
+  const th=o.trunk||14;                                              // tinggi batang (anakan lebih pendek)
+  const cx=w>>1, ch=h-th;
+  /* BATANG bervariasi: lebar beda, sedikit miring, berakar mencuat */
+  const tw=Math.max(2,(w>>3)+((seed>>1)%3)-1);
+  const lean=(((seed%5)-2)*0.22);                                    // pangkal bergeser, puncak tetap di kanopi
   P(g,'rgba(0,0,0,.16)',cx-(w>>2),h-3,w>>1,3);                       // bayang akar
-  P(g,'#5a3f28',cx-(tw>>1),h-14,tw,14);P(g,'#6e4f34',cx-(tw>>1),h-14,Math.max(1,tw>>1),14); // batang
+  for(let j=0;j<th;j++){const off=Math.round(lean*j), yy=h-th+j;
+    P(g,'#5a3f28',cx-(tw>>1)+off,yy,tw,1);
+    P(g,'#6e4f34',cx-(tw>>1)+off,yy,Math.max(1,tw>>1),1);}
+  const bo=Math.round(lean*(th-1));                                  // akar mencuat di pangkal
+  P(g,'#5a3f28',cx-(tw>>1)+bo-2,h-2,2,2);P(g,'#5a3f28',cx+(tw>>1)+bo,h-2,2,2);
+  P(g,'#4a3320',cx-(tw>>1)+bo-2,h-1,tw+4,1);
   /* KANOPI: radius berubah menurut sudut, fase diambil dari seed → tiap pohon
      bersiluet membulat tak beraturan dan berbeda satu sama lain (dulu tumpukan persegi) */
   const kx=(w-1)/2, ky=ch/2, phs=seed*1.7;
@@ -2040,16 +2050,44 @@ const treePaint=seed=>(g,w,h)=>{
     const rx=2+((k*97+seed*13)%(w-4)), ry=2+((k*53+seed*7)%(ch-3));
     if(rel(rx,ry,0,0)>0.90)continue;
     P(g,cols[(k+seed)%4],rx,ry,2,2);}
+  /* MANGGA berbuah saat kemarau & musim panen (di luar itu hanya berdaun) */
+  if(o.mangga&&(season===1||season===2)){
+    for(let k=0;k<6;k++){
+      const rx=3+((k*61+seed*29)%(w-6)), ry=4+((k*41+seed*17)%(ch-7));
+      if(rel(rx,ry,0,0)>0.78)continue;
+      P(g,'#2f5a1e',rx+1,ry-1,1,1);                                  // tangkai
+      P(g,'#b4791f',rx,ry,3,4);P(g,'#dda63a',rx,ry,2,3);            // buah
+      P(g,'#f0cf72',rx,ry,1,1);P(g,'#8a5a16',rx+2,ry+3,1,1);}       // kilau + ujung
+  }
 };
 const TREEF=[];
-OUT_TREES.forEach(t=>{                                               // besar: 3-lebar/tinggi · kecil: 2-lebar
-  const rect=t.big?{x:t.x-1,y:t.y,w:3,h:1}:{x:t.x,y:t.y,w:2,h:1};
-  const f=furn(rect,t.big?42:28,treePaint(t.s));
-  FURN.push(f);TREEF.push({f,s:t.s});
+OUT_TREES.forEach(t=>{                    // besar: 3 petak · biasa: 2 petak · anakan: 1 petak & pendek
+  const rect=t.sap?{x:t.x,y:t.y,w:1,h:1}
+            :t.big?{x:t.x-1,y:t.y,w:3,h:1}:{x:t.x,y:t.y,w:2,h:1};
+  const oy=t.sap?14:t.big?42:28;
+  const opt={trunk:t.sap?8:14, mangga:!!t.mangga};
+  const f=furn(rect,oy,treePaint(t.s,opt));
+  FURN.push(f);TREEF.push({f,s:t.s,opt});
 });
 function repaintTrees(){                                             // gambar ulang kanopi saat musim berganti
   for(const T of TREEF){const c=T.f.canvas,g=c.getContext('2d');
-    g.clearRect(0,0,c.width,c.height);treePaint(T.s)(g,c.width,c.height);}
+    g.clearRect(0,0,c.width,c.height);treePaint(T.s,T.opt)(g,c.width,c.height);}
+}
+/* --- F: goyangan angin. Pohon dipanggang ke kanvas (statis), jadi kilau daun
+       digambar per-frame di atasnya supaya kanopi terasa bergerak. --- */
+function drawTreeShimmer(g,t){
+  const S=SN();
+  for(const T of TREEF){
+    const f=T.f, w=f.canvas.width, ch=f.canvas.height-(T.opt.trunk||14);
+    if(ch<8)continue;
+    const sw=Math.round(1.4*Math.sin(t/1500+T.s));                   // hembusan pelan
+    for(let k=0;k<3;k++){
+      const a=0.14+0.16*Math.sin(t/760+k*2.1+T.s); if(a<0.18)continue;
+      const rx=f.px+3+((k*37+T.s*11)%Math.max(1,w-7));
+      const ry=f.py+3+((k*53+T.s*7)%Math.max(1,ch-6));
+      g.globalAlpha=a;P(g,S.hi2,rx+sw,ry,2,1);g.globalAlpha=1;
+    }
+  }
 }
 /* lentera jalan — menyala saat gelap (glow di anims) */
 const lanternPaint=(g,w,h)=>{
@@ -2125,6 +2163,8 @@ const bedKind=b=>{const CS=SN().crops;return CS[b.s%CS.length];};    // jenis ta
 const BED_AT={};for(const b of BED)BED_AT[b.tx+','+b.ty]=b;
 const bedTool={id:'bed',name:'THE FIELD',short:'THE FIELD',color:'#7cc45c',btn:'PANEN &#9656;',
                isBed:true,desc:''};                                  // tanpa subtitle
+const eggTool={id:'egg',name:'TELUR AYAM',short:'TELUR',color:'#efe7d2',btn:'AMBIL &#9656;',
+               isEgg:true,desc:''};
 for(const b of BED)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ // petak di sisi bedengan
   const nx=b.tx+dx,ny=b.ty+dy,k=nx+','+ny;
   if(nx<1||ny<2||nx>=COLS-1||ny>=ROWS-1)continue;
@@ -2164,9 +2204,11 @@ function drawProduce(g,x,y,kind){
   else if(kind===3){   P(g,'#8a3f14',x-4,y-3,8,6);P(g,'#d97a28',x-3,y-3,6,5);   // labu
                        P(g,'#f0973a',x-3,y-3,5,3);P(g,'#ffc46a',x-2,y-2,2,1);
                        P(g,'#5a3f24',x-1,y-5,2,2);P(g,'#4fa03c',x+1,y-5,1,1);}
-  else{                P(g,'#357a2c',x,y-1,1,4);P(g,'#4a6fca',x-2,y-3,5,1);     // bunga Blue Jazz
+  else if(kind===4){   P(g,'#357a2c',x,y-1,1,4);P(g,'#4a6fca',x-2,y-3,5,1);     // bunga Blue Jazz
                        P(g,'#4a6fca',x,y-5,1,5);P(g,'#88a6ef',x-1,y-3,1,1);
                        P(g,'#f2d24a',x,y-3,1,1);}
+  else{                P(g,'#c2b697',x-2,y-4,5,7);P(g,'#efe7d2',x-2,y-4,4,6);   // telur ayam
+                       P(g,'#fbf7ea',x-1,y-4,2,2);P(g,'#d8cdb2',x+1,y,2,2);}
 }
 /* gerakan panen: tanaman melengkung dari bedengan ke tangan dino, lalu diangkat di atas kepala */
 const PICK_DUR=1150;
@@ -2391,20 +2433,55 @@ function drawStepFx(g,t){
 }
 const chickAt=(ch,i,t)=>({x:ch.x0*T+Math.round(5*Math.sin(t/2600+i*2)),
                           y:ch.y0*T+Math.round(3*Math.sin(t/3100+i))});
-function drawChickens(g,t){
+/* --- TELUR: tiap ayam bertelur berkala di tempat ia berdiri, dan BISA DIPUNGUT.
+       Posisi tetap deterministik dari waktu bertelur; hanya status "sudah diambil"
+       yang disimpan, dipangkas sendiri setelah telurnya kedaluwarsa. --- */
+const EGG_LIFE=25000;
+const eggTaken=new Map();
+function eggsNow(t){
+  for(const [k,v] of eggTaken)if(t-v>EGG_LIFE+2000)eggTaken.delete(k);
+  const out=[];
   CHICK.forEach((ch,i)=>{
-    /* telur: tiap ayam bertelur berkala di tempat ia berdiri, telur memudar lalu "diambil" */
-    const per=26000+i*7000, lay=Math.floor(t/per)*per, age=t-lay;
-    if(age<15000){
-      const e=chickAt(ch,i,lay), ex=e.x-1, ey=e.y+5;
-      g.globalAlpha=age>13000?(15000-age)/2000:1;
-      P(g,'rgba(0,0,0,.22)',ex-1,ey+4,5,1);                    // bayangan
-      P(g,'#efe7d2',ex,ey,3,4);P(g,'#efe7d2',ex+1,ey-1,1,1);   // cangkang (puncak membulat)
-      P(g,'#fbf7ea',ex,ey,2,2);P(g,'#d8cdb2',ex+2,ey+2,1,2);   // sorot + sisi gelap
-      g.globalAlpha=1;
-      if(age<700){P(g,'#fff3b0',ex+1,ey-3,1,1);                // kilau sesaat saat baru bertelur
-        P(g,'#fff3b0',ex-2,ey-1,1,1);P(g,'#fff3b0',ex+4,ey-1,1,1);}
-    }
+    const per=26000+i*7000, cyc=Math.floor(t/per), lay=cyc*per, age=t-lay;
+    if(age>=EGG_LIFE)return;
+    const id=i+':'+cyc; if(eggTaken.has(id))return;
+    const e=chickAt(ch,i,lay);
+    out.push({id,x:e.x-1,y:e.y+5,age});
+  });
+  return out;
+}
+function eggNear(t){                                           // telur terdekat dalam jangkauan dino
+  let best=null;
+  for(const e of eggsNow(t)){
+    const d2=(e.x+1-player.x)**2+(e.y+2-player.y)**2;
+    if(d2<=18*18&&(!best||d2<best.d2))best={e,d2};
+  }
+  return best&&best.e;
+}
+function pickEggNear(){
+  const now=performance.now(), e=eggNear(now);
+  if(!e)return false;
+  eggTaken.set(e.id,now);
+  const fx=e.x-player.x, fy=e.y-player.y;                      // dino menoleh ke telur
+  player.dir=Math.abs(fx)>Math.abs(fy)?(fx>0?'right':'left'):(fy>0?'down':'up');
+  player.pick={kind:5,t0:now,fx:e.x+1,fy:e.y+2};
+  beep(990,.05,.05);beep(1480,.08,.05,'square',.06);
+  return true;
+}
+function drawChickens(g,t){
+  for(const e of eggsNow(t)){                                  // telur yang belum dipungut
+    const ex=e.x, ey=e.y;
+    g.globalAlpha=e.age>EGG_LIFE-2000?(EGG_LIFE-e.age)/2000:1;
+    P(g,'rgba(0,0,0,.22)',ex-1,ey+4,5,1);                      // bayangan
+    P(g,'#efe7d2',ex,ey,3,4);P(g,'#efe7d2',ex+1,ey-1,1,1);     // cangkang (puncak membulat)
+    P(g,'#fbf7ea',ex,ey,2,2);P(g,'#d8cdb2',ex+2,ey+2,1,2);     // sorot + sisi gelap
+    g.globalAlpha=1;
+    if(e.age<700){P(g,'#fff3b0',ex+1,ey-3,1,1);                // kilau sesaat saat baru bertelur
+      P(g,'#fff3b0',ex-2,ey-1,1,1);P(g,'#fff3b0',ex+4,ey-1,1,1);}
+    const s=Math.sin(t/430+ex);                                 // kerlip halus: tanda bisa dipungut
+    if(s>0.55){g.globalAlpha=0.35+0.4*s;P(g,'#fff6c0',ex+4,ey-2,1,1);g.globalAlpha=1;}
+  }
+  CHICK.forEach((ch,i)=>{
     const p=chickAt(ch,i,t), x=p.x, y=p.y, pk=Math.sin(t/500+i*3)>0.6?2:0;
     P(g,'rgba(0,0,0,.22)',x-2,y+3,5,1);                     // bayangan
     P(g,ch.c,x-2,y,5,4);P(g,ch.c,x+2,y-2+pk,2,3);           // badan + leher/kepala
@@ -2753,7 +2830,8 @@ function setBanner(tool){
   bKey.textContent=tool.isLift?'[ENTER] UNTUK BERPINDAH LANTAI':
     tool.isPortal?'[ENTER] UNTUK LEWATI PINTU':
     tool.isBoard?'[ENTER] BACA PENGUMUMAN BERIKUTNYA':
-    tool.isBed?'[ENTER] UNTUK MEMANEN':'[ENTER] UNTUK MEMBUKA';
+    tool.isBed?'[ENTER] UNTUK MEMANEN':
+    tool.isEgg?'[ENTER] UNTUK MENGAMBIL':'[ENTER] UNTUK MEMBUKA';
   bSw.style.background=tool.color;bSw.style.color=tool.color;
   banner.classList.add('show');
   beep(520,.05,.03);
@@ -2764,6 +2842,7 @@ function openTool(tool){
   if(tool.isBoard){tool.idx=(tool.idx+1)%tool.msgs.length;tool.desc=tool.msgs[tool.idx]; // baca pengumuman berikutnya
     bDesc.textContent=tool.desc;beep(680,.05,.04);return;}
   if(tool.isBed){harvestNear();return;}                                                  // panen bedengan terdekat
+  if(tool.isEgg){pickEggNear();return;}                                                  // pungut telur ayam
   beep(880,.07,.06);beep(1320,.1,.06,'square',.08);
   setTimeout(()=>{window.location.href=tool.url;},180);
 }
@@ -3046,7 +3125,8 @@ function update(dt){
 
   /* zona interaksi */
   const [tx,ty]=ptile();
-  const z=zoneOf[tx+','+ty]||null;
+  let z=zoneOf[tx+','+ty]||null;
+  if(!z&&floor===2&&eggNear(performance.now()))z=eggTool;   // telur di rumput: tak punya zona tetap
   if(z!==lastZone){lastZone=z;setBanner(z);}
 
   /* kabut perang: petak yang ditempati dino meredup, sisanya menggelap lagi */
@@ -3131,6 +3211,7 @@ function render(t){
     }
   }});
   items.sort((a,b)=>a.y-b.y).forEach(i=>i.draw());
+  if(floor===2)drawTreeShimmer(cx,t);            // kilau daun tertiup angin
   drawPick(cx,t);                                // hasil panen di tangan/atas kepala dino
   if(floor===1)drawDeckRail(cx);                 // railing di depan pemain (dino di balik pagar)
   /* drone kargo antar-panen — digambar setelah pemain (terbang di atas kepala) */
@@ -3279,6 +3360,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
                             skyBucket=-1;tickSky();render(performance.now());},
               season:()=>season,SEASONS,POND,PONDIN,
               BED,bedTool,bedGrow,bedKind,harvestNear,stepFx,
+              eggsNow,eggNear,pickEggNear,eggTool,TREEF,
               daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,
               render:tt=>render(tt===undefined?performance.now():tt),
               step:(n=1,d=1/60)=>{for(let i=0;i<n;i++){update(d);render(performance.now());}}};
