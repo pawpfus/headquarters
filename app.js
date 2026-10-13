@@ -449,12 +449,18 @@ const PETSPR={
   l:PET_LEGS.map(l=>miniCanvas([...PET_TOP,...l],true)),
 };
 
-/* favicon: potret kepala dino saja (crop wajah sprite depan) */
+/* favicon: potret kepala dino saja (crop wajah sprite depan).
+   Dibungkus try KARENA ini murni hiasan: dulu satu elemen <link rel=icon> yang
+   hilang — atau toDataURL yang ditolak — melempar di tingkat modul dan
+   mematikan SELURUH skrip sebelum permainan sempat dibangun. */
 (function(){
-  const c=document.createElement('canvas');c.width=48;c.height=48;
-  const g=c.getContext('2d');g.imageSmoothingEnabled=false;
-  g.drawImage(SPR.down[0],0,0,12,7,0,10,48,28);           // kepala, skala 4x
-  document.querySelector('link[rel=icon]').href=c.toDataURL();
+  try{
+    const c=document.createElement('canvas');c.width=48;c.height=48;
+    const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+    g.drawImage(SPR.down[0],0,0,12,7,0,10,48,28);           // kepala, skala 4x
+    const link=document.querySelector('link[rel=icon]');
+    if(link)link.href=c.toDataURL();
+  }catch(e){}
 })();
 
 /* =========================================================================
@@ -3414,9 +3420,22 @@ const TRACKS=[
    perc:['k','h','h','h','k','h','h','h','k','h','h','h','k','h','h','h']},
 ];
 const music={on:false,track:0,step:0,next:0,timer:null,visT:0,gain:null};
-function ensureAudio(){AC=AC||new (window.AudioContext||window.webkitAudioContext)();
-  if(!music.gain){music.gain=AC.createGain();music.gain.gain.value=.5;music.gain.connect(AC.destination);}
-  if(AC.state==='suspended')AC.resume();}
+/* Audio bisa TIDAK TERSEDIA: sebagian WebView tak punya AudioContext sama
+   sekali, dan sebagian peramban memblokirnya lewat kebijakan. Dulu jukeCycle()
+   memanggil ini tanpa penjaga, jadi satu ketukan jukebox bisa melempar dari
+   dalam handler peristiwa. Sekarang kegagalan dikembalikan sebagai `false`,
+   ditandai sekali supaya tak dicoba terus, dan pemanggilnya berhenti diam-diam:
+   permainan tetap jalan, hanya tanpa suara. */
+let audioMati=false;
+function ensureAudio(){
+  if(audioMati)return false;
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    if(!music.gain){music.gain=AC.createGain();music.gain.gain.value=.5;music.gain.connect(AC.destination);}
+    if(AC.state==='suspended')AC.resume().catch(()=>{});     // resume() bisa menolak → jangan jadi unhandledrejection
+    return true;
+  }catch(e){ audioMati=true; AC=null; music.gain=null; return false; }
+}
 function tone(freq,t,dur,type,vol){if(!freq)return;const o=AC.createOscillator(),g=AC.createGain();
   o.type=type;o.frequency.setValueAtTime(freq,t);
   g.gain.setValueAtTime(.0005,t);g.gain.linearRampToValueAtTime(vol,t+.012);
@@ -3439,7 +3458,8 @@ function musicSched(){if(!AC||!music.on)return;
     const p=tr.perc[s];if(p==='k')kick(t);else if(p==='h')hat(t);
     music.next+=sd;music.step++;
   }}
-function musicStart(){music.on=true;music.step=0;music.next=AC.currentTime+.06;
+function musicStart(){if(!AC)return;
+  music.on=true;music.step=0;music.next=AC.currentTime+.06;
   clearInterval(music.timer);music.timer=setInterval(musicSched,25);musicSched();}
 function musicStop(){music.on=false;clearInterval(music.timer);music.timer=null;}
 /* jeda hanya penjadwalnya — status music.on (dan tampilan HUD) tidak berubah */
@@ -3447,7 +3467,8 @@ function musicPause(){if(music.timer){clearInterval(music.timer);music.timer=nul
 function musicResume(){if(!music.on||music.timer||!AC)return;
   ensureAudio();music.next=AC.currentTime+.06;
   music.timer=setInterval(musicSched,25);musicSched();}
-function jukeCycle(){ensureAudio();
+function jukeCycle(){
+  if(!ensureAudio())return;                                  // tanpa audio: jukebox diam, bukan melempar
   if(!music.on){music.track=0;musicStart();beep(660,.05,.05);}
   else if(music.track<TRACKS.length-1){music.track++;music.step=0;music.next=AC.currentTime+.04;beep(780,.05,.05);}
   else{musicStop();beep(400,.06,.04);}}
