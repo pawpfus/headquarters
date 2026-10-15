@@ -787,10 +787,37 @@ buildBG();
 /* =========================================================================
    FURNITUR — kanvas statis + overlay animasi, digambar urut kedalaman
    ========================================================================= */
+/* --- GARIS LUAR SILUET ---------------------------------------------------
+   Dikerjakan SETELAH objek dicat: tiap piksel pekat yang bersinggungan dengan
+   kekosongan digelapkan ke arah ungu-abu hangat. Inilah cara pixel art
+   memisahkan benda dari latarnya, dan mengerjakannya terpusat di sini membuat
+   SEMUA perabot dapat perlakuan yang sama. Sebelumnya tiap fungsi cat
+   menggambar tepinya sendiri dan hasilnya timpang: pohon 88% tergariskan,
+   tungku tempa cuma 13%.
+   Warnanya DICAMPUR, bukan ditimpa, supaya warna asli bendanya tetap terbaca.
+   Ambang 200 membuat bayangan kontak dan pendar yang memang semi-tembus tidak
+   ikut digariskan — yang digariskan hanya badan bendanya. */
+function outlineSilhouette(g,w,h,kuat=0.52){
+  const img=g.getImageData(0,0,w,h), d=img.data;
+  const pekat=(x,y)=>(x<0||y<0||x>=w||y>=h)?0:d[(y*w+x)*4+3];
+  const tepi=[];
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+    const i=(y*w+x)*4; if(d[i+3]<200)continue;
+    if(pekat(x-1,y)<200||pekat(x+1,y)<200||pekat(x,y-1)<200||pekat(x,y+1)<200)tepi.push(i);
+  }
+  for(const i of tepi){
+    d[i]  =Math.round(d[i]  *(1-kuat)+36*kuat);
+    d[i+1]=Math.round(d[i+1]*(1-kuat)+31*kuat);
+    d[i+2]=Math.round(d[i+2]*(1-kuat)+48*kuat);
+  }
+  g.putImageData(img,0,0);
+}
 function furn(rect,oy,paint){
   const c=document.createElement('canvas');
   c.width=rect.w*T;c.height=rect.h*T+oy;
-  paint(c.getContext('2d'),c.width,c.height);
+  const g=c.getContext('2d');
+  paint(g,c.width,c.height);
+  outlineSilhouette(g,c.width,c.height);
   return {rect,oy,canvas:c,px:rect.x*T,py:rect.y*T-oy,baseY:(rect.y+rect.h)*T,paint};
 }
 /* --- MUSIM DI DALAM GEDUNG --------------------------------------------------
@@ -805,6 +832,7 @@ function repaintSeasonal(){
     const c=f.canvas,g=c.getContext('2d');
     g.clearRect(0,0,c.width,c.height);
     f.paint(g,c.width,c.height);
+    outlineSilhouette(g,c.width,c.height);
   }
 }
 let anims=[];     // {fn(g,t)} digambar tiap frame di atas furnitur (ditukar per lantai)
@@ -1323,7 +1351,7 @@ const tires=furn({x:15,y:16,w:1,h:1},6,(g,w,h)=>{           // tumpukan ban
     P(g,'#25252d',2,yy,12,1);                                 // punggung kena cahaya
     P(g,'#1a1a1f',3,yy+1,10,3);
     P(g,'#08080b',4,yy+2,8,2);P(g,'#33333c',4,yy+2,8,1);      // lubang velg
-    for(let x=3;x<13;x+=3)P(g,'#2e2e37',x,yy,1,1);}           // kembang ban
+    for(let x=3;x<12;x+=3)P(g,'#2e2e37',x,yy,2,1);}           // kembang ban (2 px, bukan bintik)
 });
 /* --- jukebox (lounge, samping sofa) --- */
 const jukebox=furn({x:4,y:16,w:1,h:1},14,(g,w,h)=>{          // h=30
@@ -1998,7 +2026,9 @@ const arsipPaint=seed=>(g,w,h)=>{
     P(g,'#14171d',2,y,w-4,6);                                  // rongga rak
     for(let x=3,k=0;x<w-4;x+=3,k++){
       const c=ORD2[(rnd(seed*31+x,r*17+k)>>>4)%ORD2.length], C=ramp(c);
-      P(g,C.base,x,y+1,2,4);P(g,C.hi,x,y+1,1,4);P(g,C.lo,x+1,y+4,1,1); // punggung + sisi terang
+      /* Kaki punggung dibuat selebar 2 px. Dulu 1x1 dan berdiri sendiri di
+         antara warna lain, jadi terbaca sebagai kotoran, bukan bentuk. */
+      P(g,C.base,x,y+1,2,4);P(g,C.hi,x,y+1,1,4);P(g,C.lo,x,y+4,2,1);   // punggung + sisi terang
     }
     P(g,'rgba(215,220,228,.13)',3,y+3,w-7,1);                  // pita label indeks
     P(g,'rgba(0,0,0,.40)',2,y,w-4,1);                          // bayangan dalam rongga
@@ -2017,12 +2047,17 @@ const bukuPaint=seed=>(g,w,h)=>{
   for(let r=0;r<4;r++){
     const y=3+r*7;
     P(g,'#14171d',2,y,w-4,6);                                  // rongga rak
-    for(let x=2;x<w-2;x++){                                    // satu punggung buku per kolom (rapat)
+    /* Punggung buku dibuat 2 px. Selebar 1 px, tiap piksel berbeda dari kedua
+       tetangganya dan rak ini terukur 27% piksel yatim — terbaca sebagai derau,
+       bukan deretan buku. 2 px memberinya sisi terang dan sisi bayang. */
+    for(let x=2;x<w-3;x+=2){
       const c=BUKU[(rnd(seed*97+x*7,r*29+13)>>>2)%BUKU.length], C=ramp(c);
       const tall=(rnd(seed*13+x,r*7)>>>3)%3;                     // tinggi buku sedikit beragam
-      P(g,C.base,x,y+1+(tall===0?1:0),1,4-(tall===0?1:0));
-      P(g,C.hi,x,y+1+(tall===0?1:0),1,1);                       // kepala punggung kena cahaya
-      if(tall===2)P(g,C.lo,x,y+4,1,1);
+      const top=y+1+(tall===0?1:0), hh=4-(tall===0?1:0);
+      P(g,C.base,x,top,2,hh);
+      P(g,C.hi,x,top,1,hh);                                      // sisi kiri kena cahaya
+      P(g,C.lo,x+1,top,1,hh);                                    // sisi kanan membayang
+      P(g,C.hi,x,top,2,1);                                       // kepala punggung
     }
     P(g,'rgba(0,0,0,.40)',2,y,w-4,1);                          // bayangan atas rongga
     P(g,'rgba(215,220,228,.12)',3,y+3,w-7,1);                  // pita label indeks
@@ -2555,7 +2590,8 @@ OUT_TREES.forEach(t=>{                    // besar: 3 petak · biasa: 2 petak ·
 });
 function repaintTrees(){                                             // gambar ulang kanopi saat musim berganti
   for(const T of TREEF){const c=T.f.canvas,g=c.getContext('2d');
-    g.clearRect(0,0,c.width,c.height);treePaint(T.s,T.opt)(g,c.width,c.height);}
+    g.clearRect(0,0,c.width,c.height);treePaint(T.s,T.opt)(g,c.width,c.height);
+    outlineSilhouette(g,c.width,c.height);}
 }
 /* --- F: goyangan angin. Pohon dipanggang ke kanvas (statis), jadi kilau daun
        digambar per-frame di atasnya supaya kanopi terasa bergerak. --- */
