@@ -33,7 +33,9 @@
 
   /* ---------- panggung ---------- */
   #stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;}
-  #game{image-rendering:pixelated;image-rendering:crisp-edges;
+  /* touch-action:none — tanpa ini ketukan beruntun di kanvas terbaca sebagai
+     ketuk-ganda dan peramban menunda atau menelan pointerdown-nya. */
+  #game{image-rendering:pixelated;image-rendering:crisp-edges;touch-action:none;
     box-shadow:0 0 0 2px #1c2430,0 0 60px rgba(40,160,220,.18),0 24px 80px rgba(0,0,0,.6);
     background:#000;cursor:pointer;}
   /* scanline + vignette */

@@ -3313,7 +3313,7 @@ function diveStart(){
   dive.lawan=null;
   dive.ikan=[];for(let i=0;i<9;i++)dive.ikan.push(diveIkanBaru());
   keys.clear();banner.classList.remove('show');
-  diveTombol('ROLL');
+  diveTombol('ROLL');diveAnalog(true);
   beep(520,.09,.05,'sine');beep(330,.16,.05,'sine',.08);
 }
 /* Tombol kiri berganti tugas selama menyelam. Dicari saat dipakai, bukan
@@ -3321,6 +3321,13 @@ function diveStart(){
 function diveTombol(teks){
   const b=document.getElementById('btnJump');
   if(b)b.textContent=teks;
+}
+/* Analog dipadamkan selama battle: ia tak dipakai di sana, dan di layar kecil
+   ia menutupi bar-nya. display='' mengembalikannya ke aturan CSS, bukan
+   memaksanya tampil — di desktop ia memang harus tetap tersembunyi. */
+function diveAnalog(tampak){
+  const st=document.getElementById('stick');
+  if(st)st.style.display=tampak?'':'none';
 }
 function diveKabur(f,pesan){
   f.mode='kabur';f.waspadaT=3.0;
@@ -3332,6 +3339,7 @@ function diveKabur(f,pesan){
 const lawanLebar=L=>LAWAN_H0+(LAWAN_H1-LAWAN_H0)*(L.kena/L.perlu);
 function diveLawanMulai(f){
   dive.fase='lawan';dive.ft=0;
+  diveTombol('HIT');diveAnalog(false);        // analog menutupi bar di layar kecil
   dive.lawan={sp:f.sp,ikan:f,perlu:f.sp.lawan,kena:0,luput:0,
               laju:0.86+0.06*f.sp.lawan,          // jenis yang lebih berharga menyapu lebih cepat
               pos:0.5,arah:Math.random()<0.5?-1:1,kilatT:0,gagalT:0};
@@ -3342,12 +3350,13 @@ function diveLawanTekan(){
   if(Math.abs(L.pos-0.5)<=lawanLebar(L)/2){
     L.kena++;L.kilatT=0.22;
     beep(720+L.kena*120,.05,.045,'square');
-    if(L.kena>=L.perlu){const sp=L.sp;dive.lawan=null;diveSelesai(sp,'DAPAT');}
+    if(L.kena>=L.perlu){const sp=L.sp;dive.lawan=null;diveAnalog(true);diveSelesai(sp,'DAPAT');}
   }else{
     L.luput++;L.gagalT=0.30;
     beep(170,.12,.05,'sine');
     if(L.luput>=LAWAN_LUPUT){                     // senar kendur, ikan lepas
       const f=L.ikan;dive.lawan=null;dive.fase='main';dive.ft=0;dive.gigit=null;
+      diveTombol('ROLL');diveAnalog(true);
       diveKabur(f,'LEPAS');
     }
   }
@@ -3392,7 +3401,7 @@ function diveUpdate(dt){
        tanpa menihilkan activeTool, setBanner() keluar lebih awal dan ajakan
        "[ENTER] UNTUK MEMANCING" tak pernah kembali. */
     activeTool=null;lastZone=null;keys.clear();
-    diveTombol('JUMP');
+    diveTombol('JUMP');diveAnalog(true);
     return;
   }
   if(dive.fase==='lawan'){
@@ -4240,10 +4249,16 @@ document.getElementById('btnJump').addEventListener('pointerdown',e=>{
 
 /* lompat */
 function doJump(){
-  /* Tombol LOMPAT jadi GULUNG di bawah air, bukan tarik: di layar sentuh ini
-     satu-satunya tombol yang tersisa, dan tanpa jalan keluar pemain terkunci
-     sampai umpannya habis. Menarik tetap lewat ketukan di air. */
-  if(dive.on){diveSelesai(null,'DIGULUNG');return;}
+  /* Tombol kiri berganti tugas tiga kali: LOMPAT di dunia atas, ROLL saat
+     menuntun umpan (tanpa itu pemain ponsel terkunci sampai umpannya habis,
+     karena ESC tak ada di sana), dan HIT saat battle.
+     HIT, bukan ROLL, karena ibu jari menekan cepat di dekat tombol itu dan
+     menggulung senar tak sengaja di tengah pertarungan berarti ikannya hilang. */
+  if(dive.on){
+    if(dive.fase==='lawan')diveTarik();
+    else diveSelesai(null,'DIGULUNG');
+    return;
+  }
   if(player.sitting){standUp();return;}
   if(player.jumpT>0)return;
   player.jumpT=JUMP_DUR;
@@ -4252,7 +4267,7 @@ function doJump(){
 
 /* ketuk kanvas: menuju meja / berjalan ke titik */
 cv.addEventListener('pointerdown',e=>{
-  if(dive.on){diveTarik();return;}        // layar sentuh: ketuk air untuk menarik
+  if(dive.on){e.preventDefault();diveTarik();return;}   // ketuk air = tarik/pukul
   const r=cv.getBoundingClientRect();
   const mx=(e.clientX-r.left)/r.width*cv.width+cam.x, my=(e.clientY-r.top)/r.height*cv.height+cam.y;
   const tx=Math.floor(mx/T),ty=Math.floor(my/T);
