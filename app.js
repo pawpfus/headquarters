@@ -70,7 +70,7 @@ const DECOR_SOLID=[
   {x:7, y:16,w:1,h:1},{x:1, y:4, w:1,h:1},                      // lampu lantai, dispenser air
   {x:1, y:12,w:1,h:1},{x:9, y:6, w:1,h:1},                      // peti, loker
   {x:4,y:13,w:4,h:1},                                          // partisi separator lounge (celah masuk di kanan) — lift kini menempel dinding (row 1, sudah solid)
-  {x:2,y:9, w:6,h:1},                                          // partisi pemisah EVIDENCE (atas) ↔ lounge (bawah), celah di kanan (kolom 8-9)
+  {x:2,y:9, w:6,h:1},                                          // rak pembibitan: pemisah EVIDENCE (atas) ↔ lounge (bawah), celah di kanan (kolom 8-9)
   {x:23,y:4, w:1,h:1},{x:17,y:7, w:1,h:1},                     // rak data, tanaman (kanan-atas)
   {x:17,y:5, w:1,h:1},{x:21,y:5, w:1,h:1},{x:18,y:6, w:3,h:1}, // kursi rapat (ujung + sisi depan)
   {x:23,y:10,w:1,h:1},{x:15,y:10,w:1,h:1},{x:15,y:16,w:1,h:1}, // rak besi, tabung, ban (kanan-bawah)
@@ -746,7 +746,7 @@ function buildBG(){
     P(g,'rgba(255,222,150,.09)',6*T+4,14*T+2,3*T-2,3*T-6);            // cahaya hangat lampu
     P(g,'rgba(255,222,150,.06)',6*T,14*T,4*T-2,3*T-2);
   })();
-  /* (bekas planning bay dikosongkan — kini dipisah tembok partisi row 9, lihat divider2) */
+  /* (bekas planning bay dikosongkan — kini dipisah rak pembibitan row 9, lihat semaiRak) */
   /* ventilasi besar (dinding kanan-atas) */
   P(g,'#10141c',21*T+2,8*T+3,24,8);
   for(let i=0;i<5;i++)P(g,'#39414f',21*T+5+i*4,8*T+4,2,6);            // kisi ventilasi
@@ -1317,9 +1317,96 @@ const partPaint=(g,w,h)=>{
 };
 const divider=furn({x:4,y:13,w:4,h:1},10,partPaint);
 FURN.push(divider);
-/* partisi kedua — memisahkan zona EVIDENCE (atas) dari lounge (bawah), celah masuk di kanan (kolom 8-9) */
-const divider2=furn({x:2,y:9,w:6,h:1},10,partPaint);
-FURN.push(divider2);
+/* --- RAK PEMBIBITAN (baris 9) --------------------------------------------
+   Dulu di sini berdiri partisi kaca kedua. Masalahnya bukan bentuknya: ia
+   memisahkan dua ruang yang SAMA-SAMA KOSONG, jadi terbaca sebagai bidang
+   menggantung tanpa pekerjaan. Bangku semai memikul tugas yang persis sama —
+   jejak padatnya tidak berubah sedikit pun, celah lewat tetap di kolom 8-9 —
+   tapi ia perabot yang punya alasan berdiri, dan tepat untuk kantor penyuluh.
+
+   Dibuat berbeda dari rak hidroponik di lorong dengan sengaja: hidroponik itu
+   rak TEGAK, empat tanaman berbeda yang tumbuh sendiri-sendiri dan dianimasi.
+   Ini bangku MENDATAR, puluhan semai seragam dalam tray sel. Dua benda yang
+   tak akan tertukar walau sekilas.
+
+   Tiga tray lalu satu karung media: pengulangan membangun polanya, satu
+   patahan di ujung menghidupkannya. Didaftarkan lewat seasonal(), jadi isinya
+   bercerita sepanjang tahun. */
+const TRAYX=[8,30,52];                                        // tiga tray, lebar 20
+/* tinggi semai & kerapatannya per musim — urut SEASONS */
+const SEMAI=[{t:3,penuh:1},   // SEMI      : tunas muda sudah serempak
+             {t:5,penuh:1},   // KEMARAU   : siap tanam, paling rimbun
+             {t:4,penuh:0},   // GUGUR     : sebagian sudah diangkat ke lapangan
+             {t:1,penuh:1}];  // PERALIHAN : baru disemai, hampir semua masih tanah
+const semaiPaint=(g,w,h)=>{
+  const S=SN(), M=SEMAI[season], Rk=ramp('#3d4657'), Tr=ramp('#262a33');
+  contact(g,2,h-3,w-4);
+
+  /* --- batang lampu tumbuh, digantung pada dua tiang --- */
+  P(g,Rk.out,2,0,w-4,4);
+  P(g,Rk.base,3,1,w-6,2);P(g,Rk.hi,3,1,w-6,1);                // rangka + tepi atas kena cahaya
+  P(g,'#c9a0f0',4,3,w-8,1);                                   // muka lampu menyala
+  for(const px of [4,w-6]){
+    P(g,Rk.base,px,4,2,12);P(g,Rk.hi,px,4,1,12);              // tiang turun ke papan
+  }
+
+  /* --- kolong: kaki + tray kosong ditumpuk di lantai --- */
+  for(const lx of [5,46,w-8]){
+    P(g,Rk.lo,lx,19,3,8);P(g,'#1b2029',lx,19,1,8);            // kaki + sisi membayang
+  }
+  for(const sx of [16,58]){                                   // tiga tray kosong, dilihat dari sisinya
+    for(let k=0;k<3;k++){const yy=21+k*2;
+      P(g,Tr.base,sx,yy,14,2);P(g,Tr.hi,sx,yy,14,1);P(g,Tr.lo,sx,yy+1,14,1);}
+  }
+
+  /* --- papan bangku --- */
+  P(g,Rk.out,1,15,w-2,4);
+  P(g,Rk.base,2,16,w-4,2);P(g,Rk.hi,2,16,w-4,1);P(g,Rk.lo,2,18,w-4,1);
+
+  /* --- tray sel + semainya --- */
+  for(const tx of TRAYX){
+    P(g,Tr.out,tx,11,20,5);                                   // badan tray
+    P(g,Tr.base,tx+1,12,18,3);P(g,Tr.hi,tx+1,12,18,1);
+    P(g,'#2a1c12',tx+2,13,16,2);P(g,'#3a2817',tx+2,13,16,1);  // media semai + permukaannya
+    P(g,Tr.lo,tx+1,15,18,1);
+    for(let c=0;c<4;c++){
+      const cx=tx+3+c*4;                                      // satu semai per sel, rumpunnya 2 px
+      P(g,Tr.lo,cx-1,12,1,3);                                 // sekat sel
+      if(!M.penuh&&(rnd(tx+c*13,season*7+3)>>>2)%3===0)continue;  // gugur: sel yang sudah diangkat
+      const th=M.t+((rnd(tx+c*7,season*11)>>>3)%2);
+      P(g,S.mid,cx,13-th,2,th);                               // rumpun
+      P(g,S.hi,cx,13-th,2,1);                                 // pucuk kena cahaya
+      if(th>=5)P(g,S.hi2,cx,13-th,2,1);                       // paling tinggi: pucuknya paling muda
+      if(th>=3){P(g,S.hi,cx-1,14-th,1,2);P(g,S.hi,cx+2,15-th,1,2);} // sepasang daun
+    }
+  }
+
+  /* --- karung media tanam di ujung kanan: satu patahan dari pola tray --- */
+  /* Terang-gelapnya dipasang TEGAK, bukan sebagai pita mendatar. Pita mendatar
+     terbaca sebagai bilah peti; sisi terang-bayang yang tegak membuatnya
+     terbaca sebagai karung yang menggembung. Mulutnya dibuat lebih sempit
+     dari badannya, karena itulah yang membedakan karung terbuka dari kotak. */
+  const Kr=ramp('#8a7448');
+  P(g,Kr.out,75,7,12,9);
+  P(g,Kr.base,76,8,10,7);P(g,Kr.hi,76,8,3,7);P(g,Kr.lo,84,9,2,6);
+  P(g,Kr.out,78,7,6,2);P(g,Kr.hi,79,7,4,1);                   // bibir mulut karung
+  P(g,'#2a1c12',79,8,4,1);                                    // media tanam kelihatan di dalamnya
+  P(g,Kr.lo,76,14,10,1);                                      // dasar menapak papan
+
+  /* Pendar lampu: dua pita yang melebar sambil memudar, bukan satu hamparan
+     rata — hamparan beralfa tunggal punya tepi bawah lurus selebar benda, dan
+     itu terbaca sebagai PANEL ungu, bukan cahaya yang jatuh.
+     Pitanya BERHENTI di udara kosong dan tidak menyelimuti semai, tray, atau
+     karungnya. Alasannya terukur: tiap pita tembus pandang melahirkan satu
+     warna campuran BARU untuk setiap warna yang dilewatinya, dan versi
+     bertiga-pita-selebar-benda membengkak jadi 55 warna — padahal partisi kaca
+     di sebelahnya 17 dan rak hidroponik 21. Cahaya yang jatuh ke tanaman
+     DICAT (pucuk S.hi / S.hi2 di atas), tidak ditimpakan. */
+  P(g,'rgba(160,90,224,.17)',5,4,w-10,2);
+  P(g,'rgba(160,90,224,.10)',4,6,w-8,2);
+};
+const semaiRak=seasonal(furn({x:2,y:9,w:6,h:1},14,semaiPaint));
+FURN.push(semaiRak);
 /* --- pengisi kamar kanan-atas (pelaporan) --- */
 const rackC=furn({x:23,y:4,w:1,h:1},4,g=>{rackPaint(g);});   // rak data (dinding kanan)
 const potRA=seasonal(furn({x:17,y:7,w:1,h:1},4,potPaint));             // tanaman sudut
