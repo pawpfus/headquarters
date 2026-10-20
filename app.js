@@ -3374,20 +3374,35 @@ function diveKabur(f,pesan){
 /* Lebar zona hijau pada hitungan kena ke-n. Dipakai saat menggambar DAN saat
    memeriksa tekanan, supaya yang dilihat pemain persis yang dihitung. */
 const lawanLebar=L=>LAWAN_H0+(LAWAN_H1-LAWAN_H0)*(L.kena/L.perlu);
+/* Letak zona hijau diundi ulang tiap kali kena. Dijaga dua hal: tepinya tidak
+   menempel ujung bar (di ujung penanda berbalik arah, jadi waktu yang dihabiskan
+   di sana tidak sama dengan di tengah), dan pusat barunya melompat minimal
+   seperempat bar dari yang lama — tanpa itu undian sering jatuh dekat tempat
+   semula dan perpindahannya tak terasa. */
+function lawanUndi(L){
+  const lb=lawanLebar(L), tepi=lb/2+0.05, lama=L.pusat;
+  for(let c=0;c<24;c++){
+    const u=tepi+Math.random()*(1-tepi*2);
+    if(lama===undefined||Math.abs(u-lama)>=0.25){L.pusat=u;return;}
+  }
+  L.pusat=lama===undefined?0.5:(lama<0.5?1-tepi:tepi);
+}
 function diveLawanMulai(f){
   dive.fase='lawan';dive.ft=0;
   diveTombol('HIT');diveAnalog(false);        // analog menutupi bar di layar kecil
   dive.lawan={sp:f.sp,ikan:f,perlu:f.sp.lawan,kena:0,luput:0,
               laju:0.86+0.06*f.sp.lawan,          // jenis yang lebih berharga menyapu lebih cepat
-              pos:0.5,arah:Math.random()<0.5?-1:1,kilatT:0,gagalT:0};
+              pos:0.5,arah:Math.random()<0.5?-1:1,kilatT:0,gagalT:0,pusat:undefined};
+  lawanUndi(dive.lawan);
   beep(620,.07,.05,'square');beep(420,.1,.045,'square',.06);
 }
 function diveLawanTekan(){
   const L=dive.lawan; if(!L)return;
-  if(Math.abs(L.pos-0.5)<=lawanLebar(L)/2){
+  if(Math.abs(L.pos-L.pusat)<=lawanLebar(L)/2){
     L.kena++;L.kilatT=0.22;
     beep(720+L.kena*120,.05,.045,'square');
-    if(L.kena>=L.perlu){const sp=L.sp;dive.lawan=null;diveAnalog(true);diveSelesai(sp,'DAPAT');}
+    if(L.kena>=L.perlu){diveAngkatMulai(L.sp,L.ikan);return;}
+    lawanUndi(L);                                 // zona pindah tiap kali kena
   }else{
     L.luput++;L.gagalT=0.30;
     beep(170,.12,.05,'sine');
@@ -3397,6 +3412,20 @@ function diveLawanTekan(){
       diveKabur(f,'LEPAS');
     }
   }
+}
+/* --- ANGKAT: ikan diseret ke permukaan di ujung senar --------------------
+   Dulu battle yang dimenangkan langsung disambut tirai, jadi hadiahnya baru
+   terlihat setelah layar berganti. Satu detik ini mengisi jarak itu: ikannya
+   naik sambil meronta, memecah permukaan, lalu barulah layar berpindah. */
+const ANGKAT_DUR=1.0;
+function diveAngkatMulai(sp,f){
+  dive.fase='angkat';dive.ft=0;
+  dive.lawan=null;dive.gigit=null;
+  dive.angkat={sp:sp,x0:dive.bx,y0:dive.by};
+  diveTombol('ROLL');diveAnalog(true);
+  for(const o of dive.ikan)                       // yang lain kabur dari keriuhan
+    if(o!==f&&Math.hypot(dive.bx-o.x,dive.by-o.y)<64)o.mode='kabur';
+  beep(300,.09,.05,'sine');beep(420,.09,.05,'sine',.07);beep(560,.12,.05,'sine',.15);
 }
 function diveTarik(){
   if(!dive.on)return;
@@ -3439,6 +3468,21 @@ function diveUpdate(dt){
        "[ENTER] UNTUK MEMANCING" tak pernah kembali. */
     activeTool=null;lastZone=null;keys.clear();
     diveTombol('JUMP');diveAnalog(true);
+    return;
+  }
+  if(dive.fase==='angkat'){
+    const A=dive.angkat;
+    if(!A){diveSelesai(null,'');return;}
+    for(const f of dive.ikan){                    // kolam tetap hidup
+      f.fase+=dt*5;
+      f.x+=f.dir*f.sp.laju*(f.mode==='kabur'?2.2:1)*dt;
+      if(f.mode!=='kabur'){
+        f.y+=Math.sin(dive.t*1.5+f.fase)*6*dt;
+        if(f.x<8){f.x=8;f.dir=1;}else if(f.x>W2-8){f.x=W2-8;f.dir=-1;}
+      }
+    }
+    if(dive.kedipT>0)dive.kedipT-=dt;
+    if(dive.ft>=ANGKAT_DUR)diveSelesai(A.sp,'DAPAT');
     return;
   }
   if(dive.fase==='lawan'){
@@ -3677,8 +3721,11 @@ function diveDraw(g,t){
         g.fillRect(Math.round(dive.bx+Math.cos(an)*r),Math.round(dive.by+Math.sin(an)*r*0.6),1,1);}
     }
   }
-  /* --- senar & umpan --- */
+  /* --- senar & umpan. Selama fase angkat keduanya dilewati: senar dan ikan
+     digambar oleh blok ANGKAT di bawah, dan dua senar sekaligus di layar
+     terbaca sebagai kesalahan gambar. --- */
   const bx=Math.round(dive.bx), by=Math.round(dive.by);
+  if(dive.fase!=='angkat'){
   const nseg=Math.max(2,Math.round(Math.hypot(bx-tx0,by-ty0)/3));
   g.globalAlpha=.5;g.fillStyle='#cfe0ee';
   for(let i=1;i<nseg;i++){const k=i/nseg;
@@ -3699,6 +3746,7 @@ function diveDraw(g,t){
   P(g,'#7a2414',bx-4,by-3,5,5);                                // garis luar cacing
   P(g,'#d4512f',bx-4,by-3,4,4);P(g,'#f2855f',bx-4,by-3,2,2);   // badan + sisi tersinari
   P(g,'#ffd0b0',bx-4,by-3,1,1);
+  }
   /* --- RUMPUT DEPAN: digambar SETELAH ikan, jadi ikan bisa lewat di
      belakangnya. Satu lapis di depan kamera inilah yang mengubah layar dari
      "gambar datar" jadi "ruang yang punya jarak". --- */
@@ -3722,6 +3770,34 @@ function diveDraw(g,t){
   g.fillStyle='rgba(6,12,18,.78)';g.fillRect(8,4,barW,5);
   g.fillStyle=kedip?'#ffd23a':(k2<0.25?'#e0552f':'#4ce0ff');
   g.fillRect(9,5,Math.round((barW-2)*k2),3);
+  /* --- IKAN DIANGKAT ---------------------------------------------------- */
+  if(dive.fase==='angkat'&&dive.angkat){
+    const A=dive.angkat, k=Math.min(1,dive.ft/ANGKAT_DUR);
+    const e=k*k*(3-2*k);                                       // pelan-cepat-pelan
+    const fx=Math.round(A.x0+(tx0-A.x0)*e), fy=Math.round(A.y0+((SURF-7)-A.y0)*e);
+    const nk=Math.max(2,Math.round(Math.hypot(fx-tx0,fy-ty0)/3));
+    g.globalAlpha=.55;g.fillStyle='#cfe0ee';                   // senar ikut memendek
+    for(let i=1;i<nk;i++){const q=i/nk;
+      g.fillRect(Math.round(tx0+(fx-tx0)*q),Math.round(ty0+(fy-ty0)*q),1,1);}
+    g.globalAlpha=1;
+    for(let i=0;i<5;i++){                                      // jejak gelembung di bawahnya
+      const q=(i+1)/6, by2=fy+Math.round((A.y0-fy)*q*0.8);
+      if(by2>SURF+2){g.fillStyle='rgba(205,238,248,'+(0.30*(1-q)).toFixed(2)+')';
+        g.fillRect(fx+((i%2)?2:-2),by2,1,1);}
+    }
+    /* meronta: digoyang, lalu dimiringkan moncong ke atas saat mendekat */
+    g.setTransform(1,0,0,1,0,0);
+    g.translate(fx+Math.round(Math.sin(t/38)*2),fy);
+    g.rotate(-0.62*e);
+    drawIkan(g,0,0,A.sp,1,dive.ft*16);
+    g.setTransform(1,0,0,1,0,0);
+    if(fy<=SURF+5){                                            // permukaan pecah
+      const r=2+(1-(fy-(SURF-7))/12)*22;
+      g.fillStyle='rgba(225,245,252,.5)';
+      for(let i=0;i<10;i++){const an=i/10*6.283;
+        g.fillRect(Math.round(fx+Math.cos(an)*r),Math.round(SURF+Math.sin(an)*r*0.35),1,1);}
+    }
+  }
   /* --- BAR LAWAN ---------------------------------------------------------
      Panel hasil tangkapan dulu berdiri di sini. Dibuang: ia menutupi persis
      momen yang jadi hadiahnya — ikan yang terangkat di atas kepala dino begitu
@@ -3734,7 +3810,7 @@ function diveDraw(g,t){
     P(g,'#7a2420',bx0,by0,bw,bh);P(g,'#a33228',bx0,by0,bw,1);  // bidang merah
     P(g,'#541715',bx0,by0+bh-1,bw,1);
     const gw=Math.max(3,Math.round(bw*lawanLebar(L)));         // zona hijau menyempit
-    const gx=Math.round(bx0+(bw-gw)/2);
+    const gx=Math.round(bx0+(L.pusat-lawanLebar(L)/2)*bw);     // ...dan berpindah tiap kena
     P(g,'#1d6a2e',gx,by0,gw,bh);
     P(g,'#4fd468',gx,by0,gw,1);P(g,'#35a84a',gx,by0+1,gw,1);
     P(g,'#144a20',gx,by0+bh-1,gw,1);
