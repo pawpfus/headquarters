@@ -2855,7 +2855,7 @@ IKAN.forEach(sp=>{sp.hi=ramp(sp.c).hi;sp.tinggi=Math.max(...sp.hb);});
 /* Kibasan dikerjakan dengan MENGGESER ekor 1 px, badannya diam. Itu cukup
    untuk terbaca sebagai berenang, dan jauh lebih murah daripada menyiapkan
    beberapa frame sprite untuk lima jenis ikan. */
-function drawIkan(g,cx,cy,sp,dir,fase){
+function ikanCat(g,cx,cy,sp,dir,kib){
   const hb=sp.hb, n=hb.length, sg=dir<0?-1:1;
   /* +1,5 kolom: ekor digambar di indeks -3..-1, jadi tanpa geseran ini titik
      tengah jatuh di tengah BADAN, bukan di tengah siluet — ikannya terlihat
@@ -2863,7 +2863,6 @@ function drawIkan(g,cx,cy,sp,dir,fase){
   const col=i=>Math.round(cx+sg*(i-(n-1)/2+1.5));
   const seg=(i0,i1,y,h,c)=>{const a=col(i0),b=col(i1);
     P(g,c,Math.min(a,b),y,Math.abs(b-a)+1,h);};
-  const kib=fase===undefined?0:Math.sin(fase)*1.5;
   for(let k=1;k<=3;k++){                                   // ekor mengembang di belakang pangkal
     const hh=hb[0]+k;
     P(g,sp.d,col(-k),Math.round(cy-hh+kib*k/3),1,hh*2);
@@ -2885,6 +2884,44 @@ function drawIkan(g,cx,cy,sp,dir,fase){
     P(g,sp.d,col(n-1)+sg,cy-1,1,1);P(g,sp.d,col(n-1)+sg*2,cy-2,1,1);
   }
   P(g,'#0e1a22',col(n-2),cy-1,1,1);P(g,'#eaf2f7',col(n-2),cy-2,1,1);  // mata + kilaunya
+}
+/* Empat fase kibasan, dipanggang sekali lalu disimpan. 5 jenis x 2 arah x 4
+   fase = 40 kanvas kecil, semuanya di bawah 24x24 — dibangun saat pertama
+   dipakai, bukan saat muat halaman. */
+const KIBAS=[0,1.5,0,-1.5];
+const IKAN_SPR=new Map();
+/* Piksel TERATAS tiap kolom dicerahkan ke arah biru pucat: cahaya datang dari
+   permukaan. Tanpa ini ikan cuma punya cincin gelap di atas air gelap, dan di
+   pita terdalam lele praktis lenyap — diuji berdampingan, garis luar saja
+   tidak memisahkan apa-apa. Teknik yang sama dipakai sprite dino sejak v1.77.0. */
+function rimAtas(g,w,h){
+  const img=g.getImageData(0,0,w,h), d=img.data;
+  for(let x=0;x<w;x++)for(let y=0;y<h;y++){
+    const i=(y*w+x)*4;
+    if(d[i+3]<200)continue;
+    d[i]  =Math.round(d[i]  *0.48+170*0.52);
+    d[i+1]=Math.round(d[i+1]*0.48+214*0.52);
+    d[i+2]=Math.round(d[i+2]*0.48+232*0.52);
+    break;
+  }
+  g.putImageData(img,0,0);
+}
+function ikanSprite(sp,dir,fr){
+  const kunci=sp.nm+(dir<0?'L':'R')+fr;
+  let c=IKAN_SPR.get(kunci); if(c)return c;
+  const w=sp.hb.length+12, h=sp.tinggi*2+12;
+  c=document.createElement('canvas');c.width=w;c.height=h;
+  const g=c.getContext('2d');
+  ikanCat(g,w>>1,h>>1,sp,dir,KIBAS[fr]);
+  outlineSilhouette(g,w,h,0.34);        // alat yang sama dengan seluruh perabot
+  rimAtas(g,w,h);                       // lalu tepi atasnya menangkap cahaya
+  IKAN_SPR.set(kunci,c);
+  return c;
+}
+function drawIkan(g,cx,cy,sp,dir,fase){
+  const fr=fase===undefined?0:((Math.floor(fase/1.5708)%4)+4)%4;
+  const c=ikanSprite(sp,dir<0?-1:1,fr);
+  g.drawImage(c,Math.round(cx-c.width/2),Math.round(cy-c.height/2));
 }
 function drawProduce(g,x,y,kind){
   P(g,'rgba(0,0,0,.18)',x-3,y+3,6,1);
@@ -3482,14 +3519,96 @@ function diveUpdate(dt){
   if(dive.kedipT>0)dive.kedipT-=dt;
   if(dive.sisa<=0)diveSelesai(null,'UMPAN HABIS');
 }
+/* --- LATAR TERPANGGANG ---------------------------------------------------
+   Tujuh pita air dengan tepi yang DI-DITHER, bukan dibiarkan lurus. Tepi lurus
+   selebar layar terbaca sebagai garis-garis kain; tiga baris berselang-seling
+   di tiap batas membuatnya terbaca sebagai air yang menggelap perlahan.
+   Di atas dasar ada satu lapis siluet jauh — gundukan batu dan hamparan rumput
+   dalam warna yang hampir setua air terdalam. Itulah yang memberi kedalaman:
+   mata membaca "ada sesuatu di belakang sana", bukan sekadar dinding. */
+const BAYER=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+let diveBG=null, diveBGKunci='';
+function diveLatar(W2,H2,SURF,BED){
+  const kunci=W2+'x'+H2+'x'+SURF+'x'+BED;
+  if(diveBG&&diveBGKunci===kunci)return diveBG;
+  const span=BED-SURF;
+  const c=document.createElement('canvas');c.width=W2;c.height=H2;
+  const g=c.getContext('2d');
+  for(let i=0;i<AIR.length;i++){
+    const y0=Math.round(SURF+span*i/AIR.length);
+    const y1=Math.round(SURF+span*(i+1)/AIR.length);
+    g.fillStyle=AIR[i];g.fillRect(0,y0,W2,y1-y0+1);
+  }
+  /* Dither terurut Bayer 4x4 di tiap batas. Pola buatan sendiri yang berulang
+     tiap 4 piksel terbaca sebagai renda yang menempel di garis; matriks Bayer
+     menyebar ambangnya dua arah, jadi yang terbaca peralihan, bukan motif. */
+  for(let i=1;i<AIR.length;i++){
+    const yb=Math.round(SURF+span*i/AIR.length), dh=7;
+    g.fillStyle=AIR[i];
+    /* Seluruh jendela di ATAS batas. Versi pertama mengangkangi batas, dan
+       separuh bawahnya sudah berwarna pita baru — menimpanya tak berpengaruh,
+       jadi yang tersisa cuma tiga baris renggang yang terbaca sebagai garis. */
+    for(let r=0;r<dh;r++){
+      const y=yb-dh+r, amb=(r+1)/(dh+1)*16;    // 2/16 menanjak ke 14/16
+      if(y<SURF||y>=BED)continue;
+      for(let x=0;x<W2;x++)if(BAYER[((y&3)<<2)|(x&3)]<amb)g.fillRect(x,y,1,1);
+    }
+  }
+  /* Gundukan batu jauh. Warnanya harus JELAS lebih gelap dari air terdalam,
+     bukan sekadar sedikit berbeda — versi pertama #0c2029 di atas #09212d
+     membuat ketiganya tak terlihat sama sekali. Bibir atasnya dibuat lebih
+     terang supaya siluetnya terbaca sebagai benda, bukan noda. */
+  for(const [fx,fw,fh] of [[0.16,0.17,0.075],[0.54,0.23,0.055],[0.86,0.14,0.065]]){
+    const rw=Math.max(8,Math.round(W2*fw)), rh=Math.max(5,Math.round(H2*fh));
+    const rx=Math.round(W2*fx)-(rw>>1);
+    let lbSeb=-1;
+    for(let y=0;y<rh;y++){
+      const lb=Math.round(rw*(0.35+0.65*y/rh)), x0=rx+((rw-lb)>>1);
+      g.fillStyle='#071820';g.fillRect(x0,BED-rh+y,lb,1);
+      if(lb>lbSeb){g.fillStyle='#12333e';g.fillRect(x0,BED-rh+y,lb,1);   // bibir tersinari
+                   g.fillStyle='#071820';g.fillRect(x0+1,BED-rh+y+1,Math.max(0,lb-2),1);}
+      lbSeb=lb;
+    }
+  }
+  /* hamparan rumput jauh — siluet bergerigi di atas lumpur */
+  g.fillStyle='#08191f';
+  for(let x=0;x<W2;x+=3){const r=rnd(x,77);g.fillRect(x,BED-(5+(r>>>3)%13),3,20);}
+  /* dasar: lumpur, bibir tersinari, kerikil, kayu tenggelam */
+  g.fillStyle='#3a2e22';g.fillRect(0,BED,W2,H2-BED);
+  g.fillStyle='#4a3c2c';g.fillRect(0,BED,W2,2);
+  g.fillStyle='#2a2118';g.fillRect(0,BED+5,W2,1);
+  for(let i=0;i<W2;i+=7){const r=rnd(i,3);
+    if(r%3===0){g.fillStyle='#55473a';g.fillRect(i+(r>>>3)%4,BED+2,3,2);}}
+  {const lx=Math.round(W2*0.62), lw=Math.max(18,Math.round(W2*0.16));
+   g.fillStyle='#2e2317';g.fillRect(lx-2,BED-5,lw+4,6);
+   g.fillStyle='#4a3a26';g.fillRect(lx,BED-4,lw,4);
+   g.fillStyle='#5d4a31';g.fillRect(lx,BED-4,lw,1);
+   g.fillStyle='#2f5c34';g.fillRect(lx+3,BED-6,2,2);
+   g.fillStyle='#4e8a4a';g.fillRect(lx+lw-6,BED-6,2,2);}
+  diveBG=c;diveBGKunci=kunci;return c;
+}
+/* Kaustik: jaring cahaya yang bergoyang di sepertiga atas. Dibuat dari garis
+   pendek yang terang-redup sendiri-sendiri, bukan satu hamparan beralfa —
+   hamparan rata selalu terbaca sebagai kaca, bukan cahaya. */
+function diveKaustik(g,t,W2,SURF,span){
+  for(let i=0;i<70;i++){
+    const r=rnd(i,11);
+    const d=(r%100)/100;
+    const ph=(r%628)/100;
+    const a=Math.sin(t/900+ph);
+    if(a<0.25)continue;
+    const bx=(r>>>5)%W2, lb=2+((r>>>9)&3);
+    const dx=Math.round(Math.sin(t/1700+ph)*3);
+    g.fillStyle='rgba(190,238,250,'+(0.11*((a-0.25)/0.75)*(1-d)).toFixed(3)+')';
+    g.fillRect(bx+dx,Math.round(SURF+2+d*span*0.44),lb,1);
+  }
+}
 function diveDraw(g,t){
   const {W2,H2,SURF,BED}=diveRuang(), span=BED-SURF;
   g.setTransform(1,0,0,1,0,0);
   g.globalAlpha=1;
-  for(let i=0;i<AIR.length;i++){                               // kolom air berpita
-    g.fillStyle=AIR[i];
-    g.fillRect(0,Math.round(SURF+span*i/AIR.length),W2,Math.ceil(span/AIR.length)+1);
-  }
+  g.drawImage(diveLatar(W2,H2,SURF,BED),0,0);
+  diveKaustik(g,t,W2,SURF,span);
   /* Berkas cahaya memudar menurut kedalaman. Beralfa rata ia terbaca sebagai
      BILAH miring yang memotong pita air — bukan cahaya yang menembus. */
   for(let k=0;k<3;k++){
@@ -3502,19 +3621,7 @@ function diveDraw(g,t){
       g.fillRect(x0+Math.round(y*0.40),SURF+y,Math.max(2,lb),2);
     }
   }
-  /* dasar kolam: lumpur, kerikil, rumput air */
-  g.fillStyle='#3a2e22';g.fillRect(0,BED,W2,H2-BED);
-  g.fillStyle='#4a3c2c';g.fillRect(0,BED,W2,2);
-  g.fillStyle='#2a2118';g.fillRect(0,BED+5,W2,1);
-  for(let i=0;i<W2;i+=7){const r=rnd(i,3);
-    if(r%3===0){g.fillStyle='#55473a';g.fillRect(i+(r>>>3)%4,BED+2,3,2);}}
-  {const lx=Math.round(W2*0.62), lw=Math.max(18,Math.round(W2*0.16));   // kayu tenggelam
-   g.fillStyle='#2e2317';g.fillRect(lx-2,BED-5,lw+4,6);
-   g.fillStyle='#4a3a26';g.fillRect(lx,BED-4,lw,4);
-   g.fillStyle='#5d4a31';g.fillRect(lx,BED-4,lw,1);
-   g.fillStyle='#2f5c34';g.fillRect(lx+3,BED-6,2,2);g.fillStyle='#4e8a4a';
-   g.fillRect(lx+lw-6,BED-6,2,2);}
-  for(let i=2;i<W2;i+=11){
+  for(let i=2;i<W2;i+=11){                                     // rumput tengah, ikut arus
     const r=rnd(i,9), hgt=5+(r>>>2)%7, sw=Math.sin(t/1100+i)*1.8;
     for(let k=0;k<hgt;k++){
       g.fillStyle=k>hgt-3?'#4e8a4a':'#2f5c34';
@@ -3592,6 +3699,20 @@ function diveDraw(g,t){
   P(g,'#7a2414',bx-4,by-3,5,5);                                // garis luar cacing
   P(g,'#d4512f',bx-4,by-3,4,4);P(g,'#f2855f',bx-4,by-3,2,2);   // badan + sisi tersinari
   P(g,'#ffd0b0',bx-4,by-3,1,1);
+  /* --- RUMPUT DEPAN: digambar SETELAH ikan, jadi ikan bisa lewat di
+     belakangnya. Satu lapis di depan kamera inilah yang mengubah layar dari
+     "gambar datar" jadi "ruang yang punya jarak". --- */
+  for(let i=5;i<W2;i+=17){
+    const r=rnd(i,33), hgt=9+(r>>>2)%10, sw=Math.sin(t/900+i)*2.4;
+    for(let k=0;k<hgt;k++){
+      g.fillStyle=k>hgt-3?'#1f4a28':'#132c19';
+      g.fillRect(Math.round(i+sw*k/hgt),BED+1-k,2,1);
+    }
+  }
+  for(let k=0;k<8;k++){                                        // vinyet tepi
+    g.fillStyle='rgba(2,10,16,'+(0.085*(1-k/8)).toFixed(3)+')';
+    g.fillRect(k,SURF,1,H2-SURF);g.fillRect(W2-1-k,SURF,1,H2-SURF);
+  }
   /* --- bilah umpan: satu-satunya HUD yang tersisa, dan ia tanpa kata ---
      Berkedip kuning sesaat setiap tarikan kosong menghanguskan 6 detik. Dulu
      itu diumumkan lewat tulisan; tanpa penggantinya denda jadi tak kasatmata. */
@@ -4640,6 +4761,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               fishTool,fishStart,fishHook,petArrive,
               dive,diveStart,diveTarik,diveSelesai,diveUpdate,diveRuang,IKAN,drawIkan,
               diveLawanMulai,diveLawanTekan,lawanLebar,LAWAN_LUPUT,
+              ikanCat,outlineSilhouette,rimAtas,ikanSprite,IKAN_SPR,diveLatar,
               diveStep:(n=1,d=1/60)=>{for(let i=0;i<n;i++){diveUpdate(d);if(dive.on)diveDraw(cx,performance.now());}},
               SEASONAL,repaintSeasonal,
               daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,
