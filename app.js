@@ -3751,7 +3751,12 @@ function diveDraw(g,t){
     if(L.kilatT>0){g.fillStyle='rgba(120,255,160,'+(L.kilatT*0.45).toFixed(3)+')';g.fillRect(0,0,W2,H2);}
     if(L.gagalT>0){g.fillStyle='rgba(255,70,50,'+(L.gagalT*0.40).toFixed(3)+')';g.fillRect(0,0,W2,H2);}
   }
-  if(dive.fase!=='main'){                                      // tirai menyelam / naik
+  /* Tirai HANYA untuk dua fase yang memang berpindah layar. Dulu syaratnya
+     fase!=='main', dan 'lawan' ikut tertangkap: begitu battle dimulai dive.ft
+     dinolkan lalu menanjak, jadi tirai keluar membesar sampai pekat dan
+     SELURUH LAYAR BATTLE menghitam 0,5 detik setelah ikan tersambar.
+     Diukur: warna rata-rata layar jatuh dari (32,67,81) ke (4,10,16). */
+  if(dive.fase==='masuk'||dive.fase==='keluar'){
     const kk=Math.min(1,dive.ft/(dive.fase==='masuk'?0.45:0.50));
     const a=dive.fase==='masuk'?1-kk:kk;
     g.fillStyle='rgba(4,10,16,'+a.toFixed(3)+')';g.fillRect(0,0,W2,H2);
@@ -4761,7 +4766,11 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               fishTool,fishStart,fishHook,petArrive,
               dive,diveStart,diveTarik,diveSelesai,diveUpdate,diveRuang,IKAN,drawIkan,
               diveLawanMulai,diveLawanTekan,lawanLebar,LAWAN_LUPUT,
-              ikanCat,outlineSilhouette,rimAtas,ikanSprite,IKAN_SPR,diveLatar,
+              ikanCat,outlineSilhouette,rimAtas,ikanSprite,IKAN_SPR,diveLatar,diveDraw,
+              bingkai:(dt=1/60)=>{const ts=performance.now();   // tiruan setia loop()
+                tickSky();
+                if(dive.on)diveUpdate(dt);
+                if(dive.on)diveDraw(cx,ts); else {update(dt);render(ts);}},
               diveStep:(n=1,d=1/60)=>{for(let i=0;i<n;i++){diveUpdate(d);if(dive.on)diveDraw(cx,performance.now());}},
               SEASONAL,repaintSeasonal,
               daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,
