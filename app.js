@@ -975,8 +975,12 @@ FURN.push(furn(TOOLS[2].rect,20,(g,w,h)=>{
 anims.push({f:FURN[2],fn:(g,t)=>{                              // siaran feed medsos
   const x=FURN[2].px+9,y=FURN[2].py+6;
   if(t%9000<420){                                              // sesekali "semut"
+    /* rnd() mengembalikan 32-bit TAK BERTANDA. Dengan >> separuh nilainya
+       ditafsirkan negatif, jadi (r>>4)%13 terukur 45% negatif sampai -12:
+       hampir separuh "semut" digambar DI ATAS bidang layar, di luar bezel TV.
+       >>> menjaganya di 0..12, tepat setinggi layarnya. */
     for(let i=0;i<40;i++){const r=rnd(i,Math.floor(t/60));
-      P(g,(r%3)?'#5a5a66':'#c9c9d2',x+r%18,y+(r>>4)%13,1,1);}
+      P(g,(r%3)?'#5a5a66':'#c9c9d2',x+r%18,y+(r>>>4)%13,1,1);}
     return;
   }
   P(g,'#141422',x,y,18,13);
@@ -1039,7 +1043,9 @@ anims.push({f:FURN[3],fn:(g,t)=>{                              // api bernapas +
   P(g,'#fff3c0',mx+7,my+7,2,5);                                // inti putih
   P(g,`rgba(255,150,60,${(0.14*breath).toFixed(3)})`,mx-3,my-3,22,22); // pendar bata
   const r=rnd(Math.floor(t/150),3);
-  if(r%2===0)P(g,'#ffd75e',mx+2+r%12,my-2-(r>>3)%5,1,1);       // percikan naik
+  // >>> bukan >>: dengan >> nilainya 40% negatif, dan "my-2-(negatif)" membuat
+  // percikan turun ke bawah mulut tungku, padahal bara memercik NAIK.
+  if(r%2===0)P(g,'#ffd75e',mx+2+r%12,my-2-(r>>>3)%5,1,1);      // percikan naik
   /* palu-tempa VERTIKAL: kepala besi jatuh lurus dalam rangka ke billet panas */
   const cyc=(t%1300)/1300;
   let s; if(cyc<0.58)s=0; else if(cyc<0.66)s=(cyc-0.58)/0.08;    // tahan terangkat → jatuh cepat
@@ -1052,7 +1058,7 @@ anims.push({f:FURN[3],fn:(g,t)=>{                              // api bernapas +
   const hit=s>0.85, wx=f.px+32, wy=f.py+37;                      // billet panas di landasan
   P(g,hit?'#fff3c0':'#ff9a3a',wx,wy,6,2);P(g,hit?'#ffd75e':'#e0641a',wx,wy+1,6,1);
   if(hit){for(let i=0;i<7;i++){const a=rnd(i,Math.floor(t/40));
-    P(g,'#ffd75e',wx+3+(a%9)-4,wy-1-(a>>3)%5,1,1);}
+    P(g,'#ffd75e',wx+3+(a%9)-4,wy-1-(a>>>3)%5,1,1);}           // >>> : lihat catatan di atas
     P(g,'rgba(255,220,120,.55)',wx-2,wy-2,10,3);}               // dentum → kilau + percikan
   /* asap cerobong — tiga kepul naik memudar */
   const puff=(o,al,sz)=>{const yy=f.py-3-((t/45+o)%20);
@@ -3425,7 +3431,13 @@ function goToJuke(){
    AUDIO — bip WebAudio kecil
    ========================================================================= */
 let AC=null;
+/* Dipasang di sini, bukan di dekat ensureAudio(): beep() ikut memakainya dan
+   dideklarasikan lebih dulu. Saat peramban memblokir audio, dulu beep() mencoba
+   membangun AudioContext LAGI pada tiap langkah kaki — satu lemparan per langkah
+   di jalur terpanas permainan. Sekarang gagal sekali, lalu diam. */
+let audioMati=false;
 function beep(freq,dur=.08,vol=.05,type='square',delay=0){
+  if(audioMati)return;
   try{
     AC=AC||new (window.AudioContext||window.webkitAudioContext)();
     const o=AC.createOscillator(),g=AC.createGain();
@@ -3434,7 +3446,7 @@ function beep(freq,dur=.08,vol=.05,type='square',delay=0){
     g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+delay+dur);
     o.connect(g);g.connect(AC.destination);
     o.start(AC.currentTime+delay);o.stop(AC.currentTime+delay+dur+.02);
-  }catch(e){}
+  }catch(e){ if(!AC)audioMati=true; }     // gagal MEMBANGUN → berhenti mencoba
 }
 
 /* --- JUKEBOX: musik chiptune prosedural (tanpa file, offline) --- */
@@ -3461,8 +3473,8 @@ const music={on:false,track:0,step:0,next:0,timer:null,visT:0,gain:null};
    memanggil ini tanpa penjaga, jadi satu ketukan jukebox bisa melempar dari
    dalam handler peristiwa. Sekarang kegagalan dikembalikan sebagai `false`,
    ditandai sekali supaya tak dicoba terus, dan pemanggilnya berhenti diam-diam:
-   permainan tetap jalan, hanya tanpa suara. */
-let audioMati=false;
+   permainan tetap jalan, hanya tanpa suara. Kancingnya (audioMati) diumumkan
+   di blok AUDIO di atas, bersama AC, karena beep() juga memakainya. */
 function ensureAudio(){
   if(audioMati)return false;
   try{
@@ -3591,7 +3603,11 @@ function setFloor(n,spawn){
   cam.x=cv.width>=W?(W-cv.width)/2:Math.max(0,Math.min(W-cv.width,player.x-cv.width/2));
   cam.y=cv.height>=H?(H-cv.height)/2:Math.max(0,Math.min(H-cv.height,player.y-8-cv.height/2));
   activeTool=null;lastZone=null;banner.classList.remove('show');
-  floorTag.textContent=floorName(n);
+  /* Label lantai milik kerangka HTML, bukan permainan. Tanpa penjaga ini satu
+     elemen HUD yang tidak ada mematikan SELURUH permainan di langkah pertama
+     (terbukti: setFloor melempar "Cannot set properties of null"). Permainan
+     harus tetap jalan walau HUD-nya tidak lengkap. */
+  if(floorTag)floorTag.textContent=floorName(n);
 }
 /* perpindahan berfade umum (lift & pintu). spawn opsional membawa titik-muncul tujuan. */
 function startTravel(to,spawn){

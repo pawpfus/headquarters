@@ -10,7 +10,7 @@
    respondWith() — artinya halaman atau app.js gagal dimuat sama sekali, bukan
    sekadar kehilangan kemampuan offline. Semua sentuhan cache di bawah ini
    dibungkus supaya kegagalannya selalu turun ke jaringan biasa. */
-const VERSION = 'v1.79.0';
+const VERSION = 'v1.80.0';
 const CACHE = `hq-${VERSION}`;
 
 const ASSETS = [
