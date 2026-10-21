@@ -1407,6 +1407,16 @@ const semaiPaint=(g,w,h)=>{
 };
 const semaiRak=seasonal(furn({x:2,y:9,w:6,h:1},14,semaiPaint));
 FURN.push(semaiRak);
+/* Raknya memisahkan dua ruang, jadi zonanya dipasang di KEDUA sisi: dari
+   lorong EVIDENCE di atas dan dari lounge di bawah. Petak yang sudah punya
+   zona lain tidak ditimpa — aturan yang sama dipakai zona kolam. */
+const semaiTool={id:'semai',name:'PEMBIBITAN',short:'SEMAI',color:'#7fd46a',
+                 btn:'LIHAT &#9656;',isSemai:true,desc:''};
+for(const zy of [8,10])for(let zx=2;zx<=7;zx++){
+  const k=zx+','+zy;
+  if(SOLIDS[0][zy*COLS+zx]||ZONES[0][k])continue;
+  ZONES[0][k]=semaiTool;
+}
 /* --- pengisi kamar kanan-atas (pelaporan) --- */
 const rackC=furn({x:23,y:4,w:1,h:1},4,g=>{rackPaint(g);});   // rak data (dinding kanan)
 const potRA=seasonal(furn({x:17,y:7,w:1,h:1},4,potPaint));             // tanaman sudut
@@ -2940,6 +2950,12 @@ function drawProduce(g,x,y,kind){
                        P(g,'#f2d24a',x,y-3,1,1);}
   else if(kind===5){   P(g,'#c2b697',x-2,y-4,5,7);P(g,'#efe7d2',x-2,y-4,4,6);   // telur ayam
                        P(g,'#fbf7ea',x-1,y-4,2,2);P(g,'#d8cdb2',x+1,y,2,2);}
+  else if(kind===11){ P(g,'#1c2028',x-5,y-2,10,5);P(g,'#2f3540',x-4,y-2,8,4);    // tray semai lolos sortir
+                      P(g,'#2a1c12',x-3,y-1,6,2);
+                      for(let i=0;i<3;i++){P(g,'#3f8a34',x-3+i*3,y-5,1,4);
+                                           P(g,'#7cc45c',x-3+i*3,y-5,1,1);
+                                           P(g,'#5cb04a',x-4+i*3,y-4,1,1);
+                                           P(g,'#5cb04a',x-2+i*3,y-3,1,1);} }
   else{                                                                          // ikan hasil pancingan
     /* Bentuknya diambil dari tabel IKAN, bukan digambar ulang di sini: yang
        terangkat di atas kepala dino harus jenis yang persis sama dengan yang
@@ -4289,6 +4305,7 @@ function setBanner(tool){
     tool.isBoard?'[ENTER] BACA PENGUMUMAN BERIKUTNYA':
     tool.isBed?'[ENTER] UNTUK MEMANEN':
     tool.isFish?'[ENTER] UNTUK MEMANCING':
+    tool.isSemai?'[ENTER] UNTUK MELIHAT':
     tool.isEgg?'[ENTER] UNTUK MENGAMBIL':'[ENTER] UNTUK MEMBUKA';
   bSw.style.background=tool.color;bSw.style.color=tool.color;
   banner.classList.add('show');
@@ -4302,10 +4319,12 @@ function openTool(tool){
   if(tool.isBed){harvestNear();return;}                                                  // panen bedengan terdekat
   if(tool.isEgg){pickEggNear();return;}                                                  // pungut telur ayam
   if(tool.isFish){player.fish?fishHook():fishStart();return;}   // lempar umpan, lalu tarik saat menyambar
+  if(tool.isSemai){bibitMasuk();return;}                        // layar dekat rak pembibitan
   beep(880,.07,.06);beep(1320,.1,.06,'square',.08);
   setTimeout(()=>{window.location.href=tool.url;},180);
 }
 btnOpen.addEventListener('click',()=>{
+  if(bibit.on){bibitTekan();return;}
   if(dive.on){diveTarik();return;}
   if(activeTool)openTool(activeTool);});
 
@@ -4417,14 +4436,472 @@ function drawFade(){
 }
 
 /* =========================================================================
+   PEMBIBITAN — LAYAR DEKAT & SORTIR BIBIT
+   =========================================================================
+   Dua layar dalam satu modul, sengaja berpasangan:
+     LIHAT  — rak dilihat dari dekat. Di bawahnya berjajar empat contoh:
+              sehat, layu, kerdil, berjamur. Inilah yang MENGAJARKAN aturannya.
+     SORTIR — tray berjalan melintas, pemain mengafkir yang sakit. Inilah yang
+              MENGUJINYA.
+   Tak ada satu kalimat petunjuk pun: layar pertama sudah memperlihatkan apa
+   yang dicari, jadi layar kedua tidak perlu menjelaskannya.
+
+   Tiga cacatnya dibedakan lewat BENTUK dan TEKSTUR, bukan warna saja —
+   layu merunduk, kerdil pendek, berjamur berbintik. Warnanya memang ikut
+   berubah, tapi tak pernah jadi satu-satunya pembeda: di layar kecil, dan
+   bagi mata yang sulit membedakan warna, bentuklah yang selalu terbaca. */
+const CACAT=['layu','kerdil','jamur'];
+const BIBIT_SEL=4;                       // sel per tray
+const BIBIT_TRAY=5;                      // tray per babak
+const BIBIT_DENDA=0.17;                  // mutu yang hilang tiap kesalahan
+const bibit={on:false,fase:'',ft:0,t:0,rak:[],baris:[],antre:0,
+             kurX:0,mutu:1,benar:0,salah:0,kilat:[],laju:0,lulus:false};
+const bibitRuang=()=>{
+  const W2=Math.max(1,cv.width), H2=cv.height;
+  /* tb = tinggi semai sehat. Diikat ke tinggi kanvas, bukan angka tetap:
+     inilah yang membuat layar ini terbaca sebagai "dari dekat" di ukuran
+     layar mana pun, bukan cuma di 400x304. */
+  const tb=Math.max(8,Math.round(H2*0.072));
+  /* Tiga tray berjajar butuh dua belas sel selebar layar. Di bawah 14 px per
+     sel itu berhenti terbaca, jadi raknya ganti BERTINGKAT dan lebar selnya
+     diambil dari satu tray. Batas atasnya diikat ke tb supaya di layar
+     menengah selnya tidak menggembung jadi petak kosong. */
+  const lebar=Math.floor((W2-30)/13), tegak=lebar<14;
+  const sw=tegak?Math.max(10,Math.min(Math.round(tb*1.6),Math.floor((W2-22)/BIBIT_SEL)))
+                :lebar;
+  return {W2,H2,sw,tegak,tw:sw*BIBIT_SEL+6,tb,
+          lampu:Math.max(9,Math.round(H2*0.085)),
+          rak2:Math.round(H2*0.40),                // rak jauh di belakang
+          meja:Math.round(H2*0.70)};
+};
+function bibitSel(bad,tinggi,kosong){
+  return {bad:bad||'',h:tinggi,kosong:!!kosong,seed:Math.random()*6.283,
+          diangkat:false,tandaT:0,tanda:0};
+}
+/* Isi rak mengikuti musim, dan DITURUNKAN DARI BENIH YANG SAMA dengan sprite
+   raknya (rnd + season), supaya yang dilihat dari dekat benar-benar isi rak
+   yang barusan dilewati — bukan rak lain yang kebetulan mirip. */
+function bibitRakIsi(){
+  const M=SEMAI[season], out=[], {tb}=bibitRuang();
+  for(let ti=0;ti<3;ti++){
+    const tx=TRAYX[ti], sel=[];
+    for(let c=0;c<BIBIT_SEL;c++){
+      const kosong=!M.penuh&&(rnd(tx+c*13,season*7+3)>>>2)%3===0;
+      const th=M.t+((rnd(tx+c*7,season*11)>>>3)%2);
+      const r=rnd(tx*3+c*29,season*17+5);
+      const bad=(r>>>6)%5===0?CACAT[(r>>>11)%3]:'';
+      sel.push(bibitSel(kosong?'':bad,Math.round(tb*(0.42+th*0.10)),kosong));
+    }
+    out.push({sel});
+  }
+  return out;
+}
+/* --- satu semai, digambar besar ----------------------------------------- */
+function semaiBesar(g,cx,yb,c,t,sw){
+  if(c.kosong||c.diangkat)return;
+  const S=SN();
+  const tg=Math.max(3,c.bad==='kerdil'?Math.round(c.h*0.42):c.h);
+  const ayun=Math.sin(t/700+c.seed)*(c.bad==='layu'?0.5:1.1);
+  const tunduk=c.bad==='layu'?tg*0.38:0;
+  const W=c.bad==='layu' ?{m:'#7a7634',h:'#9a9243',t:'#b6ad58'}
+        : c.bad==='jamur'?{m:'#536b49',h:'#6d885e',t:'#88a176'}
+        : {m:S.mid,h:S.hi,t:S.hi2};
+  for(let k=0;k<tg;k++){                                  // batang, melengkung bila layu
+    const q=k/Math.max(1,tg-1), dx=Math.round(tunduk*q*q+ayun*q);
+    P(g,k>tg-3?W.h:W.m,cx+dx,yb-1-k,2,1);
+  }
+  const arah=c.bad==='layu'?1:-1;                         // daun: naik, atau merunduk
+  const lb=Math.max(2,Math.round(tg*0.34));
+  for(const dq of [0.42,0.76]){
+    const k=Math.round(tg*dq), q=k/Math.max(1,tg-1);
+    const dx=Math.round(tunduk*q*q+ayun*q), yy=yb-1-k;
+    for(let i=1;i<=lb;i++){
+      const dy=Math.round(arah*i*0.6);
+      P(g,i<lb?W.h:W.t,cx+dx-i-1,yy+dy,1,1);
+      P(g,i<lb?W.h:W.t,cx+dx+2+i,yy+dy,1,1);
+    }
+  }
+  P(g,W.t,cx+Math.round(tunduk+ayun),yb-tg,2,1);          // pucuk
+  if(c.bad==='jamur'){                                    // bintik putih di permukaan media
+    for(let i=0;i<8;i++){
+      const r=rnd(i*17+3,Math.round(c.seed*1000));
+      P(g,'#e6ecdf',cx-(sw>>1)+3+((r>>>3)%Math.max(1,sw-6)),yb-1-((r>>>9)%3),1,1);
+    }
+    P(g,'rgba(228,238,226,.26)',cx-3,yb-5,8,5);
+  }
+}
+/* --- satu sel: badan tray, media, semainya, lalu tandanya ---------------- */
+function bibitSelGambar(g,x,yb,sw,c,t,sorot){
+  const Tr=ramp('#262a33');
+  P(g,Tr.out,x,yb-1,sw,7);
+  P(g,Tr.base,x+1,yb,sw-2,5);P(g,Tr.hi,x+1,yb,sw-2,1);P(g,Tr.lo,x+1,yb+4,sw-2,1);
+  P(g,'#2a1c12',x+2,yb-1,sw-4,4);P(g,'#3a2817',x+2,yb-1,sw-4,1);
+  if(c.diangkat){P(g,'#1a110a',x+3,yb-1,sw-6,3);}          // lubang bekas semai diangkat
+  semaiBesar(g,x+(sw>>1)-1,yb-1,c,t,sw);
+  if(sorot){                                               // kursor: sudut, bukan kotak penuh
+    /* Kotaknya diukur dari tinggi semai dewasa, bukan angka tetap: versi
+       pertama menjulang jauh di atas tanamannya dan terbaca sebagai bingkai
+       yang mengambang, bukan sebagai penunjuk sel. */
+    const tb=bibitRuang().tb, y0=yb-Math.round(tb*1.35)-4, h0=Math.round(tb*1.35)+12;
+    for(const [ox,oy,dw,dh] of [[0,0,4,1],[0,0,1,4],[sw-4,0,4,1],[sw-1,0,1,4],
+                                [0,h0-1,4,1],[0,h0-4,1,4],[sw-4,h0-1,4,1],[sw-1,h0-4,1,4]])
+      P(g,'#ffd23a',x+ox,y0+oy,dw,dh);
+  }
+  if(c.tandaT>0){                                          // centang hijau / silang merah
+    const a=Math.min(1,c.tandaT/0.30), cxm=x+(sw>>1)-1, cym=yb-8;
+    g.globalAlpha=a;
+    if(c.tanda>0){P(g,'#6ef08a',cxm-3,cym+1,2,2);P(g,'#6ef08a',cxm-1,cym+3,2,2);
+                  P(g,'#6ef08a',cxm+1,cym+1,2,2);P(g,'#6ef08a',cxm+3,cym-1,2,2);
+                  P(g,'#6ef08a',cxm+5,cym-3,2,2);}
+    else{for(let i=0;i<5;i++){P(g,'#ff6a4a',cxm-4+i*2,cym-4+i*2,2,2);
+                              P(g,'#ff6a4a',cxm+4-i*2,cym-4+i*2,2,2);}}
+    g.globalAlpha=1;
+  }
+}
+/* --- latar ruang pembibitan: lampu tumbuh, papan bangku, kolong ---------- */
+/* Rak jauh: satu baris tray dalam siluet gelap, setingkat lebih tinggi dan
+   lebih kecil. Warnanya harus JELAS lebih gelap dari dindingnya, bukan sekadar
+   sedikit berbeda — kesalahan itu sudah dibayar dua kali di proyek ini (siluet
+   dino, lalu batu dasar kolam). Inilah yang mengisi tengah bingkai. */
+function bibitRakJauh(g,W2,y,t){
+  const lebar=Math.max(10,Math.round(W2*0.085)), sela=Math.round(lebar*0.42);
+  P(g,'#0b111a',0,y+5,W2,3);                               // papan rak jauh
+  P(g,'#141c28',0,y+5,W2,1);
+  for(let x=sela;x<W2-4;x+=lebar+sela){
+    const w=Math.min(lebar,W2-4-x);
+    P(g,'#0d141e',x,y,w,5);                                // badan tray
+    P(g,'#131c27',x,y,w,1);
+    for(let c=0;c<3;c++){                                  // tunas: tiga goresan tegak
+      const cxm=x+Math.round(w*(c+0.5)/3);
+      P(g,'#122b19',cxm,y-4,1,4);
+      P(g,'#1b3d22',cxm,y-4,1,1);
+    }
+  }
+  for(let x=Math.round(W2*0.2);x<W2;x+=Math.round(W2*0.34)){   // tiang penopang
+    P(g,'#0a1019',x,y+8,2,40);
+  }
+}
+/* Kolong bangku: kaki, dua tumpukan tray kosong, satu karung media. Benda yang
+   sama persis dengan yang ada di sprite raknya di dunia atas — kolong yang
+   kosong membuat bangkunya tampak melayang. */
+function bibitKolong(g,W2,H2,meja,t){
+  const Rk=ramp('#3d4657'), Tr=ramp('#262a33');
+  for(const fx of [0.07,0.5,0.93]){
+    const lx=Math.round(W2*fx)-2;
+    P(g,Rk.lo,lx,meja+11,4,H2-meja-11);
+    P(g,'#1b2029',lx,meja+11,1,H2-meja-11);
+  }
+  for(const fx of [0.22,0.68]){                            // tumpukan tray kosong dari sisinya
+    const sx=Math.round(W2*fx), w=Math.max(12,Math.round(W2*0.16));
+    for(let k=0;k<4;k++){const yy=H2-6-k*4;
+      P(g,Tr.base,sx,yy,w,3);P(g,Tr.hi,sx,yy,w,1);P(g,Tr.lo,sx,yy+2,w,1);}
+  }
+  {const Kr=ramp('#8a7448');                               // karung media
+   const kx=Math.round(W2*0.80), kw=Math.max(10,Math.round(W2*0.11));
+         /* Karung dibuat lebih pendek supaya bibirnya tak pernah menyembul di
+      atas bilah contoh di layar LIHAT — diukur: dengan 0,42 ia naik 3 px ke
+      dalam baris contoh dan terbaca sebagai kotak cokelat nyasar. */
+   const kh=Math.max(9,Math.round((H2-meja)*0.27)), ky=H2-kh-2;
+   P(g,Kr.out,kx,ky,kw,kh);
+   P(g,Kr.base,kx+1,ky+1,kw-2,kh-2);P(g,Kr.hi,kx+1,ky+1,Math.max(2,kw>>2),kh-2);
+   P(g,Kr.lo,kx+kw-3,ky+2,2,kh-4);
+   P(g,Kr.out,kx+2,ky-1,kw-4,2);P(g,Kr.hi,kx+3,ky-1,kw-6,1);
+   P(g,'#2a1c12',kx+3,ky,kw-6,1);}
+}
+function bibitLatar(g,W2,H2,lampu,meja,rak2,t){
+  g.fillStyle='#10141c';g.fillRect(0,0,W2,H2);
+  for(let i=0;i<7;i++){                                    // dinding menggelap ke bawah
+    g.fillStyle=['#1b2230','#19202c','#171d28','#151a24','#131720','#11141c','#0f1218'][i];
+    g.fillRect(0,Math.round(H2*i/7),W2,Math.ceil(H2/7)+1);
+  }
+  bibitRakJauh(g,W2,rak2,t);
+  const Rk=ramp('#3d4657');
+  P(g,Rk.out,6,lampu-7,W2-12,6);                           // batang lampu
+  P(g,Rk.base,7,lampu-6,W2-14,3);P(g,Rk.hi,7,lampu-6,W2-14,1);
+  const nyala=0.86+0.14*Math.sin(t/1400);
+  g.globalAlpha=nyala;P(g,'#c9a0f0',9,lampu-3,W2-18,2);g.globalAlpha=1;
+  for(let i=0;i<7;i++){                                    // pendar: pita melebar lalu pudar
+    g.fillStyle='rgba(160,90,224,'+(0.12*(1-i/7)*nyala).toFixed(3)+')';
+    g.fillRect(8-i*2,lampu-1+i*4,W2-16+i*4,4);
+  }
+  for(const fx of [0.05,0.95]){                            // kawat gantungan lampu
+    const px=Math.round(W2*fx);
+    P(g,'#2a3242',px,0,1,lampu-7);
+  }
+  P(g,Rk.out,0,meja+5,W2,6);                               // papan bangku
+  P(g,Rk.base,0,meja+6,W2,3);P(g,Rk.hi,0,meja+6,W2,1);P(g,Rk.lo,0,meja+9,W2,1);
+  bibitKolong(g,W2,H2,meja,t);
+  for(let i=0;i<8;i++){                                    // kolong tetap menggelap ke bawah
+    g.fillStyle='rgba(4,6,10,'+(0.05*i).toFixed(3)+')';
+    const hh=Math.max(1,Math.round((H2-meja-11)/8));
+    g.fillRect(0,meja+11+i*hh,W2,hh+1);
+  }
+  for(let k=0;k<8;k++){                                    // vinyet tepi
+    g.fillStyle='rgba(2,6,10,'+(0.08*(1-k/8)).toFixed(3)+')';
+    g.fillRect(k,0,1,H2);g.fillRect(W2-1-k,0,1,H2);
+  }
+}
+/* --- MASUK / KELUAR ------------------------------------------------------ */
+function bibitMasuk(){
+  if(bibit.on||dive.on)return;
+  bibit.on=true;bibit.fase='lihat';bibit.ft=0;bibit.t=0;
+  bibit.rak=bibitRakIsi();
+  bibit.baris=[];bibit.antre=0;bibit.benar=0;bibit.salah=0;
+  bibit.mutu=1;bibit.kilat=[];bibit.lulus=false;
+  keys.clear();banner.classList.remove('show');
+  /* Tombol kiri: START membuka babak, SORT mengafkir satu semai. Keduanya
+     TIDAK boleh berupa kata yang mirip — 'SORTIR' lalu 'SORT' beda satu huruf
+     dan letaknya di tombol yang sama, jadi pemain tak punya cara membedakan
+     mana yang baru saja ia tekan. */
+  diveTombol('START');diveAnalog(true);
+  beep(560,.07,.045,'sine');beep(760,.1,.045,'sine',.06);
+}
+function bibitKeluar(){
+  if(!bibit.on)return;
+  bibit.on=false;bibit.fase='';
+  if(bibit.lulus){
+    const now=performance.now();
+    player.pick={kind:11,t0:now,fx:player.x,fy:player.y-8};
+  }
+  activeTool=null;lastZone=null;keys.clear();
+  diveTombol('JUMP');diveAnalog(true);
+}
+/* --- SORTIR -------------------------------------------------------------- */
+function bibitSortirMulai(){
+  bibit.fase='sortir';bibit.ft=0;
+  bibit.baris=[];bibit.antre=BIBIT_TRAY;
+  bibit.benar=0;bibit.salah=0;bibit.mutu=1;bibit.kilat=[];
+  bibit.laju=52;bibit.kurX=Math.round(bibitRuang().W2*0.5);
+  diveTombol('SORT');
+  beep(620,.06,.045,'square');beep(880,.09,.045,'square',.06);
+}
+function bibitTrayBaru(){
+  const {W2,tb}=bibitRuang(), sel=[];
+  let cacat=0;
+  for(let c=0;c<BIBIT_SEL;c++){
+    const bad=Math.random()<0.40?CACAT[(Math.random()*3)|0]:'';
+    if(bad)cacat++;
+    sel.push(bibitSel(bad,tb+((Math.random()*Math.max(2,tb*0.34))|0),false));
+  }
+  /* Tray tanpa satu pun cacat itu sah dan memang perlu ada: kalau setiap tray
+     selalu berisi yang sakit, "ada yang harus diafkir" jadi anggapan dasar dan
+     permainannya berhenti jadi keputusan. */
+  return {x:W2+4,sel,cacat};
+}
+/* Daftar sel yang sedang terlihat, urut dari kiri. Kursor bekerja di atas
+   daftar ini, bukan di atas indeks tray — dengan begitu tray yang keluar layar
+   tidak pernah membuat kursornya menunjuk sesuatu yang sudah tak ada. */
+function bibitTampak(){
+  const {W2,sw}=bibitRuang(), out=[];
+  for(const tr of bibit.baris)for(let c=0;c<BIBIT_SEL;c++){
+    const x=Math.round(tr.x+3+c*sw);
+    if(x+sw<2||x>W2-2)continue;
+    out.push({tr,c,x,sel:tr.sel[c]});
+  }
+  return out.sort((a,b)=>a.x-b.x);
+}
+const bibitDekat=()=>{
+  const v=bibitTampak(); if(!v.length)return null;
+  const {sw}=bibitRuang();
+  let best=v[0],bd=1e9;
+  for(const it of v){const d=Math.abs(it.x+sw/2-bibit.kurX);if(d<bd){bd=d;best=it;}}
+  return best;
+};
+function bibitGeser(arah){
+  const v=bibitTampak(); if(!v.length)return;
+  const {sw}=bibitRuang(), kini=bibitDekat();
+  let i=v.indexOf(kini);
+  i=Math.max(0,Math.min(v.length-1,i+arah));
+  bibit.kurX=v[i].x+sw/2;
+  beep(420,.03,.025,'square');
+}
+function bibitSalah(x,y){
+  bibit.salah++;bibit.mutu=Math.max(0,bibit.mutu-BIBIT_DENDA);
+  bibit.kilat.push({x,y,t:0,ok:0});
+  beep(180,.13,.05,'sine');
+}
+function bibitAfkir(it){
+  if(!it)return;
+  const c=it.sel;
+  if(c.diangkat||c.kosong)return;
+  c.diangkat=true;c.tandaT=0.45;
+  const {sw}=bibitRuang();
+  if(c.bad){
+    c.tanda=1;bibit.benar++;
+    bibit.kilat.push({x:it.x+sw/2,y:0,t:0,ok:1});
+    beep(700+bibit.benar*60,.05,.045,'square');
+  }else{
+    c.tanda=-1;bibitSalah(it.x+sw/2,0);     // bibit sehat ikut terbuang
+  }
+}
+function bibitUpdate(dt){
+  bibit.t+=dt*1000;bibit.ft+=dt;
+  for(const k of bibit.kilat)k.t+=dt;
+  bibit.kilat=bibit.kilat.filter(k=>k.t<0.45);
+  if(bibit.fase==='lihat'){
+    for(const tr of bibit.rak)for(const c of tr.sel)if(c.tandaT>0)c.tandaT-=dt;
+    return;
+  }
+  if(bibit.fase==='hasil'){
+    if(bibit.ft>=1.6)bibitKeluar();
+    return;
+  }
+  if(bibit.fase!=='sortir')return;
+  const {W2,tw,sw}=bibitRuang();
+  /* kursor ikut arah yang ditahan, dengan jeda ulang supaya tak meluncur */
+  bibit.ulang=(bibit.ulang||0)-dt;
+  const kiri=keys.has('left')||joy.x<-0.45, kanan=keys.has('right')||joy.x>0.45;
+  if((kiri||kanan)&&bibit.ulang<=0){bibitGeser(kiri?-1:1);bibit.ulang=0.17;}
+  /* tray berjalan; yang lolos dari tepi kiri dihitung */
+  for(const tr of bibit.baris){tr.x-=bibit.laju*dt;}
+  const lewat=bibit.baris.filter(tr=>tr.x+tw<-2);
+  for(const tr of lewat)
+    for(const c of tr.sel)
+      if(c.bad&&!c.diangkat&&!c.kosong)bibitSalah(6,0);    // yang sakit lolos: itu kesalahan juga
+  bibit.baris=bibit.baris.filter(tr=>tr.x+tw>=-2);
+  for(const tr of bibit.baris)for(const c of tr.sel)if(c.tandaT>0)c.tandaT-=dt;
+  /* tray berikutnya menyusul setelah yang terakhir cukup masuk */
+  /* Sela dibatasi sepersebelas layar. Dengan sela tetap sw*1,1 di layar
+     sempit, tray berikutnya baru dipanggil setelah yang sekarang HAMPIR
+     seluruhnya keluar — menyisakan jeda kosong yang panjang di tengah babak. */
+  const sela=Math.min(Math.round(sw*1.1),Math.round(W2*0.09));
+  const akhir=bibit.baris.length?bibit.baris[bibit.baris.length-1]:null;
+  if(bibit.antre>0&&(!akhir||akhir.x<=W2-tw-sela)){
+    bibit.baris.push(bibitTrayBaru());bibit.antre--;
+    bibit.laju+=7;                                         // tiap tray sedikit lebih cepat
+  }
+  if(bibit.mutu<=0||(bibit.antre===0&&!bibit.baris.length)){
+    bibit.lulus=bibit.mutu>0.34;
+    bibit.fase='hasil';bibit.ft=0;
+    if(bibit.lulus){beep(880,.06,.05);beep(1320,.09,.05,'square',.07);
+                    beep(1760,.11,.04,'square',.15);}
+    else beep(240,.18,.05,'sine');
+  }
+}
+/* --- GAMBAR -------------------------------------------------------------- */
+function bibitDraw(g,t){
+  const {W2,H2,sw,tw,tb,lampu,rak2,meja}=bibitRuang();
+  g.setTransform(1,0,0,1,0,0);g.globalAlpha=1;
+  bibitLatar(g,W2,H2,lampu,meja,rak2,t);
+
+  if(bibit.fase==='lihat'){
+    const tegak=bibitRuang().tegak;
+    const tingkat=Math.max(tb+10,Math.round((meja-rak2)/2.6));
+    const sela=tegak?Math.max(2,(W2-tw)>>1):Math.max(2,Math.floor((W2-3*tw)/4));
+    for(let i=0;i<3;i++){
+      /* Bertingkat: tray paling bawah paling dekat, jadi ia digambar TERAKHIR
+         dan menutupi yang di belakangnya — urutannya dibalik di bawah. */
+      const x0=tegak?sela:sela+i*(tw+sela);
+      const y0=tegak?meja-(2-i)*tingkat:meja;
+      if(tegak){P(g,ramp('#3d4657').out,0,y0+5,W2,5);      // papan tiap tingkat
+                P(g,ramp('#3d4657').base,0,y0+6,W2,2);
+                P(g,ramp('#3d4657').hi,0,y0+6,W2,1);}
+      P(g,ramp('#262a33').out,x0,y0-2,tw,9);               // badan tray
+      for(let c=0;c<BIBIT_SEL;c++)
+        bibitSelGambar(g,x0+3+c*sw,y0,sw,bibit.rak[i].sel[c],t,false);
+    }
+    drawText(g,SN().id,6,4,'#8fa3b8');
+    const hidup=bibit.rak.reduce((n,tr)=>n+tr.sel.filter(c=>!c.kosong).length,0);
+    drawText(g,hidup+' SEMAI',W2-textW(hidup+' SEMAI')-6,4,'#8fa3b8');
+    /* --- empat contoh: inilah yang mengajarkan aturannya --- */
+    /* Empat contoh berdiri di atas papan sendiri di kolong, jadi ia terbaca
+       sebagai rak contoh — bukan deretan ikon yang melayang di tepi layar. */
+    const yC=H2-8, lb=['SEHAT','LAYU','KERDIL','JAMUR'], cw=Math.floor(W2/4);
+    /* Bilahnya PEKAT, bukan beralfa. Versi beralfa membiarkan karung media di
+       kolong menembus ke depan, dan dua benda yang saling tumpang-tindih di
+       baris contoh justru merusak satu-satunya hal yang diajarkannya. */
+    g.fillStyle='#090e15';g.fillRect(0,yC-Math.round(tb*0.9)-9,W2,H2-yC+Math.round(tb*0.9)+9);
+    P(g,'#2a3242',0,yC-Math.round(tb*0.9)-9,W2,1);
+    for(let i=0;i<4;i++){
+      const cxm=Math.round(cw*(i+0.5)), yb=yC-7;
+      const c={bad:i?CACAT[i-1]:'',h:Math.round(tb*0.72),seed:i*1.7,
+               kosong:false,diangkat:false,tandaT:0};
+      P(g,'#1f242e',cxm-8,yb-1,16,4);
+      P(g,'#2a1c12',cxm-7,yb-1,14,2);P(g,'#3a2817',cxm-7,yb-1,14,1);
+      semaiBesar(g,cxm-1,yb-1,c,t,14);
+      P(g,i?'#ff6a4a':'#6ef08a',cxm-1,yb+4,2,2);
+      drawText(g,lb[i],cxm-Math.round(textW(lb[i])/2),yC,i?'#d08a74':'#86c98f');
+    }
+    if(Math.floor(t/420)%2===0){                           // ajakan: satu segitiga, tanpa kata
+      const ax=W2-12, ay=meja+16;
+      for(let k=0;k<6;k++)P(g,'#ffd23a',ax+k,ay-5+k,1,Math.max(1,11-k*2));
+    }
+    return;
+  }
+
+  /* --- SORTIR --- */
+  const sorot=bibit.fase==='sortir'?bibitDekat():null;
+  for(const tr of bibit.baris){
+    const x0=Math.round(tr.x);
+    P(g,ramp('#262a33').out,x0,meja-2,tw,9);
+    for(let c=0;c<BIBIT_SEL;c++)
+      bibitSelGambar(g,x0+3+c*sw,meja,sw,tr.sel[c],t,!!sorot&&sorot.tr===tr&&sorot.c===c);
+  }
+  for(const k of bibit.kilat){                             // kilat benar/salah di tepi atas
+    const a=1-k.t/0.45;
+    g.fillStyle=(k.ok?'rgba(110,240,138,':'rgba(255,106,74,')+(a*0.5).toFixed(2)+')';
+    g.fillRect(0,0,W2,2);
+    if(!k.ok)g.fillRect(0,0,3,H2);
+  }
+  /* bilah mutu: satu-satunya HUD, dan ia tanpa kata — sepola bilah umpan
+     di minigame kolam, jadi pemain sudah tahu membacanya. */
+  const barW=Math.max(20,W2-16);
+  g.fillStyle='rgba(6,12,18,.78)';g.fillRect(8,4,barW,5);
+  g.fillStyle=bibit.mutu<0.34?'#e0552f':'#7fd46a';
+  g.fillRect(9,5,Math.round((barW-2)*bibit.mutu),3);
+  for(let i=1;i<BIBIT_TRAY;i++){                           // berapa tray tersisa
+    const px=9+Math.round((barW-2)*i/BIBIT_TRAY);
+    P(g,'rgba(6,12,18,.6)',px,5,1,3);
+  }
+  if(bibit.fase==='hasil'){
+    const a=Math.min(1,bibit.ft/0.3);
+    g.fillStyle='rgba(6,10,16,'+(a*0.80).toFixed(2)+')';g.fillRect(0,0,W2,H2);
+    const cxm=W2>>1, cym=Math.round(H2*0.46), S2=Math.round(Math.min(W2,H2)*0.11);
+    /* Goresannya 4 px, bukan 2: di versi pertama tanda ini terbaca sebagai
+       garis tipis yang nyasar, bukan sebagai jawaban atas satu babak penuh. */
+    g.globalAlpha=a;
+    if(bibit.lulus)
+      for(let i=0;i<S2;i++){P(g,'#6ef08a',cxm-Math.round(S2*0.7)+i,cym+i,4,4);
+                            P(g,'#6ef08a',cxm+i,cym+Math.round(S2*0.7)-i*2,4,4);}
+    else
+      for(let i=0;i<S2*2;i++){P(g,'#ff6a4a',cxm-S2+i,cym-S2+i,4,4);
+                              P(g,'#ff6a4a',cxm+S2-i,cym-S2+i,4,4);}
+    g.globalAlpha=1;
+  }
+}
+/* satu ketukan/tekan: di LIHAT ia memulai sortir, di SORTIR ia mengafkir */
+function bibitTekan(){
+  if(!bibit.on)return;
+  if(bibit.fase==='lihat'){bibitSortirMulai();return;}
+  if(bibit.fase==='sortir')bibitAfkir(bibitDekat());
+}
+function bibitKetuk(mx,my){
+  if(bibit.fase!=='sortir'){bibitTekan();return;}
+  const {sw}=bibitRuang(), v=bibitTampak();
+  let best=null,bd=1e9;
+  for(const it of v){const d=Math.abs(it.x+sw/2-mx);if(d<bd){bd=d;best=it;}}
+  if(best&&bd<=sw){bibit.kurX=best.x+sw/2;bibitAfkir(best);}
+}
+
+/* =========================================================================
    INPUT
    ========================================================================= */
 addEventListener('keydown',e=>{
   if(e.key==='Escape'){
+    if(bibit.on){bibitKeluar();return;}
     if(dive.on){diveSelesai(null,'DIGULUNG');return;}
     toggleMenu(false);return;}
   if(e.key==='m'||e.key==='M'){toggleMenu(!menu.classList.contains('open'));return;}
   if(menu.classList.contains('open'))return;
+  /* Di layar pembibitan hanya ada dua perintah: geser kursor, dan afkir.
+     Arahnya tetap masuk ke `keys` supaya bibitUpdate() bisa membaca tombol
+     yang DITAHAN — kursor yang hanya bergerak saat keydown terasa patah. */
+  if(bibit.on){
+    if(KEYMAP[e.key]){keys.add(KEYMAP[e.key]);e.preventDefault();}
+    if(e.key==='Enter'||e.key==='e'||e.key==='E'||e.key===' '||e.key==='z'||e.key==='Z'){
+      e.preventDefault();bibitTekan();}
+    return;
+  }
   /* Selama menyelam hanya ada dua perintah: tuntun umpan, dan tarik. Dibalas
      di sini supaya ENTER tidak nyasar ke openTool() dan membuka tool. */
   if(dive.on){
@@ -4473,6 +4950,7 @@ const joyEnd=e=>{
   joyId=null;joy.on=false;joy.x=joy.y=0;setKnob(0,0);
   /* ketukan singkat di analog = interaksi: buka tool, atau duduk/bangkit dari kursi */
   if(performance.now()-joyT0<300&&joyMax<12){
+    if(bibit.on){bibitTekan();return;}
     if(dive.on){diveTarik();return;}
     if(player.sitting)standUp();
     else if(activeTool)openTool(activeTool);
@@ -4492,6 +4970,7 @@ function doJump(){
      karena ESC tak ada di sana), dan HIT saat battle.
      HIT, bukan ROLL, karena ibu jari menekan cepat di dekat tombol itu dan
      menggulung senar tak sengaja di tengah pertarungan berarti ikannya hilang. */
+  if(bibit.on){bibitTekan();return;}                    // START, lalu SORT
   if(dive.on){
     if(dive.fase==='lawan')diveTarik();
     else diveSelesai(null,'DIGULUNG');
@@ -4506,6 +4985,13 @@ function doJump(){
 /* ketuk kanvas: menuju meja / berjalan ke titik */
 cv.addEventListener('pointerdown',e=>{
   if(dive.on){e.preventDefault();diveTarik();return;}   // ketuk air = tarik/pukul
+  if(bibit.on){                                         // ketuk sel = afkir sel itu
+    e.preventDefault();
+    const rb=cv.getBoundingClientRect();
+    bibitKetuk((e.clientX-rb.left)/rb.width*cv.width,
+               (e.clientY-rb.top)/rb.height*cv.height);
+    return;
+  }
   const r=cv.getBoundingClientRect();
   const mx=(e.clientX-r.left)/r.width*cv.width+cam.x, my=(e.clientY-r.top)/r.height*cv.height+cam.y;
   const tx=Math.floor(mx/T),ty=Math.floor(my/T);
@@ -4814,8 +5300,11 @@ function loop(ts){
      langsung dipakai dunia atas supaya tidak ada satu frame kosong. */
   try{
     tickSky();
-    if(dive.on)diveUpdate(dt);
-    if(dive.on)diveDraw(cx,ts); else {update(dt);render(ts);}
+    if(bibit.on){bibitUpdate(dt);bibitDraw(cx,ts);}
+    else{
+      if(dive.on)diveUpdate(dt);
+      if(dive.on)diveDraw(cx,ts); else {update(dt);render(ts);}
+    }
     frameErrs=0;
   }
   catch(err){ if(++frameErrs<=3)console.error('[HQ] frame gagal, loop tetap jalan:',err); }
@@ -4879,10 +5368,17 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               dive,diveStart,diveTarik,diveSelesai,diveUpdate,diveRuang,IKAN,drawIkan,
               diveLawanMulai,diveLawanTekan,lawanLebar,LAWAN_LUPUT,
               ikanCat,outlineSilhouette,rimAtas,ikanSprite,IKAN_SPR,diveLatar,diveDraw,
+              bibit,bibitMasuk,bibitKeluar,bibitSortirMulai,bibitTekan,bibitKetuk,
+              bibitUpdate,bibitDraw,bibitRuang,bibitTampak,bibitDekat,bibitAfkir,
+              bibitGeser,bibitRakIsi,bibitTrayBaru,semaiBesar,semaiTool,CACAT,
+              BIBIT_SEL,BIBIT_TRAY,BIBIT_DENDA,
               bingkai:(dt=1/60)=>{const ts=performance.now();   // tiruan setia loop()
                 tickSky();
-                if(dive.on)diveUpdate(dt);
-                if(dive.on)diveDraw(cx,ts); else {update(dt);render(ts);}},
+                if(bibit.on){bibitUpdate(dt);bibitDraw(cx,ts);}
+                else{
+                  if(dive.on)diveUpdate(dt);
+                  if(dive.on)diveDraw(cx,ts); else {update(dt);render(ts);}
+                }},
               diveStep:(n=1,d=1/60)=>{for(let i=0;i<n;i++){diveUpdate(d);if(dive.on)diveDraw(cx,performance.now());}},
               SEASONAL,repaintSeasonal,
               daylight:()=>daylight,buildBG,weather,WINDOWS,GROW,GROW_DUR,SPECIES,drone,droneUpdate,DR_RACK,DR_DROP,
