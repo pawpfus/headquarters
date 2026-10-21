@@ -812,6 +812,30 @@ function outlineSilhouette(g,w,h,kuat=0.52){
   }
   g.putImageData(img,0,0);
 }
+/* --- GARIS LUAR UNTUK BENDA TIPIS ---------------------------------------
+   Saudara outlineSilhouette() untuk sprite yang terlalu tipis untuk
+   digariskan dari dalam. Alih-alih mengecat kulitnya, ia mengisi piksel
+   KOSONG yang bersinggungan dengan siluet, jadi tak satu pun piksel asli
+   tersentuh - diukur 0 berubah, lawan 58-100% yang dicat ulang oleh
+   outlineSilhouette pada semai (batang etiolasi selebar 1 px: 100% tepi).
+   batasY menahan garis agar tak menetes ke bawah alas benda. */
+function halo(g,w,h,warna,alfa,batasY){
+  const [rr,gg,bb]=_hx(warna);
+  const img=g.getImageData(0,0,w,h), d=img.data;
+  const pekat=(x,y)=>(x<0||y<0||x>=w||y>=h)?0:d[(y*w+x)*4+3];
+  const sasar=[];
+  for(let y=0;y<h;y++){
+    if(batasY!==undefined&&y>batasY)break;
+    for(let x=0;x<w;x++){
+      const i=(y*w+x)*4; if(d[i+3]>=200)continue;
+      if(pekat(x-1,y)>=200||pekat(x+1,y)>=200||pekat(x,y-1)>=200||pekat(x,y+1)>=200)
+        sasar.push(i);
+    }
+  }
+  const a=Math.round(255*alfa);
+  for(const i of sasar){d[i]=rr;d[i+1]=gg;d[i+2]=bb;d[i+3]=a;}
+  g.putImageData(img,0,0);
+}
 function furn(rect,oy,paint){
   const c=document.createElement('canvas');
   c.width=rect.w*T;c.height=rect.h*T+oy;
@@ -2904,14 +2928,17 @@ const IKAN_SPR=new Map();
    permukaan. Tanpa ini ikan cuma punya cincin gelap di atas air gelap, dan di
    pita terdalam lele praktis lenyap — diuji berdampingan, garis luar saja
    tidak memisahkan apa-apa. Teknik yang sama dipakai sprite dino sejak v1.77.0. */
-function rimAtas(g,w,h){
+/* Rona bawaan biru pucat: cahaya bawah air. Pemanggil lain boleh memberi rona
+   sendiri — semai disinari lampu tumbuh ungu, dan rim yang tak sewarna sumber
+   cahayanya terbaca sebagai salah cetak, bukan sebagai cahaya. */
+function rimAtas(g,w,h,rr=170,gg=214,bb=232,k=0.52){
   const img=g.getImageData(0,0,w,h), d=img.data;
   for(let x=0;x<w;x++)for(let y=0;y<h;y++){
     const i=(y*w+x)*4;
     if(d[i+3]<200)continue;
-    d[i]  =Math.round(d[i]  *0.48+170*0.52);
-    d[i+1]=Math.round(d[i+1]*0.48+214*0.52);
-    d[i+2]=Math.round(d[i+2]*0.48+232*0.52);
+    d[i]  =Math.round(d[i]  *(1-k)+rr*k);
+    d[i+1]=Math.round(d[i+1]*(1-k)+gg*k);
+    d[i+2]=Math.round(d[i+2]*(1-k)+bb*k);
     break;
   }
   g.putImageData(img,0,0);
@@ -4450,12 +4477,55 @@ function drawFade(){
    layu merunduk, kerdil pendek, berjamur berbintik. Warnanya memang ikut
    berubah, tapi tak pernah jadi satu-satunya pembeda: di layar kecil, dan
    bagi mata yang sulit membedakan warna, bentuklah yang selalu terbaca. */
-const CACAT=['layu','kerdil','jamur'];
+/* Campur dua warna heks. Dipakai supaya rona cacat MENIMPA SEBAGIAN rona
+   varietas, bukan menggantinya. */
+const _bl=(a,b,k)=>{const A=_hx(a),B=_hx(b);
+  return '#'+[0,1,2].map(i=>Math.round(A[i]+(B[i]-A[i])*k)
+    .toString(16).padStart(2,'0')).join('');};
+/* tg = tinggi dasar relatif; bk = bentuk daun; ruas = letak daun di batang
+   (pecahan tinggi); bt = warna batang bila beda dari daunnya.
+   Warnanya disebar dari hijau tua sampai hijau kekuningan: versi pertama
+   memakai enam hijau sedang yang terbentang sempit dan tak satu pun terbedakan. */
+const BENIH=[
+  {nm:'TOMAT', tg:1.00, bk:'majemuk', ruas:[0.40,0.68,0.94], c:'#3f7a34'},
+  {nm:'CABAI', tg:0.84, bk:'lanset',  ruas:[0.70,0.95],      c:'#1f5a28'},
+  {nm:'TERONG',tg:0.92, bk:'lebar',   ruas:[0.46,0.82],      c:'#4a6f55', bt:'#6b5490'},
+  {nm:'SAWI',  tg:1.14, bk:'sendok',  ruas:[0.56,0.88],      c:'#6cc04e'},
+  {nm:'KUBIS', tg:0.78, bk:'bulat',   ruas:[0.34,0.64],      c:'#4f8f84'},
+  {nm:'SELADA',tg:0.86, bk:'keriting',ruas:[0.34,0.58,0.84], c:'#93cf57'},
+];
+BENIH.forEach(b=>{const Rp=ramp(b.c);
+  b.W={m:Rp.base,h:Rp.hi,t:_bl(Rp.hi,'#f2ffe4',0.42),bt:b.bt||Rp.base};});
+/* Rona tiap cacat, dan seberapa kuat ia mencampuri warna varietas. */
+const CACAT_RONA={layu:['#b9a84a',0.58],jamur:['#9fae98',0.46],
+                  busuk:['#46543e',0.40],etiolasi:['#d8ecb4',0.52]};
+const _ronaCache=new Map();
+function benihRona(sp,bad){
+  const kunci=sp.nm+'|'+bad;
+  let W=_ronaCache.get(kunci); if(W)return W;
+  const r=CACAT_RONA[bad];
+  W=r?{m:_bl(sp.W.m,r[0],r[1]),h:_bl(sp.W.h,r[0],r[1]),
+       t:_bl(sp.W.t,r[0],r[1]),bt:_bl(sp.W.bt,r[0],r[1])}
+     :sp.W;
+  _ronaCache.set(kunci,W);
+  return W;
+}
+/* Urutannya SENGAJA: tiga pertama cacat dasar, lalu etiolasi (menyimpang ke
+   tinggi), lalu busuk (menyimpang di pangkal). Tingkat membuka jenis ke-n
+   pertama dari daftar ini, jadi urutan = urutan pelajaran. */
+const CACAT=['layu','kerdil','jamur','etiolasi','busuk'];
+const CACAT_NM={layu:'LAYU',kerdil:'KERDIL',jamur:'JAMUR',
+                etiolasi:'ETIOLASI',busuk:'BUSUK'};
+const TINGKAT=[{tray:5,jenis:3,laju:52,naik:7},
+               {tray:6,jenis:4,laju:58,naik:8},
+               {tray:7,jenis:5,laju:64,naik:9},
+               {tray:8,jenis:5,laju:72,naik:10}];
 const BIBIT_SEL=4;                       // sel per tray
-const BIBIT_TRAY=5;                      // tray per babak
 const BIBIT_DENDA=0.17;                  // mutu yang hilang tiap kesalahan
-const bibit={on:false,fase:'',ft:0,t:0,rak:[],baris:[],antre:0,
+/* tingkat BERTAHAN antar kunjungan: ia milik pemain, bukan milik satu babak. */
+const bibit={on:false,fase:'',ft:0,t:0,rak:[],baris:[],stok:[],antre:0,tingkat:0,
              kurX:0,mutu:1,benar:0,salah:0,kilat:[],laju:0,lulus:false};
+const bibitLv=()=>TINGKAT[Math.min(bibit.tingkat,TINGKAT.length-1)];
 const bibitRuang=()=>{
   const W2=Math.max(1,cv.width), H2=cv.height;
   /* tb = tinggi semai sehat. Diikat ke tinggi kanvas, bukan angka tetap:
@@ -4474,61 +4544,169 @@ const bibitRuang=()=>{
           rak2:Math.round(H2*0.40),                // rak jauh di belakang
           meja:Math.round(H2*0.70)};
 };
-function bibitSel(bad,tinggi,kosong){
+function bibitSel(bad,tinggi,kosong,sp){
   return {bad:bad||'',h:tinggi,kosong:!!kosong,seed:Math.random()*6.283,
-          diangkat:false,tandaT:0,tanda:0};
+          sp:sp||BENIH[0],diangkat:false,tandaT:0,tanda:0};
 }
+/* Tinggi satu sel: dasar varietas untuk tray itu, digoyang +-7% saja. Goyangan
+   yang lebih besar membuat semai sehat yang kebetulan jangkung bertabrakan
+   dengan etiolasi — diukur 17% beda di aturan lama, praktis tak terbaca. */
+const bibitTinggi=(tb,sp)=>Math.max(4,Math.round(tb*sp.tg*(0.93+Math.random()*0.14)));
 /* Isi rak mengikuti musim, dan DITURUNKAN DARI BENIH YANG SAMA dengan sprite
    raknya (rnd + season), supaya yang dilihat dari dekat benar-benar isi rak
    yang barusan dilewati — bukan rak lain yang kebetulan mirip. */
 function bibitRakIsi(){
   const M=SEMAI[season], out=[], {tb}=bibitRuang();
+  /* Varietas tiap tray diundi dari benih musim, jadi rak yang sama terlihat
+     sama setiap kali dibuka pada hari yang sama — dan berganti saat musimnya
+     berganti, seperti pembibitan sungguhan. Ketiganya dibuat BERBEDA: rak
+     yang tiga traynya satu varietas membuang kesempatan memperlihatkan ragam. */
+  /* Pengocokan acak-berbenih TIDAK menjamin sebaran: diukur, CABAI muncul di
+     4 dari 4 musim dan SAWI bisa terlewat sama sekali. Diganti pembagian
+     berlangkah dua: keenam varietas terbelah jadi dua kelompok bertiga yang
+     bergantian tiap musim, lalu digeser. Hasilnya pasti tiga varietas BERBEDA,
+     dan sepanjang tahun keenamnya kebagian sama rata, 2 musim masing-masing. */
+  const nB=BENIH.length, kel=season%2, geser=Math.floor(season/2)%3;
+  const pilih=[0,1,2].map(k=>BENIH[((k*2+kel)+geser*2)%nB]);
   for(let ti=0;ti<3;ti++){
-    const tx=TRAYX[ti], sel=[];
+    const tx=TRAYX[ti], sp=pilih[ti], sel=[];
+    const dasar=Math.round(tb*sp.tg*(0.44+M.t*0.10));
     for(let c=0;c<BIBIT_SEL;c++){
       const kosong=!M.penuh&&(rnd(tx+c*13,season*7+3)>>>2)%3===0;
-      const th=M.t+((rnd(tx+c*7,season*11)>>>3)%2);
       const r=rnd(tx*3+c*29,season*17+5);
-      const bad=(r>>>6)%5===0?CACAT[(r>>>11)%3]:'';
-      sel.push(bibitSel(kosong?'':bad,Math.round(tb*(0.42+th*0.10)),kosong));
+      const bad=(r>>>6)%5===0?CACAT[(r>>>11)%bibitLv().jenis]:'';
+      const goyang=1+(((r>>>17)%15)-7)/100;             // +-7%, sepola babak sortir
+      sel.push(bibitSel(kosong?'':bad,Math.max(4,Math.round(dasar*goyang)),kosong,sp));
     }
-    out.push({sel});
+    out.push({sel,sp});
   }
   return out;
 }
 /* --- satu semai, digambar besar ----------------------------------------- */
+/* Sepasang daun di satu ruas. x = tepi kiri batang; arah -1 menengadah,
+   +1 merunduk (layu). Bentuknya yang membedakan varietas — warna cuma
+   menguatkan, tak pernah menjadi satu-satunya pembeda. */
+function semaiDaun(g,x,y,arah,bk,W,kecil){
+  const a=arah;                                 // -1 menengadah, +1 merunduk
+  /* cermin: tiap helai digambar sekali lalu dipantulkan, jadi kiri-kanan
+     pasti sebangun dan kodenya tak perlu ditulis dua kali. */
+  const K=(w,xx,yy,ww,hh)=>{P(g,w,x+xx,y+yy,ww,hh);P(g,w,x+1-xx-ww+1,y+yy,ww,hh);};
+  if(kecil){                                    // etiolasi: helai belum sempat jadi
+    K(W.h,-3,a,2,1);K(W.t,-4,a*2,1,1);
+    return;
+  }
+  /* Lebar helai dipilih supaya tepi dalamnya MENEMPEL batang. Dengan cermin
+     K(), helai kiri berakhir di x+xx+ww-1 dan yang kanan mulai di x+2-xx-ww;
+     salah satu piksel saja membuat daunnya melayang lepas dari batang. */
+  if(bk==='majemuk'){                           // TOMAT: majemuk, berbulu, 3 anak daun
+    K(W.m,-5,0,5,1);                            // tangkai daun
+    K(W.h,-4,a,2,2);K(W.h,-7,a,2,2);            // anak daun atas berpasangan
+    K(W.m,-4,-a,2,1);K(W.m,-7,-a,2,1);          // anak daun bawah
+    K(W.t,-9,a,2,1);                            // anak daun ujung
+  }else if(bk==='lanset'){                      // CABAI: helai sempit, menyudut tajam
+    for(let i=1;i<=4;i++)K(i<4?W.m:W.t,-1-i,Math.round(a*i*0.9),1,1);
+    K(W.h,-3,Math.round(a*1.8),1,2);
+  }else if(bk==='lebar'){                       // TERONG: helai lebar pejal
+    K(W.m,-8,a-1,8,4);
+    K(W.h,-8,a-1,8,1);
+    K(W.t,-8,a,1,1);
+    K(_bl(W.m,'#000000',0.22),-5,a+1,1,2);      // tulang daun
+  }else if(bk==='sendok'){                      // SAWI: tangkai panjang, helai membulat
+    K(W.m,-5,0,4,1);                            // tangkai
+    K(W.h,-9,a-1,4,4);
+    K(W.t,-9,a-1,4,1);
+    K(W.m,-9,a+2,4,1);
+  }else if(bk==='bulat'){                       // KUBIS: helai bulat besar, menempel
+    K(W.m,-7,a-1,7,4);
+    K(W.h,-7,a-1,7,1);
+    K(W.t,-7,a-1,2,1);
+    K(_bl(W.m,'#000000',0.18),-4,a,1,3);
+  }else{                                        // SELADA: tepi keriting
+    K(W.m,-6,a,6,2);
+    K(W.h,-6,a,6,1);
+    for(let i=0;i<3;i++)K(W.t,-6+i*2,a-1,1,1);  // gerigi tepi atas
+  }
+}
+/* Tiga nilai goyangan, dikitari empat langkah — pola yang sama dengan empat
+   fase kibasan ekor ikan. Dengan goyangan menerus tiap sel butuh sprite
+   sendiri tiap bingkai, dan memanggang jadi mustahil. */
+const GOYANG=[0,1,0,-1];
+const SEMAI_SPR=new Map();
+const SEMAI_SPR_MAX=420;
+function semaiSprite(sp,bad,h,gy,sisi){
+  const kunci=sp.nm+'|'+bad+'|'+h+'|'+gy+'|'+sisi;
+  let c=SEMAI_SPR.get(kunci); if(c)return c;
+  const tg=Math.max(3,bad==='kerdil'?Math.round(h*0.42)
+                     :bad==='etiolasi'?Math.round(h*1.70):h);
+  const W2=32, H2=tg+16, ax=15, ay=H2-6;
+  c=document.createElement('canvas');c.width=W2;c.height=H2;
+  const q=c.getContext('2d');
+  semaiCat(q,ax,ay,sp,bad,tg,gy,sisi);
+  /* Rim DULU, baru garis luar. Terbalik, rimAtas() akan menemukan piksel
+     garis sebagai yang teratas tiap kolom lalu mencerahkan garisnya, bukan
+     pucuk tanamannya - dan pucuk itulah yang paling dekat lampu. */
+  rimAtas(q,W2,H2,226,205,250,0.38);
+  /* Kadar 0,38 dipilih dengan melihat 0 / 0,25 / 0,40 / 0,55 berdampingan,
+     BUKAN dari angka: ukuran "kontras tepi" tidak melacak keterbacaan di sini
+     karena halo memang menyisipkan nilai antara di perbatasan, jadi nilainya
+     turun dulu baru naik. Pada 0,55 tanamannya berpendar dan warna
+     varietasnya tenggelam. */
+  halo(q,W2,H2,'#c9a0f0',0.38,ay);
+  c.ax=ax;c.ay=ay;
+  if(SEMAI_SPR.size>=SEMAI_SPR_MAX)SEMAI_SPR.clear();  // ganti musim/ukuran: mulai lagi
+  SEMAI_SPR.set(kunci,c);
+  return c;
+}
 function semaiBesar(g,cx,yb,c,t,sw){
   if(c.kosong||c.diangkat)return;
-  const S=SN();
-  const tg=Math.max(3,c.bad==='kerdil'?Math.round(c.h*0.42):c.h);
-  const ayun=Math.sin(t/700+c.seed)*(c.bad==='layu'?0.5:1.1);
-  const tunduk=c.bad==='layu'?tg*0.38:0;
-  const W=c.bad==='layu' ?{m:'#7a7634',h:'#9a9243',t:'#b6ad58'}
-        : c.bad==='jamur'?{m:'#536b49',h:'#6d885e',t:'#88a176'}
-        : {m:S.mid,h:S.hi,t:S.hi2};
-  for(let k=0;k<tg;k++){                                  // batang, melengkung bila layu
-    const q=k/Math.max(1,tg-1), dx=Math.round(tunduk*q*q+ayun*q);
-    P(g,k>tg-3?W.h:W.m,cx+dx,yb-1-k,2,1);
-  }
-  const arah=c.bad==='layu'?1:-1;                         // daun: naik, atau merunduk
-  const lb=Math.max(2,Math.round(tg*0.34));
-  for(const dq of [0.42,0.76]){
-    const k=Math.round(tg*dq), q=k/Math.max(1,tg-1);
-    const dx=Math.round(tunduk*q*q+ayun*q), yy=yb-1-k;
-    for(let i=1;i<=lb;i++){
-      const dy=Math.round(arah*i*0.6);
-      P(g,i<lb?W.h:W.t,cx+dx-i-1,yy+dy,1,1);
-      P(g,i<lb?W.h:W.t,cx+dx+2+i,yy+dy,1,1);
-    }
-  }
-  P(g,W.t,cx+Math.round(tunduk+ayun),yb-tg,2,1);          // pucuk
-  if(c.bad==='jamur'){                                    // bintik putih di permukaan media
+  const sp=c.sp||BENIH[0];
+  const gy=GOYANG[((Math.floor((t/700+c.seed)/1.5708)%4)+4)%4];
+  const sisi=c.bad==='busuk'?(c.seed>3.14?1:0):0;
+  const spr=semaiSprite(sp,c.bad,c.h,gy,sisi);
+  /* Bayangan kontak di media: tanpa ini semai tampak mengambang, cacat yang
+     sama yang dibereskan contact() untuk tiap perabot. */
+  P(g,'rgba(12,7,3,.34)',cx-3,yb,6,1);
+  P(g,'rgba(12,7,3,.18)',cx-4,yb+1,8,1);
+  g.drawImage(spr,cx-spr.ax,yb-spr.ay);
+  if(c.bad==='jamur'){                              // bintik putih di permukaan media
     for(let i=0;i<8;i++){
-      const r=rnd(i*17+3,Math.round(c.seed*1000));
+      const r=rnd(i*17+3,c.h*37+sp.nm.length);
       P(g,'#e6ecdf',cx-(sw>>1)+3+((r>>>3)%Math.max(1,sw-6)),yb-1-((r>>>9)%3),1,1);
     }
-    P(g,'rgba(228,238,226,.26)',cx-3,yb-5,8,5);
   }
+}
+/* Pencat mentah: menggambar ke kanvas panggangan, bukan ke layar. */
+function semaiCat(g,cx,yb,sp,bad,tg,ayun,sisi){
+  /* layu MELENGKUNG (q kuadrat: pucuknya yang jatuh), busuk MIRING LURUS
+     (q pangkat satu: seluruh tanaman rebah dari pangkal). Dua gerakan yang
+     berbeda, jadi keduanya tak pernah tertukar walau sekilas. */
+  const tunduk=bad==='layu'?tg*0.38:0;
+  const rebah=bad==='busuk'?tg*0.34*(sisi?-1:1):0;
+  const W=benihRona(sp,bad);
+  const bw=bad==='etiolasi'?1:2;                          // etiolasi: batang kurus
+  for(let k=0;k<tg;k++){
+    const q=k/Math.max(1,tg-1), dx=Math.round(tunduk*q*q+rebah*q+ayun*q);
+    if(bad==='busuk'&&k<3){                               // pangkal mengecil & menghitam
+      P(g,k?'#3a2a1c':'#2a1b11',cx+dx,yb-1-k,1,1);continue;
+    }
+    P(g,k>tg-3?W.h:W.bt,cx+dx,yb-1-k,bw,1);
+  }
+  const arah=bad==='layu'?1:-1;                           // daun: naik, atau merunduk
+  /* Etiolasi cuma punya SEPASANG daun kecil dan letaknya tinggi: itulah
+     tanaman yang memanjang mengejar cahaya dan melewatkan daun di bawah. */
+  /* Letak ruas daun ikut varietas: kubis berdaun RENDAH, cabai berdaun
+     tinggi. Itu pembeda kedua di luar bentuk helainya, dan ia terbaca bahkan
+     saat helainya sendiri terpotong tepi sel. */
+  for(const dq of (bad==='etiolasi'?[0.84]:sp.ruas)){
+    const k=Math.round(tg*dq), q=k/Math.max(1,tg-1);
+    const dx=Math.round(tunduk*q*q+rebah*q+ayun*q);
+    semaiDaun(g,cx+dx,yb-1-k,arah,sp.bk,W,bad==='etiolasi');
+  }
+  if(tg>7&&bad!=='busuk'){                                // daun lembaga di pangkal
+    P(g,W.m,cx-2,yb-4,2,1);P(g,W.m,cx+2,yb-4,2,1);
+  }
+  P(g,W.t,cx+Math.round(tunduk+rebah+ayun),yb-tg,bw,1);   // pucuk
+  if(bad==='jamur')P(g,'rgba(228,238,226,.30)',cx-3,yb-6,8,6);   // kabut pucat di pangkal
 }
 /* --- satu sel: badan tray, media, semainya, lalu tandanya ---------------- */
 function bibitSelGambar(g,x,yb,sw,c,t,sorot){
@@ -4542,7 +4720,7 @@ function bibitSelGambar(g,x,yb,sw,c,t,sorot){
     /* Kotaknya diukur dari tinggi semai dewasa, bukan angka tetap: versi
        pertama menjulang jauh di atas tanamannya dan terbaca sebagai bingkai
        yang mengambang, bukan sebagai penunjuk sel. */
-    const tb=bibitRuang().tb, y0=yb-Math.round(tb*1.35)-4, h0=Math.round(tb*1.35)+12;
+    const tb=bibitRuang().tb, y0=yb-Math.round(tb*1.75)-4, h0=Math.round(tb*1.75)+12;
     for(const [ox,oy,dw,dh] of [[0,0,4,1],[0,0,1,4],[sw-4,0,4,1],[sw-1,0,1,4],
                                 [0,h0-1,4,1],[0,h0-4,1,4],[sw-4,h0-1,4,1],[sw-1,h0-4,1,4]])
       P(g,'#ffd23a',x+ox,y0+oy,dw,dh);
@@ -4557,6 +4735,15 @@ function bibitSelGambar(g,x,yb,sw,c,t,sorot){
                               P(g,'#ff6a4a',cxm+4-i*2,cym-4+i*2,2,2);}}
     g.globalAlpha=1;
   }
+}
+/* Nama varietas ditempel di MUKA tray, digambar setelah selnya — persis
+   tempat label ditempel di tray sungguhan, dan satu-satunya bidang mendatar
+   yang tidak ditempati tanaman. */
+function bibitLabel(g,x0,yb,tw,sp){
+  if(!sp)return;
+  const w=textW(sp.nm);
+  if(w>tw-6)return;
+  drawText(g,sp.nm,x0+Math.round((tw-w)/2),yb+1,'#8798ad');
 }
 /* --- latar ruang pembibitan: lampu tumbuh, papan bangku, kolong ---------- */
 /* Rak jauh: satu baris tray dalam siluet gelap, setingkat lebih tinggi dan
@@ -4667,26 +4854,50 @@ function bibitKeluar(){
   diveTombol('JUMP');diveAnalog(true);
 }
 /* --- SORTIR -------------------------------------------------------------- */
+/* Seluruh babak disusun DI MUKA dengan jatah cacat yang dipatok, lalu tray-nya
+   dilepas satu per satu ke ban berjalan. Mengundi tiap sel sendiri-sendiri
+   membuat jumlah yang sakit berayun 2 sampai 13 dari 20 - babak yang nyaris
+   kosong dan babak yang berdesakan, dari aturan yang sama. */
+function bibitSusunBabak(){
+  const L=bibitLv(), {tb}=bibitRuang(), nSel=L.tray*BIBIT_SEL;
+  let sisa=Math.max(2,Math.round(nSel*0.38)+((Math.random()*3)|0)-1);
+  /* Jatah disebar dengan batas 3 per tray: tray yang keempat selnya sakit
+     tidak lagi menuntut keputusan, cuma menuntut empat ketukan. */
+  const slot=[];
+  for(let i=0;i<L.tray;i++)for(let k=0;k<3;k++)slot.push(i);
+  for(let i=slot.length-1;i>0;i--){const j=(Math.random()*(i+1))|0;
+    [slot[i],slot[j]]=[slot[j],slot[i]];}
+  const jatah=new Array(L.tray).fill(0);
+  for(let i=0;i<slot.length&&sisa>0;i++){jatah[slot[i]]++;sisa--;}
+  const stok=[];
+  for(let i=0;i<L.tray;i++){
+    const idx=[0,1,2,3];
+    for(let k=idx.length-1;k>0;k--){const j=(Math.random()*(k+1))|0;
+      [idx[k],idx[j]]=[idx[j],idx[k]];}
+    const sakit=new Set(idx.slice(0,jatah[i]));
+    const sp=BENIH[(Math.random()*BENIH.length)|0];      // satu tray, satu varietas
+    const sel=[];
+    for(let c=0;c<BIBIT_SEL;c++){
+      const bad=sakit.has(c)?CACAT[(Math.random()*L.jenis)|0]:'';
+      sel.push(bibitSel(bad,bibitTinggi(tb,sp),false,sp));
+    }
+    stok.push({sel,sp,cacat:jatah[i]});
+  }
+  return stok;
+}
 function bibitSortirMulai(){
+  const L=bibitLv();
   bibit.fase='sortir';bibit.ft=0;
-  bibit.baris=[];bibit.antre=BIBIT_TRAY;
+  bibit.baris=[];bibit.stok=bibitSusunBabak();bibit.antre=L.tray;
   bibit.benar=0;bibit.salah=0;bibit.mutu=1;bibit.kilat=[];
-  bibit.laju=52;bibit.kurX=Math.round(bibitRuang().W2*0.5);
+  bibit.laju=L.laju;bibit.kurX=Math.round(bibitRuang().W2*0.5);
   diveTombol('SORT');
   beep(620,.06,.045,'square');beep(880,.09,.045,'square',.06);
 }
 function bibitTrayBaru(){
-  const {W2,tb}=bibitRuang(), sel=[];
-  let cacat=0;
-  for(let c=0;c<BIBIT_SEL;c++){
-    const bad=Math.random()<0.40?CACAT[(Math.random()*3)|0]:'';
-    if(bad)cacat++;
-    sel.push(bibitSel(bad,tb+((Math.random()*Math.max(2,tb*0.34))|0),false));
-  }
-  /* Tray tanpa satu pun cacat itu sah dan memang perlu ada: kalau setiap tray
-     selalu berisi yang sakit, "ada yang harus diafkir" jadi anggapan dasar dan
-     permainannya berhenti jadi keputusan. */
-  return {x:W2+4,sel,cacat};
+  const {W2}=bibitRuang(), tr=bibit.stok.shift();
+  if(!tr)return null;
+  tr.x=W2+4;return tr;
 }
 /* Daftar sel yang sedang terlihat, urut dari kiri. Kursor bekerja di atas
    daftar ini, bukan di atas indeks tray — dengan begitu tray yang keluar layar
@@ -4767,11 +4978,16 @@ function bibitUpdate(dt){
   const sela=Math.min(Math.round(sw*1.1),Math.round(W2*0.09));
   const akhir=bibit.baris.length?bibit.baris[bibit.baris.length-1]:null;
   if(bibit.antre>0&&(!akhir||akhir.x<=W2-tw-sela)){
-    bibit.baris.push(bibitTrayBaru());bibit.antre--;
-    bibit.laju+=7;                                         // tiap tray sedikit lebih cepat
+    const tr=bibitTrayBaru();
+    if(tr){bibit.baris.push(tr);bibit.antre--;bibit.laju+=bibitLv().naik;}
+    else bibit.antre=0;                                    // stok habis: jangan menggantung
   }
   if(bibit.mutu<=0||(bibit.antre===0&&!bibit.baris.length)){
     bibit.lulus=bibit.mutu>0.34;
+    /* Menang membuka tingkat berikutnya; kalah TIDAK menurunkannya. Yang ingin
+       dihukum kecerobohan dalam satu babak, bukan keberanian mencoba yang
+       lebih sulit - menurunkan tingkat membuat kekalahan dibayar dua kali. */
+    if(bibit.lulus)bibit.tingkat=Math.min(TINGKAT.length-1,bibit.tingkat+1);
     bibit.fase='hasil';bibit.ft=0;
     if(bibit.lulus){beep(880,.06,.05);beep(1320,.09,.05,'square',.07);
                     beep(1760,.11,.04,'square',.15);}
@@ -4799,31 +5015,59 @@ function bibitDraw(g,t){
       P(g,ramp('#262a33').out,x0,y0-2,tw,9);               // badan tray
       for(let c=0;c<BIBIT_SEL;c++)
         bibitSelGambar(g,x0+3+c*sw,y0,sw,bibit.rak[i].sel[c],t,false);
+      bibitLabel(g,x0,y0,tw,bibit.rak[i].sp);
     }
     drawText(g,SN().id,6,4,'#8fa3b8');
     const hidup=bibit.rak.reduce((n,tr)=>n+tr.sel.filter(c=>!c.kosong).length,0);
     drawText(g,hidup+' SEMAI',W2-textW(hidup+' SEMAI')-6,4,'#8fa3b8');
+    const lv='LV'+(bibit.tingkat+1);
+    drawText(g,lv,(W2-textW(lv))>>1,4,bibit.tingkat?'#ffd23a':'#8fa3b8');
     /* --- empat contoh: inilah yang mengajarkan aturannya --- */
-    /* Empat contoh berdiri di atas papan sendiri di kolong, jadi ia terbaca
-       sebagai rak contoh — bukan deretan ikon yang melayang di tepi layar. */
-    const yC=H2-8, lb=['SEHAT','LAYU','KERDIL','JAMUR'], cw=Math.floor(W2/4);
-    /* Bilahnya PEKAT, bukan beralfa. Versi beralfa membiarkan karung media di
-       kolong menembus ke depan, dan dua benda yang saling tumpang-tindih di
-       baris contoh justru merusak satu-satunya hal yang diajarkannya. */
-    g.fillStyle='#090e15';g.fillRect(0,yC-Math.round(tb*0.9)-9,W2,H2-yC+Math.round(tb*0.9)+9);
-    P(g,'#2a3242',0,yC-Math.round(tb*0.9)-9,W2,1);
-    for(let i=0;i<4;i++){
-      const cxm=Math.round(cw*(i+0.5)), yb=yC-7;
-      const c={bad:i?CACAT[i-1]:'',h:Math.round(tb*0.72),seed:i*1.7,
+    /* Enam contoh berdiri di atas papan sendiri di kolong, jadi ia terbaca
+       sebagai rak contoh — bukan deretan ikon yang melayang di tepi layar.
+       Di layar sempit enam tak muat sebaris: label 'ETIOLASI' saja 31 px,
+       sedangkan satu kolom cuma 20 px. Jadi di sana ia jadi dua baris bertiga,
+       dan kolong memang ditukar dengan pelajarannya — di ponsel yang kedua
+       jauh lebih berharga.
+       Jenis yang belum terbuka di tingkat ini digambar redup: pemain melihat
+       apa yang MENUNGGU, tanpa mengira ia ada di babak yang sedang berjalan. */
+    const lb=['SEHAT',...CACAT.map(k=>CACAT_NM[k])];
+    const kol=tegak?3:6, bar=Math.ceil(lb.length/kol);
+    /* Tinggi baris diukur dari contoh TERTINGGI, yaitu etiolasi pada 155%.
+       Diukur dari semai normal, batang etiolasi menembus 5 px ke baris di
+       atasnya dan menimpa labelnya — justru contoh yang paling perlu terbaca
+       utuh, karena ia satu-satunya yang menyimpang ke arah tinggi. */
+    const hEx=Math.round(tb*0.56);
+    const hBar=Math.round(hEx*1.55)+18, cw=Math.floor(W2/kol);
+    const y0b=H2-bar*hBar-2;
+    g.fillStyle='#090e15';g.fillRect(0,y0b,W2,H2-y0b);
+    P(g,'#2a3242',0,y0b,W2,1);
+    const buka=bibitLv().jenis;
+    for(let i=0;i<lb.length;i++){
+      const cxm=Math.round(cw*((i%kol)+0.5));
+      const yC=y0b+Math.floor(i/kol)*hBar+hBar-8, yb=yC-7;
+      /* Semua contoh memakai TOMAT. Yang diajarkan baris ini keadaannya,
+         bukan varietasnya; mengganti dua hal sekaligus membuat pembaca tak
+         tahu yang mana yang jadi pembeda. */
+      const c={bad:i?CACAT[i-1]:'',h:hEx,seed:i*1.7,sp:BENIH[0],
                kosong:false,diangkat:false,tandaT:0};
+      g.globalAlpha=(i===0||i-1<buka)?1:0.32;
       P(g,'#1f242e',cxm-8,yb-1,16,4);
       P(g,'#2a1c12',cxm-7,yb-1,14,2);P(g,'#3a2817',cxm-7,yb-1,14,1);
       semaiBesar(g,cxm-1,yb-1,c,t,14);
       P(g,i?'#ff6a4a':'#6ef08a',cxm-1,yb+4,2,2);
       drawText(g,lb[i],cxm-Math.round(textW(lb[i])/2),yC,i?'#d08a74':'#86c98f');
+      g.globalAlpha=1;
     }
-    if(Math.floor(t/420)%2===0){                           // ajakan: satu segitiga, tanpa kata
-      const ax=W2-12, ay=meja+16;
+    /* Hanya di layar lebar. Di layar bertingkat tray terbawah menempel bilah
+       contoh -- tak ada celah yang tersisa, dan di mana pun panah itu ditaruh
+       ia menimpa sesuatu. Di sana tombol kiri sudah berbunyi START, jadi
+       ajakannya memang tidak hilang. */
+    if(!tegak&&Math.floor(t/420)%2===0){                   // ajakan: satu segitiga, tanpa kata
+      /* Duduk tepat DI ATAS bilah contoh, bukan pada jarak tetap dari bangku:
+         dengan jarak tetap ia jatuh ke dalam bilah dan menimpa salah satu
+         contohnya, justru di layar sempit tempat bilahnya paling tinggi. */
+      const ax=W2-12, ay=y0b-9;
       for(let k=0;k<6;k++)P(g,'#ffd23a',ax+k,ay-5+k,1,Math.max(1,11-k*2));
     }
     return;
@@ -4836,6 +5080,7 @@ function bibitDraw(g,t){
     P(g,ramp('#262a33').out,x0,meja-2,tw,9);
     for(let c=0;c<BIBIT_SEL;c++)
       bibitSelGambar(g,x0+3+c*sw,meja,sw,tr.sel[c],t,!!sorot&&sorot.tr===tr&&sorot.c===c);
+    bibitLabel(g,x0,meja,tw,tr.sp);
   }
   for(const k of bibit.kilat){                             // kilat benar/salah di tepi atas
     const a=1-k.t/0.45;
@@ -4849,8 +5094,9 @@ function bibitDraw(g,t){
   g.fillStyle='rgba(6,12,18,.78)';g.fillRect(8,4,barW,5);
   g.fillStyle=bibit.mutu<0.34?'#e0552f':'#7fd46a';
   g.fillRect(9,5,Math.round((barW-2)*bibit.mutu),3);
-  for(let i=1;i<BIBIT_TRAY;i++){                           // berapa tray tersisa
-    const px=9+Math.round((barW-2)*i/BIBIT_TRAY);
+  const nT=bibitLv().tray;
+  for(let i=1;i<nT;i++){                                   // berapa tray dalam babak ini
+    const px=9+Math.round((barW-2)*i/nT);
     P(g,'rgba(6,12,18,.6)',px,5,1,3);
   }
   if(bibit.fase==='hasil'){
@@ -5371,7 +5617,9 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               bibit,bibitMasuk,bibitKeluar,bibitSortirMulai,bibitTekan,bibitKetuk,
               bibitUpdate,bibitDraw,bibitRuang,bibitTampak,bibitDekat,bibitAfkir,
               bibitGeser,bibitRakIsi,bibitTrayBaru,semaiBesar,semaiTool,CACAT,
-              BIBIT_SEL,BIBIT_TRAY,BIBIT_DENDA,
+              BIBIT_SEL,BIBIT_DENDA,TINGKAT,CACAT_NM,bibitLv,bibitSusunBabak,
+              BENIH,benihRona,semaiDaun,bibitTinggi,bibitLabel,_bl,
+              semaiCat,semaiSprite,SEMAI_SPR,GOYANG,
               bingkai:(dt=1/60)=>{const ts=performance.now();   // tiruan setia loop()
                 tickSky();
                 if(bibit.on){bibitUpdate(dt);bibitDraw(cx,ts);}
