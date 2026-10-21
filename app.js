@@ -3415,9 +3415,13 @@ function diveLawanTekan(){
 }
 /* --- ANGKAT: ikan diseret ke permukaan di ujung senar --------------------
    Dulu battle yang dimenangkan langsung disambut tirai, jadi hadiahnya baru
-   terlihat setelah layar berganti. Satu detik ini mengisi jarak itu: ikannya
-   naik sambil meronta, memecah permukaan, lalu barulah layar berpindah. */
-const ANGKAT_DUR=1.0;
+   terlihat setelah layar berganti. Fase ini mengisi jarak itu.
+   Dua ketukan, bukan satu laju. Versi 1,0 detik berakhir PERSIS saat ikan
+   menyentuh permukaan, jadi tak ada bingkai yang memperlihatkan ikan sudah
+   terangkat — hadiahnya cuma lewat. NAIK menyeretnya dari kedalaman; TAHAN
+   menggantungnya di ujung joran, berayun dan meniriskan air. Ketukan kedua
+   itulah yang terbaca sebagai memancing yang SELESAI. */
+const ANGKAT_NAIK=1.15, ANGKAT_TAHAN=0.95, ANGKAT_DUR=ANGKAT_NAIK+ANGKAT_TAHAN;
 function diveAngkatMulai(sp,f){
   dive.fase='angkat';dive.ft=0;
   dive.lawan=null;dive.gigit=null;
@@ -3426,6 +3430,11 @@ function diveAngkatMulai(sp,f){
   for(const o of dive.ikan)                       // yang lain kabur dari keriuhan
     if(o!==f&&Math.hypot(dive.bx-o.x,dive.by-o.y)<64)o.mode='kabur';
   beep(300,.09,.05,'sine');beep(420,.09,.05,'sine',.07);beep(560,.12,.05,'sine',.15);
+  /* Byur dijadwalkan lewat parameter delay beep(), supaya ia jatuh tepat di
+     bingkai permukaan pecah tanpa perlu penjadwal bunyi tersendiri. */
+  const dp=ANGKAT_NAIK-0.06;
+  beep(1500,.05,.030,'square',dp);     beep(900, .07,.035,'sine',    dp+.03);
+  beep(1900,.04,.022,'square',dp+.07); beep(1150,.14,.030,'triangle',dp+.10);
 }
 function diveTarik(){
   if(!dive.on)return;
@@ -3772,9 +3781,20 @@ function diveDraw(g,t){
   g.fillRect(9,5,Math.round((barW-2)*k2),3);
   /* --- IKAN DIANGKAT ---------------------------------------------------- */
   if(dive.fase==='angkat'&&dive.angkat){
-    const A=dive.angkat, k=Math.min(1,dive.ft/ANGKAT_DUR);
+    const A=dive.angkat;
+    const k=Math.min(1,dive.ft/ANGKAT_NAIK);                   // ketukan NAIK saja
     const e=k*k*(3-2*k);                                       // pelan-cepat-pelan
-    const fx=Math.round(A.x0+(tx0-A.x0)*e), fy=Math.round(A.y0+((SURF-7)-A.y0)*e);
+    const th=Math.max(0,Math.min(1,(dive.ft-ANGKAT_NAIK)/ANGKAT_TAHAN));
+    /* Selama TAHAN ikan BERAYUN DI SEKITAR UJUNG JORAN, bukan bergeser lurus:
+       benda yang tergantung pada senar adalah bandul, dan senarnya ikut
+       miring. Simpangannya ditambahkan pada posisi lerp, bukan menggantinya,
+       supaya tak ada lompatan di perbatasan dua ketukan — amplitudonya nol
+       sampai e=0,85 lalu menanjak, jadi di titik sambung keduanya sama. */
+    const tali=(SURF-7)-ty0;                                   // panjang senar saat tergantung
+    const amp=Math.max(0,(e-0.85)/0.15)*Math.pow(1-th,0.6);
+    const sw=Math.sin(dive.ft*5.2)*0.30*amp;
+    const fx=Math.round(A.x0+(tx0-A.x0)*e+Math.sin(sw)*tali);
+    const fy=Math.round(A.y0+((SURF-7)-A.y0)*e-(1-Math.cos(sw))*tali);
     const nk=Math.max(2,Math.round(Math.hypot(fx-tx0,fy-ty0)/3));
     g.globalAlpha=.55;g.fillStyle='#cfe0ee';                   // senar ikut memendek
     for(let i=1;i<nk;i++){const q=i/nk;
@@ -3785,17 +3805,33 @@ function diveDraw(g,t){
       if(by2>SURF+2){g.fillStyle='rgba(205,238,248,'+(0.30*(1-q)).toFixed(2)+')';
         g.fillRect(fx+((i%2)?2:-2),by2,1,1);}
     }
-    /* meronta: digoyang, lalu dimiringkan moncong ke atas saat mendekat */
+    if(th>0){                                                  // air menitik dari ikan
+      for(let i=0;i<4;i++){
+        const r=rnd(i,91), q=(dive.ft*1.7+((r>>>4)%100)/100)%1;
+        const ty2=fy+4+Math.round(q*Math.max(4,SURF+5-fy));
+        g.fillStyle='rgba(205,238,248,'+(0.55*(1-q)).toFixed(2)+')';
+        g.fillRect(fx-4+((r>>>9)%9),ty2,1,2);
+      }
+    }
+    /* meronta: digoyang, dimiringkan moncong ke atas, lalu ikut arah ayunan.
+       Goyangannya diredam separuh selama TAHAN — kalau getar 2 px dan ayunan
+       3 px jalan sekencang-kencangnya bersamaan, yang terbaca cuma ribut. */
     g.setTransform(1,0,0,1,0,0);
-    g.translate(fx+Math.round(Math.sin(t/38)*2),fy);
-    g.rotate(-0.62*e);
+    g.translate(fx+Math.round(Math.sin(t/38)*2*(1-th*0.5)),fy);
+    g.rotate(-0.62*e+sw);
     drawIkan(g,0,0,A.sp,1,dive.ft*16);
     g.setTransform(1,0,0,1,0,0);
-    if(fy<=SURF+5){                                            // permukaan pecah
-      const r=2+(1-(fy-(SURF-7))/12)*22;
-      g.fillStyle='rgba(225,245,252,.5)';
-      for(let i=0;i<10;i++){const an=i/10*6.283;
-        g.fillRect(Math.round(fx+Math.cos(an)*r),Math.round(SURF+Math.sin(an)*r*0.35),1,1);}
+    /* Cincin permukaan dihitung dari WAKTU, bukan dari jarak ikan ke
+       permukaan. Rumus jarak dulu memaku radiusnya begitu ikan berhenti di
+       permukaan; dengan fase yang kini hampir dua kali lebih panjang, cincin
+       diam sedetik akan terbaca sebagai lingkaran yang digambar, bukan air
+       yang pecah. Sekarang ia melebar lalu pudar habis. */
+    const pk=(dive.ft-(ANGKAT_NAIK-0.10))/0.60;
+    if(pk>0&&pk<1){
+      const r=3+pk*28;
+      g.fillStyle='rgba(225,245,252,'+(0.55*(1-pk)).toFixed(2)+')';
+      for(let i=0;i<14;i++){const an=i/14*6.283;
+        g.fillRect(Math.round(tx0+Math.cos(an)*r),Math.round(SURF+Math.sin(an)*r*0.33),1,1);}
     }
   }
   /* --- BAR LAWAN ---------------------------------------------------------
