@@ -3023,9 +3023,15 @@ function drawProduce(g,x,y,kind){
 const PICK_DUR=1150;
 function drawPick(g,t){
   const p=player.pick; if(!p)return;
-  const a=(t-p.t0)/PICK_DUR;
+  /* Durasi dan perbesaran boleh dibawa oleh pick-nya sendiri. Tanpa bidang
+     itu nilainya persis seperti semula, jadi panen bedengan dan telur ayam
+     tidak tersentuh sama sekali. */
+  const dur=p.lama||PICK_DUR, bsr=p.besar||1;
+  const a=(t-p.t0)/dur;
   if(!(a>=0&&a<1)){player.pick=null;return;}
-  const hx=Math.round(player.x), hy=Math.round(player.y)-21;         // tepat di atas kepala
+  /* Hadiah yang diperbesar diangkat lebih tinggi: pada 2x ia setinggi ~24 px
+     dan dengan titik angkat lama ia menimpa kepala dinonya sendiri. */
+  const hx=Math.round(player.x), hy=Math.round(player.y)-21-(bsr>1?9:0);
   let x,y;
   if(a<0.3){                                                         // fase 1: dipetik, melengkung naik
     const k=a/0.3;
@@ -3034,9 +3040,19 @@ function drawPick(g,t){
   }else{                                                             // fase 2: diangkat, sedikit memantul
     const k=(a-0.3)/0.7;
     x=hx; y=hy-Math.round(2*Math.sin(k*Math.PI*3));
-    if(k>0.72)g.globalAlpha=1-(k-0.72)/0.28;                         // memudar di akhir
+    /* Pudar ditunda sampai 82% untuk hadiah yang diperbesar: dengan 72% ia
+       sudah mulai lenyap sebelum mata sempat berpindah dari kolam ke dino. */
+    const pud=bsr>1?0.82:0.72;
+    if(k>pud)g.globalAlpha=1-(k-pud)/(1-pud);
   }
-  drawProduce(g,Math.round(x),Math.round(y),p.kind);
+  if(bsr>1){                                                         // hadiah minigame: digambar besar
+    g.save();
+    g.imageSmoothingEnabled=false;                                   // tetap tajam, bukan diburamkan
+    g.translate(Math.round(x),Math.round(y));
+    g.scale(bsr,bsr);
+    drawProduce(g,0,0,p.kind);
+    g.restore();
+  }else drawProduce(g,Math.round(x),Math.round(y),p.kind);
   if(a>=0.3&&a<0.55){                                                // kilau "dapat!" sesaat
     const s=(a-0.3)/0.25;g.globalAlpha=(1-s)*0.9;
     P(g,'#fff3b0',hx-6,hy-1,1,1);P(g,'#fff3b0',hx+6,hy-2,1,1);P(g,'#fff3b0',hx,hy-8,1,1);
@@ -3541,7 +3557,10 @@ function diveUpdate(dt){
     if(f){
       f.endT=now;
       if(dive.dapat){f.done=1;
-        player.pick={kind:6+IKAN.indexOf(dive.dapat),t0:now,fx:f.bx,fy:f.by};}
+        /* Hadiah minigame, bukan pungutan di tepi jalan: diangkat 2x dan
+           ditahan 2 detik, bukan 1,15. */
+        player.pick={kind:6+IKAN.indexOf(dive.dapat),t0:now,fx:f.bx,fy:f.by,
+                     lama:2000,besar:2};}
       else f.done=-1;
     }
     /* Banner dilupakan supaya pemeriksaan zona di update() memunculkannya lagi;
@@ -4896,7 +4915,10 @@ function bibitKeluar(){
   bibit.on=false;bibit.fase='';
   if(bibit.lulus){
     const now=performance.now();
-    player.pick={kind:11,t0:now,fx:player.x,fy:player.y-8};
+    /* Hadiah minigame juga, jadi perlakuannya disamakan dengan ikan:
+       diangkat 2x dan ditahan 2 detik. Dua babak yang sama beratnya tidak
+       boleh dihargai dengan dua ukuran. */
+    player.pick={kind:11,t0:now,fx:player.x,fy:player.y-8,lama:2000,besar:2};
   }
   activeTool=null;lastZone=null;keys.clear();
   diveTombol('JUMP');diveAnalog(true);
