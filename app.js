@@ -4486,13 +4486,22 @@ const _bl=(a,b,k)=>{const A=_hx(a),B=_hx(b);
    (pecahan tinggi); bt = warna batang bila beda dari daunnya.
    Warnanya disebar dari hijau tua sampai hijau kekuningan: versi pertama
    memakai enam hijau sedang yang terbentang sempit dan tak satu pun terbedakan. */
+/* lb = lebar helai (piksel, tiap sisi), tb2 = tebalnya. Dua angka itulah yang
+   membedakan varietas, bersama tinggi dan letak ruasnya — bukan susunan titik.
+   Terbaca sebagai perawakan: kubis berhelai lebar & rendah, cabai sempit &
+   tinggi, sawi jangkung bertangkai. */
+/* lb = lebar helai tiap sisi, tb2 = tebalnya, nk = berapa baris helai mencuat
+   dari batang, mr = helainya menyerong atau mendatar. Empat angka itu plus
+   tinggi dan warna yang membedakan varietas — BUKAN susunan titik di dalam
+   helai. Tiga menyerong, tiga mendatar: siluetnya jadi dua keluarga, bukan
+   satu barisan tiang yang seragam. */
 const BENIH=[
-  {nm:'TOMAT', tg:1.00, bk:'majemuk', ruas:[0.40,0.68,0.94], c:'#3f7a34'},
-  {nm:'CABAI', tg:0.84, bk:'lanset',  ruas:[0.70,0.95],      c:'#1f5a28'},
-  {nm:'TERONG',tg:0.92, bk:'lebar',   ruas:[0.46,0.82],      c:'#4a6f55', bt:'#6b5490'},
-  {nm:'SAWI',  tg:1.14, bk:'sendok',  ruas:[0.56,0.88],      c:'#6cc04e'},
-  {nm:'KUBIS', tg:0.78, bk:'bulat',   ruas:[0.34,0.64],      c:'#4f8f84'},
-  {nm:'SELADA',tg:0.86, bk:'keriting',ruas:[0.34,0.58,0.84], c:'#93cf57'},
+  {nm:'TOMAT', tg:1.00, bk:'majemuk', ruas:[0.52,0.86], lb:4, tb2:2, nk:1, mr:1, c:'#3f7a34'},
+  {nm:'CABAI', tg:0.84, bk:'lanset',  ruas:[0.60,0.86], lb:3, tb2:2, nk:2, mr:1, c:'#1f5a28'},
+  {nm:'TERONG',tg:0.92, bk:'lebar',   ruas:[0.42,0.80], lb:6, tb2:3, nk:1, mr:0, c:'#4a6f55', bt:'#6b5490'},
+  {nm:'SAWI',  tg:1.14, bk:'sendok',  ruas:[0.58,0.88], lb:5, tb2:3, nk:1, mr:1, c:'#6cc04e'},
+  {nm:'KUBIS', tg:0.78, bk:'bulat',   ruas:[0.30,0.60], lb:7, tb2:3, nk:0, mr:0, c:'#4f8f84'},
+  {nm:'SELADA',tg:0.86, bk:'keriting',ruas:[0.44,0.76], lb:5, tb2:2, nk:1, mr:0, c:'#93cf57'},
 ];
 BENIH.forEach(b=>{const Rp=ramp(b.c);
   b.W={m:Rp.base,h:Rp.hi,t:_bl(Rp.hi,'#f2ffe4',0.42),bt:b.bt||Rp.base};});
@@ -4586,46 +4595,39 @@ function bibitRakIsi(){
 /* Sepasang daun di satu ruas. x = tepi kiri batang; arah -1 menengadah,
    +1 merunduk (layu). Bentuknya yang membedakan varietas — warna cuma
    menguatkan, tak pernah menjadi satu-satunya pembeda. */
-function semaiDaun(g,x,y,arah,bk,W,kecil){
+function semaiDaun(g,x,y,arah,bk,W,kecil,sp){
   const a=arah;                                 // -1 menengadah, +1 merunduk
   /* cermin: tiap helai digambar sekali lalu dipantulkan, jadi kiri-kanan
      pasti sebangun dan kodenya tak perlu ditulis dua kali. */
   const K=(w,xx,yy,ww,hh)=>{P(g,w,x+xx,y+yy,ww,hh);P(g,w,x+1-xx-ww+1,y+yy,ww,hh);};
   if(kecil){                                    // etiolasi: helai belum sempat jadi
-    K(W.h,-3,a,2,1);K(W.t,-4,a*2,1,1);
+    K(W.h,-2,a,2,2);
     return;
   }
-  /* Lebar helai dipilih supaya tepi dalamnya MENEMPEL batang. Dengan cermin
-     K(), helai kiri berakhir di x+xx+ww-1 dan yang kanan mulai di x+2-xx-ww;
-     salah satu piksel saja membuat daunnya melayang lepas dari batang. */
-  if(bk==='majemuk'){                           // TOMAT: majemuk, berbulu, 3 anak daun
-    K(W.m,-5,0,5,1);                            // tangkai daun
-    K(W.h,-4,a,2,2);K(W.h,-7,a,2,2);            // anak daun atas berpasangan
-    K(W.m,-4,-a,2,1);K(W.m,-7,-a,2,1);          // anak daun bawah
-    K(W.t,-9,a,2,1);                            // anak daun ujung
-  }else if(bk==='lanset'){                      // CABAI: helai sempit, menyudut tajam
-    for(let i=1;i<=4;i++)K(i<4?W.m:W.t,-1-i,Math.round(a*i*0.9),1,1);
-    K(W.h,-3,Math.round(a*1.8),1,2);
-  }else if(bk==='lebar'){                       // TERONG: helai lebar pejal
-    K(W.m,-8,a-1,8,4);
-    K(W.h,-8,a-1,8,1);
-    K(W.t,-8,a,1,1);
-    K(_bl(W.m,'#000000',0.22),-5,a+1,1,2);      // tulang daun
-  }else if(bk==='sendok'){                      // SAWI: tangkai panjang, helai membulat
-    K(W.m,-5,0,4,1);                            // tangkai
-    K(W.h,-9,a-1,4,4);
-    K(W.t,-9,a-1,4,1);
-    K(W.m,-9,a+2,4,1);
-  }else if(bk==='bulat'){                       // KUBIS: helai bulat besar, menempel
-    K(W.m,-7,a-1,7,4);
-    K(W.h,-7,a-1,7,1);
-    K(W.t,-7,a-1,2,1);
-    K(_bl(W.m,'#000000',0.18),-4,a,1,3);
-  }else{                                        // SELADA: tepi keriting
-    K(W.m,-6,a,6,2);
-    K(W.h,-6,a,6,1);
-    for(let i=0;i<3;i++)K(W.t,-6+i*2,a-1,1,1);  // gerigi tepi atas
+  /* SATU BALOK PEJAL per helai, menempel batang (xx = -lb, tak pernah lain),
+     lalu satu baris terang di sisi yang menghadap lampu dan satu piksel pucat
+     di ujungnya. Itu saja. Pola di DALAM helai sengaja tidak ada: motif
+     sebesar 2-3 px tidak terbaca sebagai motif, cuma sebagai kotor. */
+  const lb=sp?sp.lb:4, tb2=sp?sp.tb2:2, mr=sp?sp.mr:0;
+  const naik=a*(sp?sp.nk:1);                         // cabai mencuat, kubis mendatar
+  /* Menyerong: separuh LUAR helai digeser satu baris ke arah cahaya. Tetap
+     satu massa pejal yang menempel batang — yang berubah siluetnya, bukan
+     keutuhannya. */
+  const luar=mr?Math.max(1,lb>>1):0, dalam=lb-luar;
+  const ySisi=naik+(a<0?0:tb2-1);
+  K(W.m,-lb+luar,naik,dalam,tb2);
+  K(W.h,-lb+luar,ySisi,dalam,1);
+  if(luar){
+    K(W.m,-lb,naik+a,luar,tb2);
+    K(W.h,-lb,ySisi+a,luar,1);
   }
+  K(W.t,-lb,ySisi+(mr?a:0),1,1);                     // ujung helai paling pucat
+  if(bk==='sendok')K(W.m,-lb-2,naik+(tb2>>1),2,1);   // SAWI: helai duduk di tangkai
+  if(bk==='keriting')                                // SELADA: gerigi tepi, satu baris
+    for(let i=1;i<lb;i+=2)K(W.h,-lb+i,a<0?naik-1:naik+tb2,1,1);
+  /* Helai yang menyerong naik satu baris lebih tinggi dari batang di ruas
+     teratas; satu piksel penyambung menjaganya tetap bertemu batang. */
+  if(luar)K(W.m,-1,naik,1,tb2);
 }
 /* Tiga nilai goyangan, dikitari empat langkah — pola yang sama dengan empat
    fase kibasan ekor ikan. Dengan goyangan menerus tiap sel butuh sprite
@@ -4642,16 +4644,13 @@ function semaiSprite(sp,bad,h,gy,sisi){
   c=document.createElement('canvas');c.width=W2;c.height=H2;
   const q=c.getContext('2d');
   semaiCat(q,ax,ay,sp,bad,tg,gy,sisi);
-  /* Rim DULU, baru garis luar. Terbalik, rimAtas() akan menemukan piksel
-     garis sebagai yang teratas tiap kolom lalu mencerahkan garisnya, bukan
-     pucuk tanamannya - dan pucuk itulah yang paling dekat lampu. */
-  rimAtas(q,W2,H2,226,205,250,0.38);
-  /* Kadar 0,38 dipilih dengan melihat 0 / 0,25 / 0,40 / 0,55 berdampingan,
-     BUKAN dari angka: ukuran "kontras tepi" tidak melacak keterbacaan di sini
-     karena halo memang menyisipkan nilai antara di perbatasan, jadi nilainya
-     turun dulu baru naik. Pada 0,55 tanamannya berpendar dan warna
-     varietasnya tenggelam. */
-  halo(q,W2,H2,'#c9a0f0',0.38,ay);
+  /* Garis luar GELAP — garis luar klasik pixel art: ia menyatukan bentuk jadi
+     satu massa dan tidak menyala. Yang lavender tadi bersaing dengan
+     tanamannya; pada model lama yang bertabur titik 1 px ia melingkari tiap
+     titik satu per satu, jadi yang terbaca taburan remah berkilau.
+     Cahaya dari atas tidak lagi ditempelkan sebagai lapisan tersendiri: ia
+     sudah DICAT di dalam sprite-nya. */
+  halo(q,W2,H2,'#171320',0.62,ay);
   c.ax=ax;c.ay=ay;
   if(SEMAI_SPR.size>=SEMAI_SPR_MAX)SEMAI_SPR.clear();  // ganti musim/ukuran: mulai lagi
   SEMAI_SPR.set(kunci,c);
@@ -4683,7 +4682,7 @@ function semaiCat(g,cx,yb,sp,bad,tg,ayun,sisi){
   const tunduk=bad==='layu'?tg*0.38:0;
   const rebah=bad==='busuk'?tg*0.34*(sisi?-1:1):0;
   const W=benihRona(sp,bad);
-  const bw=bad==='etiolasi'?1:2;                          // etiolasi: batang kurus
+  const bw=2;   // seragam: batang 1 px lenyap di balik garis luarnya sendiri
   for(let k=0;k<tg;k++){
     const q=k/Math.max(1,tg-1), dx=Math.round(tunduk*q*q+rebah*q+ayun*q);
     if(bad==='busuk'&&k<3){                               // pangkal mengecil & menghitam
@@ -4697,10 +4696,14 @@ function semaiCat(g,cx,yb,sp,bad,tg,ayun,sisi){
   /* Letak ruas daun ikut varietas: kubis berdaun RENDAH, cabai berdaun
      tinggi. Itu pembeda kedua di luar bentuk helainya, dan ia terbaca bahkan
      saat helainya sendiri terpotong tepi sel. */
+  /* Helai yang mencuat nk baris ke atas harus tetap BERTEMU batang: kalau
+     k+nk melewati ujung batang, helainya menggantung di udara. Diukur,
+     CABAI pecah jadi 3 kepingan karena ini. */
+  const nk=sp.nk||0;
   for(const dq of (bad==='etiolasi'?[0.84]:sp.ruas)){
-    const k=Math.round(tg*dq), q=k/Math.max(1,tg-1);
+    const k=Math.min(tg-1-nk,Math.round(tg*dq)), q=k/Math.max(1,tg-1);
     const dx=Math.round(tunduk*q*q+rebah*q+ayun*q);
-    semaiDaun(g,cx+dx,yb-1-k,arah,sp.bk,W,bad==='etiolasi');
+    semaiDaun(g,cx+dx,yb-1-k,arah,sp.bk,W,bad==='etiolasi',sp);
   }
   if(tg>7&&bad!=='busuk'){                                // daun lembaga di pangkal
     P(g,W.m,cx-2,yb-4,2,1);P(g,W.m,cx+2,yb-4,2,1);
