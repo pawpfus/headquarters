@@ -4496,12 +4496,12 @@ const _bl=(a,b,k)=>{const A=_hx(a),B=_hx(b);
    helai. Tiga menyerong, tiga mendatar: siluetnya jadi dua keluarga, bukan
    satu barisan tiang yang seragam. */
 const BENIH=[
-  {nm:'TOMAT', tg:1.00, bk:'majemuk', ruas:[0.52,0.86], lb:4, tb2:2, nk:1, mr:1, c:'#3f7a34'},
-  {nm:'CABAI', tg:0.84, bk:'lanset',  ruas:[0.60,0.86], lb:3, tb2:2, nk:2, mr:1, c:'#1f5a28'},
-  {nm:'TERONG',tg:0.92, bk:'lebar',   ruas:[0.42,0.80], lb:6, tb2:3, nk:1, mr:0, c:'#4a6f55', bt:'#6b5490'},
-  {nm:'SAWI',  tg:1.14, bk:'sendok',  ruas:[0.58,0.88], lb:5, tb2:3, nk:1, mr:1, c:'#6cc04e'},
-  {nm:'KUBIS', tg:0.78, bk:'bulat',   ruas:[0.30,0.60], lb:7, tb2:3, nk:0, mr:0, c:'#4f8f84'},
-  {nm:'SELADA',tg:0.86, bk:'keriting',ruas:[0.44,0.76], lb:5, tb2:2, nk:1, mr:0, c:'#93cf57'},
+  {nm:'TOMAT', tg:1.00, bk:'majemuk', ruas:[0.52,0.86], lb:4, tb2:1, nk:1, mr:1, c:'#3f7a34'},
+  {nm:'CABAI', tg:0.84, bk:'lanset',  ruas:[0.60,0.86], lb:3, tb2:1, nk:2, mr:1, c:'#1f5a28'},
+  {nm:'TERONG',tg:0.92, bk:'lebar',   ruas:[0.42,0.80], lb:6, tb2:2, nk:1, mr:0, c:'#4a6f55', bt:'#6b5490'},
+  {nm:'SAWI',  tg:1.14, bk:'sendok',  ruas:[0.58,0.88], lb:5, tb2:2, nk:1, mr:1, c:'#6cc04e'},
+  {nm:'KUBIS', tg:0.78, bk:'bulat',   ruas:[0.30,0.60], lb:7, tb2:2, nk:0, mr:0, c:'#4f8f84'},
+  {nm:'SELADA',tg:0.86, bk:'keriting',ruas:[0.44,0.76], lb:5, tb2:1, nk:1, mr:0, c:'#93cf57'},
 ];
 BENIH.forEach(b=>{const Rp=ramp(b.c);
   b.W={m:Rp.base,h:Rp.hi,t:_bl(Rp.hi,'#f2ffe4',0.42),bt:b.bt||Rp.base};});
@@ -4615,14 +4615,26 @@ function semaiDaun(g,x,y,arah,bk,W,kecil,sp){
      keutuhannya. */
   const luar=mr?Math.max(1,lb>>1):0, dalam=lb-luar;
   const ySisi=naik+(a<0?0:tb2-1);
+  /* Badan helai W.m, bukan W.h. Mengecat seluruh lebar helai dengan warna
+     paling terang membuatnya terbaca sebagai palang menyala, bukan daun —
+     dan itulah yang membuat semai tampak tebal. Baris terang hanya dipasang
+     bila helainya masih setebal 2 baris; helai setebal 1 baris tak punya
+     sisi untuk disinari. */
   K(W.m,-lb+luar,naik,dalam,tb2);
-  K(W.h,-lb+luar,ySisi,dalam,1);
+  if(tb2>1)K(W.h,-lb+luar,ySisi,dalam,1);
   if(luar){
-    K(W.m,-lb,naik+a,luar,tb2);
-    K(W.h,-lb,ySisi+a,luar,1);
+    /* Separuh luar MENINDIH satu kolom dengan separuh dalam. Tanpa itu, pada
+       helai setebal 1 baris kedua separuh hanya bersentuhan menyilang dan
+       helainya tercerai jadi dua kepingan — diukur, TOMAT dan SAWI pecah
+       jadi 6 kepingan begitu helainya ditipiskan. */
+    K(W.m,-lb,naik+a,luar+1,tb2);
+    if(tb2>1)K(W.h,-lb,ySisi+a,luar+1,1);
   }
   K(W.t,-lb,ySisi+(mr?a:0),1,1);                     // ujung helai paling pucat
-  if(bk==='sendok')K(W.m,-lb-2,naik+(tb2>>1),2,1);   // SAWI: helai duduk di tangkai
+  /* Tangkai SAWI harus sebaris dengan separuh LUAR helainya. Dengan baris
+     naik+(tb2>>1) ia hanya bersentuhan menyilang dan tangkainya tercerai —
+     diukur, SAWI pecah jadi 6 kepingan. */
+  if(bk==='sendok')K(W.m,-lb-2,naik+(luar?a:0),2,1);   // SAWI: helai duduk di tangkai
   if(bk==='keriting')                                // SELADA: gerigi tepi, satu baris
     for(let i=1;i<lb;i+=2)K(W.h,-lb+i,a<0?naik-1:naik+tb2,1,1);
   /* Helai yang menyerong naik satu baris lebih tinggi dari batang di ruas
@@ -4683,12 +4695,16 @@ function semaiCat(g,cx,yb,sp,bad,tg,ayun,sisi){
   const rebah=bad==='busuk'?tg*0.34*(sisi?-1:1):0;
   const W=benihRona(sp,bad);
   const bw=2;   // seragam: batang 1 px lenyap di balik garis luarnya sendiri
+  /* Ujung batang meruncing jadi 1 px. Hanya DI ATAS ruas daun tertinggi:
+     di bawah itu helai bersandar pada batang selebar 2 px, dan menipiskannya
+     akan melepaskan daunnya dari batang. */
+  const ujung=Math.max(2,tg-3);
   for(let k=0;k<tg;k++){
     const q=k/Math.max(1,tg-1), dx=Math.round(tunduk*q*q+rebah*q+ayun*q);
     if(bad==='busuk'&&k<3){                               // pangkal mengecil & menghitam
       P(g,k?'#3a2a1c':'#2a1b11',cx+dx,yb-1-k,1,1);continue;
     }
-    P(g,k>tg-3?W.h:W.bt,cx+dx,yb-1-k,bw,1);
+    P(g,k>tg-3?W.h:W.bt,cx+dx,yb-1-k,k>=ujung?1:bw,1);
   }
   const arah=bad==='layu'?1:-1;                           // daun: naik, atau merunduk
   /* Etiolasi cuma punya SEPASANG daun kecil dan letaknya tinggi: itulah
