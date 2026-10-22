@@ -713,6 +713,7 @@ function buildBG(){
     }
     if(ty===0)P(g,'#0f131b',px,0,T,3);                   // trim atas
   }
+  dindingGaris(g,MAP);                                   // denah diberi tepi
   /* pintu geser keluar (bawah, kolom 12) */
   P(g,'#07090d',12*T-2,18*T,T+4,T);
   P(g,'#2e3542',12*T-4,18*T,2,T);P(g,'#2e3542',13*T+2,18*T,2,T);
@@ -835,6 +836,33 @@ function halo(g,w,h,warna,alfa,batasY){
   const a=Math.round(255*alfa);
   for(const i of sasar){d[i]=rr;d[i+1]=gg;d[i+2]=bb;d[i+3]=a;}
   g.putImageData(img,0,0);
+}
+/* --- GARIS LUAR DINDING DENAH -------------------------------------------
+   Saudara outlineSilhouette() untuk peta, bukan untuk sprite. Alat itu
+   membaca tepi dari alfa kanvas; dinding dicat langsung ke latar yang pekat,
+   jadi tepinya dibaca dari PETA.
+   Garis dicat di sisi LANTAI karena dindingnya sendiri gelap — garis gelap di
+   atas dinding gelap tak terlihat. Pola dua pitanya meniru bayangan kaki
+   dinding yang sudah ada, supaya keempat tepi bicara dengan bahasa yang sama.
+   Tepi bawah dilewati: di sana bayangan itu memang sudah ada. */
+function dindingGaris(g,peta){
+  const lantai=(x,y)=>x>=0&&y>=0&&x<COLS&&y<ROWS&&peta[y][x]==='.';
+  for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
+    if(peta[ty][tx]!=='#')continue;
+    const px=tx*T,py=ty*T;
+    if(lantai(tx-1,ty)){
+      P(g,'rgba(0,0,0,.30)',px-1,py,1,T);
+      P(g,'rgba(0,0,0,.14)',px-2,py,1,T);
+    }
+    if(lantai(tx+1,ty)){
+      P(g,'rgba(0,0,0,.30)',px+T,py,1,T);
+      P(g,'rgba(0,0,0,.14)',px+T+1,py,1,T);
+    }
+    if(lantai(tx,ty-1)){
+      P(g,'rgba(0,0,0,.22)',px,py-1,T,1);
+      P(g,'rgba(0,0,0,.10)',px,py-2,T,1);
+    }
+  }
 }
 function furn(rect,oy,paint){
   const c=document.createElement('canvas');
@@ -1873,6 +1901,7 @@ function buildBG2(){
       for(let y=4;y<T;y+=8)P(g,'#151a21',px,py+y,T,1);
     }
   }
+  dindingGaris(g,MAP2);                                  // denah diberi tepi
   /* di balik tepi dek: sepotong lantai kerja di bawah.
      `bg` hanya berisi lantai & dinding — perabot lt.1 hidup di kanvas terpisah,
      jadi disusun dulu jadi satu potret utuh supaya yang terlihat dari atas
@@ -5638,7 +5667,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               bibitGeser,bibitRakIsi,bibitTrayBaru,semaiBesar,semaiTool,CACAT,
               BIBIT_SEL,BIBIT_DENDA,TINGKAT,CACAT_NM,bibitLv,bibitSusunBabak,
               BENIH,benihRona,semaiDaun,bibitTinggi,bibitLabel,_bl,
-              semaiCat,semaiSprite,SEMAI_SPR,GOYANG,
+              semaiCat,semaiSprite,SEMAI_SPR,GOYANG,dindingGaris,MAP,
               bingkai:(dt=1/60)=>{const ts=performance.now();   // tiruan setia loop()
                 tickSky();
                 if(bibit.on){bibitUpdate(dt);bibitDraw(cx,ts);}
