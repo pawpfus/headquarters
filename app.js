@@ -2546,49 +2546,10 @@ for(let x=12;x<=19;x++){                                  // cabang kanan → ti
   }
   addP(23,10);
 }
-/* Derau tak berkala untuk menggoyang tepi tangga sudut. Tangga yang rapi
-   justru terbaca sebagai talud buatan; goyangan satu piksel sudah cukup. */
-const nzSudut=(a,b)=>{let h=(a*374761393+b*668265263)>>>0;
-  h=Math.imul(h^(h>>>13),1274126177)>>>0;return ((h^(h>>>16))>>>0)%3;};
-/* Satu tangga sudut. kiri/atas menentukan sudut mana yang digarap. */
-function tanggaSudut(g,px,py,warna,kiri,atas,s,bnh){
-  for(let k=0;k<s;k++){
-    const n=Math.max(1,s-k-(nzSudut(bnh+k,k*7)>0?1:0));
-    const x=kiri?px:px+T-n, y=atas?py+k:py+T-1-k;
-    P(g,warna,x,y,n,1);
-  }
-}
-/* Memuluskan seluruh tikungan sebuah jalur.
-   punya(x,y)  : petak itu jalan atau bukan
-   jalan       : warna isian sudut dalam
-   luar(tx,ty) : warna gigitan sudut luar (rumput / tanah sekitarnya) */
-function jalanMulus(g,punya,jalan,luar){
-  for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
-    const px=tx*T,py=ty*T;
-    const ki=punya(tx-1,ty), ka=punya(tx+1,ty);
-    const at=punya(tx,ty-1), bw=punya(tx,ty+1);
-    if(punya(tx,ty)){
-      /* sudut LUAR: dua tetangga ortogonalnya sama-sama bukan jalan */
-      const w=luar(tx,ty);
-      if(!ki&&!at)tanggaSudut(g,px,py,w,1,1,5,tx*3+ty);
-      if(!ka&&!at)tanggaSudut(g,px,py,w,0,1,5,tx*5+ty+1);
-      if(!ki&&!bw)tanggaSudut(g,px,py,w,1,0,5,tx*7+ty+2);
-      if(!ka&&!bw)tanggaSudut(g,px,py,w,0,0,5,tx*11+ty+3);
-    }else{
-      /* sudut DALAM: petak ini bukan jalan, tapi dua tetangga ortogonal yang
-         bertemu di satu sudut sama-sama jalan — di situlah takik sikunya. */
-      const S2=6;
-      if(ki&&at){tanggaSudut(g,px,py,jalan,1,1,S2,tx*3+ty+5);
-                 P(g,jalan,px-2,py,2,S2);P(g,jalan,px,py-2,S2,2);}
-      if(ka&&at){tanggaSudut(g,px,py,jalan,0,1,S2,tx*5+ty+7);
-                 P(g,jalan,px+T,py,2,S2);P(g,jalan,px+T-S2,py-2,S2,2);}
-      if(ki&&bw){tanggaSudut(g,px,py,jalan,1,0,S2,tx*7+ty+11);
-                 P(g,jalan,px-2,py+T-S2,2,S2);P(g,jalan,px,py+T,S2,2);}
-      if(ka&&bw){tanggaSudut(g,px,py,jalan,0,0,S2,tx*11+ty+13);
-                 P(g,jalan,px+T,py+T-S2,2,S2);P(g,jalan,px+T-S2,py+T,S2,2);}
-    }
-  }
-}
+/* Sudut jalan sengaja dibiarkan KOTAK. Sempat ada jalanMulus() yang memahat
+   sudut luar dan mengisi sudut dalam supaya tikungannya melandai; dibuang
+   karena bukan itu yang dikehendaki — siku petak demi petak memang bagian
+   dari bahasa rupa permainan ini. */
 function buildBG3(){
   const g=bg3c, SS=SN();                                  // SS = palet musim aktif
   P(g,SS.floor,0,0,W,H);                                  // dasar rumput gelap
@@ -2711,11 +2672,6 @@ function buildBG3(){
       }
     }
   }
-  /* Tikungan jalan dimuluskan SETELAH seluruh petak dicat — lihat catatan
-     jalanMulus(): ia harus bisa menutup rumbai rumput yang melintang tepat di
-     titik sambungnya. */
-  jalanMulus(g,(x,y)=>OUT_PATH.has(x+','+y),'#7a5c3a',
-             (tx,ty)=>((tx+ty)&1)?SS.grassA:SS.grassB);
   /* pematang: garis tanah terang di batas gundukan ↔ jalan/rumput */
   for(let ty=2;ty<ROWS-1;ty++)for(let tx=1;tx<COLS-1;tx++){
     if(MAP3[ty][tx]!=='#')continue;
@@ -5878,7 +5834,6 @@ function buildBG4(){
       if(r%11===4)P(g,'#17120f',px+2+((r>>>2)%8),py+6+((r>>>5)%6),4,1);  // ranting jatuh
     }
   }
-  jalanMulus(g,(x,y)=>BURN_PATH.has(x+','+y),'#524a42',()=>'#2b2724');
   /* --- luka bakar besar: dicat SETELAH petak, pada koordinat piksel bebas.
      Inilah yang memutus kisi: ia tak tahu ada petak, jadi tepinya jatuh di
      mana saja. Tiga lapis mengecil supaya tepinya tidak lurus. --- */
@@ -6129,7 +6084,7 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               semaiCat,semaiSprite,SEMAI_SPR,GOYANG,dindingGaris,MAP,
               MAP4,BURN_TREES,BURN_LOGS,BURN_EMBER,BURN_PATH,
               buildBG4,drawAsap,drawBara,BURN_SCAR,gradeHangus,ksaT,
-              jalanMulus,tanggaSudut,OUT_PATH,
+              OUT_PATH,
               EAST_GATE,BURN_GATE,GATE_BURN,GATE_BACK,
               bingkai:(dt=1/60)=>{const ts=performance.now();   // tiruan setia loop()
                 tickSky();
