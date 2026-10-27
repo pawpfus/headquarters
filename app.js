@@ -10,12 +10,17 @@ const TOOLS = [
     url:'https://evidenlcs.vercel.app/',                 color:'#4cc9e0', floor:0, lo:16, rect:{x:4, y:2, w:3, h:1} },
   { id:'disem',  name:'DIFFUSION REPORT', desc:'Rangkuman diseminasi media sosial',
     url:'https://laporandiseminasi.vercel.app/',         color:'#e07ad0', floor:0, lo:20, rect:{x:20,y:2, w:3, h:1} },
+  /* Menara pengawas KEBAKARAN — kini berdiri di hutan terbakar, tempat yang
+     memang jadi alasan keberadaannya. floor:3 saja sudah cukup: SOLIDS[3] dan
+     ZONES[3] terisi sendiri lewat onFloor(3). */
   { id:'ksa',    name:'AREA SAMPLING',    desc:'Pendampingan Kerangka Sampel Area',
-    url:'https://ksapendampingan.vercel.app/',           color:'#e8c05a', floor:2, lo:40, rect:{x:3, y:11,w:3, h:2} },
+    url:'https://ksapendampingan.vercel.app/',           color:'#e8c05a', floor:3, lo:40, rect:{x:16,y:14,w:3, h:2} },
   { id:'forge',  name:'ESC FORGE',        desc:'Generator laporan bulanan SKP',
     url:'https://skp-forge.vercel.app/', color:'#ff8c4a', floor:0, lo:22, rect:{x:17,y:9, w:3, h:2} },
+  /* Pindah ke bekas tempat AREA SAMPLING di barat: cabang kiri jalan memang
+     sudah menuju ke sana, dan cabang kanan jadi bebas untuk gerbang hutan. */
   { id:'farm',   name:'COOPERSTOWN',      desc:'FARM AXIS — peta poktan interaktif',
-    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', floor:2, lo:26, rect:{x:17,y:9, w:3, h:1} },
+    url:'https://hari-hari-laporan-v2.vercel.app/peta-poktan.html', color:'#5ee8c8', floor:2, lo:26, rect:{x:3, y:11,w:3, h:1} },
   { id:'workshop', name:'WORKSHOP',       desc:'Bengkel alat & blueprint (Drum Seeder, dll.)',
     url:'https://drum-seeder-pm-aas.vercel.app/', color:'#9fb8d0', floor:0, lo:8, rect:{x:17,y:14,w:3, h:2} },
   /* --- LANTAI 2 (naik lift) : ruang arsip & dokumen --- */
@@ -143,6 +148,54 @@ const OUT_TREES=[
   {x:13,y:4,s:17},{x:6,y:13,s:18},
   {x:5,y:5,sap:1,s:19},{x:9,y:11,sap:1,s:20},{x:11,y:17,s:21},{x:16,y:16,sap:1,s:22},{x:4,y:17,s:23},
 ];
+/* ---------- AREA 4: HUTAN TERBAKAR ----------------------------------------
+   '#' = rumpun hangus & batu, tak bisa dilewati. Tepi peta rapat supaya hutan
+   terasa menutup; satu-satunya celah ada di pagar barat, tempat jalur dari
+   area luar masuk. */
+const MAP4=[
+'#########################',
+'#########################',
+'#...##.........###......#',
+'#...##..........##......#',
+'#.......................#',
+'#........####...........#',
+'#.........##............#',
+'#.......................#',
+'#.......................#',
+'#.......................#',
+'#....##...........##....#',   // celah untuk cabang ke menara
+'#....##...........#.....#',   // celah untuk cabang ke menara
+'#.......................#',
+'#.........###...........#',
+'#........####...........#',
+'#.........##............#',
+'#.......................#',
+'#.......................#',
+'#########################',
+];
+/* Batang hangus: tak punya kanopi, jadi tak ikut repaintTrees() seperti pohon
+   area luar — semuanya dipanggang sekali ke latar. tgg = masih berdiri
+   tinggi, tnk = tunggul pendek yang tinggal separuh. */
+/* mr = kemiringan batang dalam piksel dari pangkal ke puncak. Batang tegak
+   lurus semuanya terbaca sebagai tiang pancang berbaris; api meninggalkan
+   pohon yang condong, dan kemiringan yang berbeda-beda itulah yang memecah
+   barisan. Dua petak di sekitar menara (16,15) sengaja dikosongkan — pos
+   pengawas berdiri di tanah lapang. */
+const BURN_TREES=[
+  {x:2,y:5,tgg:1,s:1,mr:-6},{x:3,y:11,tnk:1,s:2,mr:3},{x:2,y:13,tgg:1,s:3,mr:5},
+  {x:6,y:4,tnk:1,s:4,mr:-2},{x:7,y:12,tgg:1,s:5,mr:8},{x:9,y:6,tnk:1,s:6,mr:-3},
+  {x:8,y:16,tgg:1,s:7,mr:-7},{x:12,y:4,tgg:1,s:8,mr:4},{x:13,y:10,tnk:1,s:9,mr:2},
+  {x:11,y:15,tnk:1,s:10,mr:-4},{x:15,y:6,tgg:1,s:11,mr:-9},{x:13,y:13,tnk:1,s:12,mr:3},
+  {x:18,y:4,tnk:1,s:13,mr:-2},{x:21,y:10,tgg:1,s:14,mr:7},{x:21,y:6,tgg:1,s:15,mr:-5},
+  {x:22,y:12,tnk:1,s:16,mr:4},{x:20,y:16,tgg:1,s:17,mr:6},{x:23,y:3,tgg:1,s:18,mr:-4},
+  {x:14,y:17,tnk:1,s:19,mr:-3},{x:5,y:17,tnk:1,s:20,mr:2},
+];
+/* Batang rebah: {x,y,pjg} dalam petak, mendatar. Dipakai juga sebagai halangan. */
+/* Letaknya dipilih DI LUAR jalur. Batang rebah yang melintang di tengah jalan
+   memang pemandangan yang bagus, tapi ia juga tembok. */
+const BURN_LOGS=[{x:5,y:6,pjg:3},{x:14,y:6,pjg:3},{x:9,y:13,pjg:2},{x:20,y:12,pjg:3}];
+/* Bara yang masih menyala — titik pendar hangat di tanah abu. */
+const BURN_EMBER=[{x:4,y:11},{x:10,y:9},{x:16,y:15},{x:21,y:8},{x:13,y:16},{x:7,y:3}];
 /* papan info poktan — objek yang bisa "dibaca" (banner memutar pesan) */
 const NOTICE_RECT={x:14,y:6,w:2,h:1};
 const noticeBoard={id:'board',name:'PAPAN INFO POKTAN',color:'#e8c05a',btn:'BACA &#9656;',isBoard:true,idx:0,
@@ -193,6 +246,42 @@ const DECOR3_SOLID=[
   POND,                                                 // air kolam
 ];
 
+/* Jalur hutan: masuk dari gerbang barat di baris 8, meliuk ke timur lalu
+   turun ke tanah lapang bekas kebakaran di tenggara. Dibangun dengan cara
+   yang sama dengan OUT_PATH — murni kosmetik, bukan peta kepadatan. */
+const BURN_PATH=new Set();
+{
+  const addB=(x,y)=>BURN_PATH.add(x+','+y);
+  let pv=null;
+  for(let x=1;x<=23;x++){
+    const y=8+Math.round(1.3*Math.sin(x*0.42+0.6));
+    addB(x,y);
+    if(pv!==null&&y!==pv)for(let j=Math.min(y,pv);j<=Math.max(y,pv);j++)addB(x,j);
+    pv=y;
+  }
+  pv=null;
+  /* Berhenti di baris 13: jalur harus berakhir DI DEPAN menara, bukan
+     menembusnya — petak di bawah menara padat, jadi sisa jalurnya akan jadi
+     ruas buntu yang tak bisa diinjak. */
+  for(let y=9;y<=13;y++){                       // cabang turun ke depan menara
+    const x=17+Math.round(1.1*Math.sin(y*0.5+1.2));
+    addB(x,y);
+    if(pv!==null&&x!==pv)for(let i=Math.min(x,pv);i<=Math.max(x,pv);i++)addB(i,y);
+    pv=x;
+  }
+}
+/* Bercak besar bekas api. Letaknya dalam PIKSEL, bukan petak, dan sengaja
+   tidak kelipatan 16 — itulah yang memutus kisi. */
+const BURN_SCAR=[
+  {x:58,y:40,w:74,h:46},{x:196,y:62,w:92,h:38},{x:300,y:118,w:68,h:54},
+  {x:34,y:168,w:86,h:50},{x:150,y:196,w:104,h:44},{x:268,y:236,w:78,h:40},
+  {x:110,y:92,w:52,h:34},{x:342,y:28,w:46,h:62},{x:206,y:142,w:58,h:30},
+  {x:70,y:250,w:96,h:34},
+];
+const DECOR4_SOLID=[
+  ...BURN_TREES.map(t=>({x:t.x,y:t.y,w:1,h:1})),      // batang berdiri = solid
+  ...BURN_LOGS.map(l=>({x:l.x,y:l.y,w:l.pjg,h:1})),   // batang rebah = solid
+];
 /* ---------- peta kepadatan per-lantai ---------- */
 function makeSolid(map,tools,decor){
   const sl=new Uint8Array(COLS*ROWS);
@@ -205,7 +294,8 @@ function makeSolid(map,tools,decor){
 const onFloor=n=>TOOLS.filter(t=>(t.floor||0)===n);
 const SOLIDS=[makeSolid(MAP,onFloor(0),DECOR_SOLID),
               makeSolid(MAP2,onFloor(1),DECOR2_SOLID),
-              makeSolid(MAP3,onFloor(2),DECOR3_SOLID)];   // area luar (sawah & desa)
+              makeSolid(MAP3,onFloor(2),DECOR3_SOLID),    // area luar (sawah & desa)
+              makeSolid(MAP4,onFloor(3),DECOR4_SOLID)];   // hutan terbakar
 let solid=SOLIDS[0];                       // ditukar oleh setFloor()
 const S=(x,y)=>solid[y*COLS+x];
 
@@ -229,6 +319,19 @@ const DOOR_OUT={id:'door-out',name:'MAIN GATE', btn:'KELUAR &#9660;', isPortal:t
 const DOOR_IN ={id:'door-in', name:'MAIN GATE',btn:'MASUK &#9650;',  isPortal:true, to:0,
   spawn:{x:12.5*T,y:17*T+12,dir:'up'},  color:'#4cc9e0', desc:''};   // tanpa subtitle
 
+/* ---------- GERBANG HUTAN: area luar (timur) <-> hutan terbakar (barat) ----
+   Jalur cabang kanan area luar berakhir di tiang COOPERSTOWN; gerbang ini
+   meneruskannya. Pola rect-padat-plus-zona-di-sebelahnya sama persis dengan
+   pintu utama markas, jadi tak ada aturan baru yang perlu diingat. */
+/* Baris dipilih yang LAPANG. Versi pertama memakai baris 8 di sisi luar,
+   padahal OUT_TREES punya pohon di (23,8): petaknya padat, zonanya tak pernah
+   terdaftar, dan gerbangnya tak pernah bisa disentuh. */
+const EAST_GATE={x:24,y:10,w:1,h:1};       // di pagar timur area luar
+const BURN_GATE={x:0, y:9, w:1,h:1};       // di tepi barat hutan
+const GATE_BURN={id:'gate-burn',name:'JALUR HUTAN',btn:'MASUK &#9656;',isPortal:true,to:3,
+  spawn:{x:1.5*T,y:9*T+12,dir:'right'},color:'#c98a4a',desc:'Bekas kebakaran · berkabut asap'};
+const GATE_BACK={id:'gate-back',name:'JALUR PULANG',btn:'KEMBALI &#9666;',isPortal:true,to:2,
+  spawn:{x:23.5*T,y:10*T+12,dir:'left'},color:'#7ee06a',desc:''};
 /* zona interaksi = ring tile berjalan di sekeliling furnitur */
 function makeZones(tools,sl,liftTool){
   const z={},free=(x,y)=>x>=0&&y>=0&&x<COLS&&y<ROWS&&!sl[y*COLS+x];
@@ -245,7 +348,8 @@ function makeZones(tools,sl,liftTool){
 }
 const ZONES=[makeZones(onFloor(0),SOLIDS[0],LIFT_TOOL[0]),
              makeZones(onFloor(1),SOLIDS[1],LIFT_TOOL[1]),
-             makeZones(onFloor(2),SOLIDS[2],null)];       // area luar: tanpa lift
+             makeZones(onFloor(2),SOLIDS[2],null),        // area luar: tanpa lift
+             makeZones(onFloor(3),SOLIDS[3],null)];       // hutan: tanpa lift
 /* daftarkan petak di depan pintu utama sebagai zona portal (dua arah) */
 // prime door (lt.1): petak tepat di atas ambang pintu
 for(let x=PRIME_DOOR.x;x<PRIME_DOOR.x+PRIME_DOOR.w;x++){const y=PRIME_DOOR.y-1;
@@ -253,6 +357,11 @@ for(let x=PRIME_DOOR.x;x<PRIME_DOOR.x+PRIME_DOOR.w;x++){const y=PRIME_DOOR.y-1;
 // pintu markas (luar): petak tepat di bawah fasad
 for(let x=OUT_DOOR.x;x<OUT_DOOR.x+OUT_DOOR.w;x++){const y=OUT_DOOR.y+OUT_DOOR.h;
   if(!SOLIDS[2][y*COLS+x])ZONES[2][x+','+y]=DOOR_IN;}
+// gerbang hutan: petak tepat di sebelah DALAM tiap gerbang
+for(let y=EAST_GATE.y;y<EAST_GATE.y+EAST_GATE.h;y++){const x=EAST_GATE.x-1;
+  if(!SOLIDS[2][y*COLS+x])ZONES[2][x+','+y]=GATE_BURN;}
+for(let y=BURN_GATE.y;y<BURN_GATE.y+BURN_GATE.h;y++){const x=BURN_GATE.x+1;
+  if(!SOLIDS[3][y*COLS+x])ZONES[3][x+','+y]=GATE_BACK;}
 // papan info poktan (luar): petak tepat di bawah papan = zona baca
 for(let x=NOTICE_RECT.x;x<NOTICE_RECT.x+NOTICE_RECT.w;x++){const y=NOTICE_RECT.y+NOTICE_RECT.h;
   if(!SOLIDS[2][y*COLS+x])ZONES[2][x+','+y]=noticeBoard;}
@@ -271,6 +380,7 @@ const ROOMSETS=[
    {x:7, y:0,w:18,h:19,a:1}],  // lt.2 - aula arsip (satu ruangan terbuka, jangan dipotong)
   [{x:0, y:0,w:13,h:19,a:1},   // luar - paruh barat (sawah kiri)
    {x:13,y:0,w:12,h:19,a:1}],  // luar - paruh timur (desa & sawah kanan)
+  [{x:0, y:0,w:25,h:19,a:1}],  // hutan - satu hamparan; kabut asapnya sendiri yang menutup
 ];
 let ROOMS=ROOMSETS[0];
 let fogOn=false;
@@ -472,6 +582,8 @@ const bg2=document.createElement('canvas');bg2.width=W;bg2.height=H;   // latar 
 const bg2c=bg2.getContext('2d');
 const bg3=document.createElement('canvas');bg3.width=W;bg3.height=H;   // latar area luar
 const bg3c=bg3.getContext('2d');
+const bg4=document.createElement('canvas');bg4.width=W;bg4.height=H;   // latar hutan terbakar
+const bg4c=bg4.getContext('2d');
 function P(g,c,x,y,w=1,h=1){g.fillStyle=c;g.fillRect(x,y,w,h);}
 const rnd=(x,y)=>((x*73856093)^(y*19349663))>>>0;
 /* kolam cahaya di lantai — pita translusen yang memudar ke bawah */
@@ -863,6 +975,23 @@ function dindingGaris(g,peta){
       P(g,'rgba(0,0,0,.10)',px,py-2,T,1);
     }
   }
+}
+/* Pudarkan sebuah sprite ke arang: warnanya dilunturkan dulu ke abu, lalu
+   dicampur ke jelaga. Piksel yang MENYALA ditahan (k dikecilkan) — nyala itu
+   yang membedakan pos yang masih dijaga dari reruntuhan. */
+function gradeHangus(g,w,h,kuat=0.55){
+  const img=g.getImageData(0,0,w,h), d=img.data;
+  for(let i=0;i<d.length;i+=4){
+    if(d[i+3]<8)continue;
+    const l=d[i]*0.3+d[i+1]*0.59+d[i+2]*0.11;
+    const k=l>188?kuat*0.28:kuat;
+    const JL=[46,39,35];
+    for(let c=0;c<3;c++){
+      const abu=d[i+c]*0.38+l*0.62;                   // lunturkan warnanya
+      d[i+c]=Math.round(abu*(1-k)+JL[c]*k);           // lalu ke jelaga
+    }
+  }
+  g.putImageData(img,0,0);
 }
 function furn(rect,oy,paint){
   const c=document.createElement('canvas');
@@ -1840,6 +1969,9 @@ anims.push({fn:(g,t)=>{
    Set furnitur & latar terpisah; setFloor() menukar rujukan FURN/anims/bg.
    ========================================================================= */
 const FURNS=[FURN], ANIMS=[anims];              // indeks = nomor lantai
+/* Hutan tak punya perabot: seluruh isinya terpanggang ke latar, dan yang
+   hidup di sana (asap, abu, bara) digambar per bingkai, bukan sebagai
+   furnitur. Daftarnya tetap ada supaya setFloor() tidak perlu penjaga. */
 FURN=[];anims=[];                               // mulai daftar lantai 2
 
 /* --- jendela intip ke lantai 1 (dilihat dari dek lt.2, di balik railing) ---
@@ -2367,30 +2499,94 @@ FURNS.push(FURN);ANIMS.push(anims);
    ========================================================================= */
 /* Jalan tanah BERKELOK — dulu tiga garis lurus sempurna sehingga terasa kaku.
    OUT_PATH murni kosmetik (dipakai untuk menggambar & jenis bunyi langkah, bukan
-   petak padat), jadi kelokan ini tidak mengubah keterjangkauan peta sama sekali. */
+   petak padat), jadi kelokan ini tidak mengubah keterjangkauan peta sama sekali.
+
+   Angka amplitudo/frekuensi/fase di bawah BUKAN selera: 12.000 calon diuji
+   terhadap peta kepadatan, dan hanya 84 yang tak satu pun petak jalurnya
+   jatuh di petak padat, 51 di antaranya yang sekaligus mendaratkan ujung
+   cabang kiri di cincin zona COOPERSTOWN. Yang dipakai ini salah satunya,
+   dipilih karena paling banyak pergantian arahnya. Mengubah angkanya tanpa
+   menguji ulang hampir pasti membuat jalan menembus pohon atau berhenti
+   sebelum tujuannya. */
 const OUT_PATH=new Set(), SPINE={}, BR_L={}, BR_R={};
 const addP=(x,y)=>OUT_PATH.add(x+','+y);
 let pv=null;
 for(let y=2;y<=16;y++){                                   // tulang tengah: meliuk antar kolom 11-13
   const ease=Math.min(1,(y-2)/3);                         // berangkat LURUS dari pintu, baru meliuk
-  const x=12+Math.round(1.4*ease*Math.sin(y*0.55+0.7));
+  const x=12+Math.round(1.2*ease*Math.sin(y*0.74+0.8));
   SPINE[y]=x; addP(x,y);
   if(pv!==null&&x!==pv)for(let i=Math.min(x,pv);i<=Math.max(x,pv);i++)addP(i,y); // sambung saat bergeser
   pv=x;
 }
 pv=null;
 for(let x=3;x<=12;x++){                                   // cabang kiri → AREA SAMPLING
-  const y=10+Math.round(1.1*Math.sin(x*0.62+2.1));
+  const y=10+Math.round(1.1*Math.sin(x*0.56+1.5));
   BR_L[x]=y; addP(x,y);
   if(pv!==null&&y!==pv)for(let j=Math.min(y,pv);j<=Math.max(y,pv);j++)addP(x,j);
   pv=y;
 }
 pv=null;
 for(let x=12;x<=19;x++){                                  // cabang kanan → tiang COOPERSTOWN
-  const y=8+Math.round(1.1*Math.sin(x*0.5-1.2));
+  const y=8+Math.round(1.4*Math.sin(x*0.42-2));
   BR_R[x]=y; addP(x,y);
   if(pv!==null&&y!==pv)for(let j=Math.min(y,pv);j<=Math.max(y,pv);j++)addP(x,j);
   pv=y;
+}
+/* Sambungan dari ujung cabang kanan ke gerbang timur. Jalan yang berhenti di
+   tengah lapangan membuat gerbangnya muncul entah dari mana; jalur inilah
+   yang memberi tahu pemain bahwa ada ke mana lagi dari sini. */
+{
+  let pv=BR_R[19];
+  for(let x=20;x<=23;x++){
+    const y=Math.round(9+(x-19)*0.34);                    // melandai dari baris 9 ke 10
+    addP(x,y);
+    if(pv!==null&&y!==pv)for(let j=Math.min(y,pv);j<=Math.max(y,pv);j++)addP(x,j);
+    pv=y;
+  }
+  addP(23,10);
+}
+/* Derau tak berkala untuk menggoyang tepi tangga sudut. Tangga yang rapi
+   justru terbaca sebagai talud buatan; goyangan satu piksel sudah cukup. */
+const nzSudut=(a,b)=>{let h=(a*374761393+b*668265263)>>>0;
+  h=Math.imul(h^(h>>>13),1274126177)>>>0;return ((h^(h>>>16))>>>0)%3;};
+/* Satu tangga sudut. kiri/atas menentukan sudut mana yang digarap. */
+function tanggaSudut(g,px,py,warna,kiri,atas,s,bnh){
+  for(let k=0;k<s;k++){
+    const n=Math.max(1,s-k-(nzSudut(bnh+k,k*7)>0?1:0));
+    const x=kiri?px:px+T-n, y=atas?py+k:py+T-1-k;
+    P(g,warna,x,y,n,1);
+  }
+}
+/* Memuluskan seluruh tikungan sebuah jalur.
+   punya(x,y)  : petak itu jalan atau bukan
+   jalan       : warna isian sudut dalam
+   luar(tx,ty) : warna gigitan sudut luar (rumput / tanah sekitarnya) */
+function jalanMulus(g,punya,jalan,luar){
+  for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
+    const px=tx*T,py=ty*T;
+    const ki=punya(tx-1,ty), ka=punya(tx+1,ty);
+    const at=punya(tx,ty-1), bw=punya(tx,ty+1);
+    if(punya(tx,ty)){
+      /* sudut LUAR: dua tetangga ortogonalnya sama-sama bukan jalan */
+      const w=luar(tx,ty);
+      if(!ki&&!at)tanggaSudut(g,px,py,w,1,1,5,tx*3+ty);
+      if(!ka&&!at)tanggaSudut(g,px,py,w,0,1,5,tx*5+ty+1);
+      if(!ki&&!bw)tanggaSudut(g,px,py,w,1,0,5,tx*7+ty+2);
+      if(!ka&&!bw)tanggaSudut(g,px,py,w,0,0,5,tx*11+ty+3);
+    }else{
+      /* sudut DALAM: petak ini bukan jalan, tapi dua tetangga ortogonal yang
+         bertemu di satu sudut sama-sama jalan — di situlah takik sikunya. */
+      const S2=6;
+      if(ki&&at){tanggaSudut(g,px,py,jalan,1,1,S2,tx*3+ty+5);
+                 P(g,jalan,px-2,py,2,S2);P(g,jalan,px,py-2,S2,2);}
+      if(ka&&at){tanggaSudut(g,px,py,jalan,0,1,S2,tx*5+ty+7);
+                 P(g,jalan,px+T,py,2,S2);P(g,jalan,px+T-S2,py-2,S2,2);}
+      if(ki&&bw){tanggaSudut(g,px,py,jalan,1,0,S2,tx*7+ty+11);
+                 P(g,jalan,px-2,py+T-S2,2,S2);P(g,jalan,px,py+T,S2,2);}
+      if(ka&&bw){tanggaSudut(g,px,py,jalan,0,0,S2,tx*11+ty+13);
+                 P(g,jalan,px+T,py+T-S2,2,S2);P(g,jalan,px+T-S2,py+T,S2,2);}
+    }
+  }
 }
 function buildBG3(){
   const g=bg3c, SS=SN();                                  // SS = palet musim aktif
@@ -2401,6 +2597,16 @@ function buildBG3(){
     if(cell==='#'&&(tx===0||tx===COLS-1||ty>=ROWS-1)){     // PINGGIR peta = PAGAR KAYU (menghadap ke dalam)
       const PD='#4a3018',PB='#6b4a2e',PR='#7a5636',PH='#9a7550';
       P(g,SS.floor,px,py,T,T);                                         // tanah gelap di luar pagar
+      /* GERBANG HUTAN: pagar DIBUKA di sini. Tanpa bukaan yang kelihatan,
+         pemain cuma mendapat spanduk di depan pagar yang utuh — ia tak punya
+         cara tahu bahwa ada jalan keluar di situ. */
+      if(tx===COLS-1&&ty===EAST_GATE.y){
+        P(g,'#7a5c3a',px,py,T,T);P(g,'#6e5233',px,py+T-2,T,2);         // jalur menembus
+        P(g,'#886847',px,py+4,T,T-8);                                  // lajur terpadatkan
+        P(g,PD,px+1,py-2,8,5);P(g,PB,px+2,py-2,5,4);P(g,PH,px+2,py-2,5,1);   // tiang atas
+        P(g,PD,px+1,py+T-3,8,5);P(g,PB,px+2,py+T-3,5,4);P(g,PH,px+2,py+T-3,5,1); // tiang bawah
+        continue;
+      }
       if(ty>=ROWS-1){                                                  // BAWAH: rel mendatar, sorot di sisi ATAS
         P(g,PD,px,py+3,T,4);P(g,PR,px,py+2,T,4);P(g,PH,px,py+2,T,1);
         P(g,PD,px,py+10,T,4);P(g,PR,px,py+9,T,4);P(g,PH,px,py+9,T,1);
@@ -2504,6 +2710,11 @@ function buildBG3(){
       }
     }
   }
+  /* Tikungan jalan dimuluskan SETELAH seluruh petak dicat — lihat catatan
+     jalanMulus(): ia harus bisa menutup rumbai rumput yang melintang tepat di
+     titik sambungnya. */
+  jalanMulus(g,(x,y)=>OUT_PATH.has(x+','+y),'#7a5c3a',
+             (tx,ty)=>((tx+ty)&1)?SS.grassA:SS.grassB);
   /* pematang: garis tanah terang di batas gundukan ↔ jalan/rumput */
   for(let ty=2;ty<ROWS-1;ty++)for(let tx=1;tx<COLS-1;tx++){
     if(MAP3[ty][tx]!=='#')continue;
@@ -2632,12 +2843,14 @@ const ksaT=furn(TOOLS[3].rect,44,(g,w,h)=>{
   /* --- dasar: kotak alat/generator (di tengah kaki) --- */
   P(g,'#33333d',18,h-11,12,10);P(g,'#454f61',18,h-11,12,2);P(g,'#2a2f38',18,h-1,12,1);
   P(g,'#3a4250',20,h-8,3,3);P(g,'#3a4250',25,h-8,3,3);                                   // panel
+  gradeHangus(g,w,h);        // kayu segar di hutan hangus = benda dari dunia lain
 });
-FURN.push(ksaT);
-anims.push({fn:(g,t)=>{                                     // beacon atap + jendela kabin berdenyut
+/* Menara berdiri di HUTAN, bukan di area luar: pendaftarannya menyusul di
+   FURNS[3]/ANIMS[3], bukan ke daftar area luar ini. */
+const ksaAnim={fn:(g,t)=>{                                  // beacon atap + jendela kabin berdenyut
   if(Math.floor(t/600)%2)P(g,'#ff5a4a',ksaT.px+23,ksaT.py-1,2,2);                        // beacon merah puncak
   P(g,`rgba(255,221,150,${(0.22+0.18*Math.sin(t/1400)).toFixed(2)})`,ksaT.px+14,ksaT.py+14,20,3); // jendela
-}});
+}};
 /* COOPERSTOWN — tiang papan-nama jalan (kompak, tiap papan beda warna) */
 const navT=furn(TOOLS[5].rect,24,(g,w,h)=>{
   const cxp=24;
@@ -3225,6 +3438,7 @@ function drawRain(g,t){
 const stepFx=[];let stepDist=0;
 const STEP_C={batu:'#bdb7aa',tanah:'#8d6a44',rumput:'#6f9a52',lantai:'#8f9aa8'};
 function surfaceAt(tx,ty){
+  if(floor===3)return 'tanah';          // abu: langkahnya teredam, sepola tanah
   if(floor!==2)return 'lantai';
   if(OUT_PATH.has(tx+','+ty))return 'batu';
   if(MAP3[ty]&&MAP3[ty][tx]==='#')return 'tanah';
@@ -3992,6 +4206,12 @@ anims.push({fn:(g,t)=>{                                     // pendar lentera sa
 }});
 FURNS.push(FURN);ANIMS.push(anims);
 
+/* Hutan terbakar: daftarnya KOSONG tapi harus ADA. Seluruh isi hutan
+   terpanggang ke latar, dan yang hidup di sana (asap, abu, bara) digambar per
+   bingkai — bukan sebagai furnitur. Tanpa entri kosong ini setFloor(3) memberi
+   FURN = undefined dan render() mati di FURN.map(). */
+FURNS.push([ksaT]);ANIMS.push([ksaAnim]);
+
 /* kembalikan rujukan aktif ke lantai 1 */
 FURN=FURNS[0];anims=ANIMS[0];
 
@@ -4415,7 +4635,7 @@ menu.addEventListener('click',e=>{if(e.target===menu)toggleMenu(false);});
 let floor=0;
 const FADE_DUR=1.05, FADE_HALF=.5;
 const fade={on:false,t:0,to:0,swapped:false,spawn:null};
-const floorName=n=>['LANTAI 1 · RUANG KERJA','',''][n];   // lt.2 & area luar tanpa sub-judul
+const floorName=n=>['LANTAI 1 · RUANG KERJA','','','HUTAN TERBAKAR'][n];
 
 /* tukar seluruh rujukan denah ke area n; tempatkan dino di `spawn` (bila ada)
    atau default tepat di depan pintu lift. spawn={x,y,dir} dalam piksel. */
@@ -4489,7 +4709,11 @@ function drawFade(){
   cx.fillStyle=`rgba(4,6,10,${Math.min(1,a).toFixed(3)})`;
   cx.fillRect(0,0,cv.width,cv.height);
   if(a>.55){
-    const s=['1ST FLOOR','2ND FLOOR','OUTSIDE'][fade.to],k=2;
+    /* Daftar ini harus sepanjang jumlah area. Saat area keempat ditambahkan
+       ia masih bertiga, jadi fade.to=3 memberi undefined dan textW() mematikan
+       seluruh bingkai di tengah perpindahan — cacat yang tak terlihat sampai
+       gerbangnya benar-benar dilewati. */
+    const s=['1ST FLOOR','2ND FLOOR','OUTSIDE','BURNT FOREST'][fade.to]||'',k=2;
     cx.globalAlpha=Math.min(1,(a-.55)/.35);
     cx.setTransform(k,0,0,k,Math.round((cv.width-textW(s)*k)/2),Math.round(cv.height/2-3*k));
     drawText(cx,s,0,0,'#4ce0ff');
@@ -5305,6 +5529,10 @@ cv.addEventListener('pointerdown',e=>{
   if(floor===0&&tx>=PRIME_DOOR.x&&tx<PRIME_DOOR.x+PRIME_DOOR.w&&ty>=PRIME_DOOR.y-2&&ty<=PRIME_DOOR.y){
     if(activeTool&&activeTool.isPortal){startTravel(activeTool.to,activeTool.spawn);return;}
     goToPortal(DOOR_OUT,PRIME_DOOR,-1);beep(440,.04,.03);return;}
+  if(floor===2&&tx>=EAST_GATE.x-2&&tx<=EAST_GATE.x&&ty===EAST_GATE.y){
+    goToTool(GATE_BURN);return;}
+  if(floor===3&&tx>=BURN_GATE.x&&tx<=BURN_GATE.x+2&&ty===BURN_GATE.y){
+    goToTool(GATE_BACK);return;}
   if(floor===2&&tx>=OUT_DOOR.x&&tx<OUT_DOOR.x+OUT_DOOR.w&&ty>=OUT_DOOR.y&&ty<=OUT_DOOR.y+2){
     if(activeTool&&activeTool.isPortal){startTravel(activeTool.to,activeTool.spawn);return;}
     goToPortal(DOOR_IN,OUT_DOOR,1);beep(440,.04,.03);return;}
@@ -5434,8 +5662,9 @@ function render(t){
   cx.setTransform(1,0,0,1,0,0);
   cx.fillStyle='#080b11';cx.fillRect(0,0,cv.width,cv.height);
   cx.translate(-Math.round(cam.x),-Math.round(cam.y));
-  cx.drawImage([bg,bg2,bg3][floor],0,0);
+  cx.drawImage([bg,bg2,bg3,bg4][floor],0,0);
   if(floor===1)drawPeekLife(t);                    // kehidupan di jendela intip lt.1
+  if(floor===3)drawBara(cx,t);                     // bara di tanah, di bawah dino
   if(floor===2){drawPuddles(cx,t);                 // genangan musim hujan (paling bawah)
     drawPond(cx,t);                                 // riak/ikan kolam (layer tanah)
     drawGardenPlants(cx,t);                         // tanaman tumbuh di bedengan
@@ -5534,6 +5763,7 @@ function render(t){
   /* overlay animasi furnitur (layar, api, dll) */
   for(const a of anims)a.fn(cx,t);
   if(floor===2)drawRain(cx,t);                      // gerimis musiman, di depan semua objek
+  if(floor===3)drawAsap(cx,t);                      // asap & abu, menutupi semuanya
   /* penanda zona aktif: panah kecil di atas kepala */
   if(activeTool){
     const jpNow=player.jumpT>0?Math.sin(Math.PI*(1-player.jumpT/JUMP_DUR))*10:0;
@@ -5552,7 +5782,9 @@ function render(t){
   }
   /* kabut perang (mobile) hanya untuk ruang tertutup lt.1 & lt.2 — area luar (lapangan
      terbuka) dibiarkan terang penuh; fog ala-ruangan bikin petak gelap kaku di sana */
-  if(fogOn&&floor!==2){
+  /* Kabut perang dilewati di hutan: asapnya sendiri sudah menutup pandangan,
+     dan dua lapis penutup bertumpuk membuat layar sekadar gelap. */
+  if(fogOn&&floor!==2&&floor!==3){
     const g=fogCv.getContext('2d'),ox=Math.round(cam.x),oy=Math.round(cam.y);
     g.setTransform(1,0,0,1,0,0);
     g.clearRect(0,0,fogCv.width,fogCv.height);
@@ -5575,8 +5807,227 @@ let last=0, skyBucket=-1, rafId=0;
 /* Latar dipanggang ulang MALAS: hanya lantai yang sedang terlihat dibangun saat
    bucket langit berganti; dua lainnya ditandai kotor dan dibangun saat dikunjungi.
    (Dulu ketiganya dibangun sekaligus → hitch 3× repaint 400x304 dalam satu frame.) */
-const bgBuild=[()=>buildBG(),()=>buildBG2(),()=>buildBG3()];
-const bgDirty=[false,false,false];
+/* ===================== HUTAN TERBAKAR: LATAR & ATMOSFER ================== */
+/* Gumpal asap dipanggang sekali. Tiga ukuran supaya lapisannya tidak terbaca
+   sebagai satu pola yang diulang. */
+const ASAP=[mkGlow(46,'168,160,154'),mkGlow(66,'146,138,132'),mkGlow(92,'120,113,108')];
+const BARA_GLOW=mkGlow(20,'232,120,42');
+function buildBG4(){
+  const g=bg4c;
+  P(g,'#36322f',0,0,W,H);                                  // dasar abu
+  for(let ty=0;ty<ROWS;ty++)for(let tx=0;tx<COLS;tx++){
+    const px=tx*T,py=ty*T,r=rnd(tx,ty),cell=MAP4[ty][tx];
+    if(tx===0&&ty===BURN_GATE.y){                          // mulut jalur, sisi hutan
+      P(g,'#524a42',px,py,T,T);P(g,'#443d38',px,py+T-2,T,2);
+      P(g,'#635a51',px,py+4,T,T-8);
+      P(g,'#17120f',px,py-3,T,4);P(g,'#17120f',px,py+T-1,T,4);  // rumpun menjepit mulutnya
+      P(g,'#241d19',px,py-3,T,1);
+      continue;
+    }
+    if(cell==='#'){
+      /* Rumpun hangus rapat: massa nyaris hitam dengan beberapa goresan ranting
+         yang masih menangkap cahaya. Tanpa goresan itu ia terbaca sebagai
+         lubang pada peta, bukan sebagai semak. */
+      P(g,'#17120f',px,py,T,T);
+      P(g,'#241d19',px,py,T,1);
+      for(let i=0;i<5;i++){
+        const a=(r>>>(i*3))%T, b=(r>>>(i*2+1))%T, pj=2+((r>>>(i+4))%4);
+        P(g,i%2?'#2e2622':'#201a17',px+a,py+b,1,pj);
+      }
+      P(g,'#0e0b09',px,py+T-2,T,2);                        // pangkal membayang
+    }else if(BURN_PATH.has(tx+','+ty)){
+      /* Jalur abu. ARAH LAJUR IKUT ARAH JALANNYA, aturan yang sama persis
+         dengan jalan di area luar — tanpa itu jalur yang membentang ke timur
+         terbaca sebagai deretan balok tegak yang tak berhubungan. */
+      /* Sengaja lebih terang dari tanah sekitarnya: di bawah asap setebal ini
+         jalur adalah satu-satunya yang memberitahu ke mana kaki bisa melangkah. */
+      P(g,'#524a42',px,py,T,T);
+      P(g,'#443d38',px,py+T-2,T,2);
+      const pv=BURN_PATH.has(tx+','+(ty-1))||BURN_PATH.has(tx+','+(ty+1));
+      const ph=BURN_PATH.has((tx-1)+','+ty)||BURN_PATH.has((tx+1)+','+ty);
+      if(pv)P(g,'#635a51',px+4,py,T-8,T);                  // lajur terpadatkan (membujur)
+      if(ph)P(g,'#635a51',px,py+4,T,T-8);                  // lajur terpadatkan (melintang)
+      for(let i=0;i<3;i++){                                // serpih arang terinjak
+        const a=(r>>>(i*4))%T, b=(r>>>(i*3+2))%T;
+        P(g,'#231d1a',px+a,py+b,1,1);
+      }
+      if(r%7===0)P(g,'#6e645b',px+2+(r%9),py+3+((r>>>3)%8),2,1);   // abu putih
+      if(!BURN_PATH.has((tx-1)+','+ty))P(g,'#332e2a',px,py,2,T);   // tepi ternaungi
+      if(!BURN_PATH.has((tx+1)+','+ty))P(g,'#332e2a',px+T-2,py,2,T);
+      if(!BURN_PATH.has(tx+','+(ty-1)))P(g,'#332e2a',px,py,T,2);
+      if(!BURN_PATH.has(tx+','+(ty+1)))P(g,'#332e2a',px,py+T-2,T,2);
+    }else{
+      /* Tanah bekas bakar — BUTIRAN HALUS saja, tak satu pun sebesar petak.
+         Satu hiasan seukuran petak, diulang tiap petak, selalu berderet jadi
+         kisi; bercak besarnya diletakkan belakangan di luar perulangan ini. */
+      P(g,'#2b2724',px,py,T,T);
+      for(let i=0;i<7;i++){                                // serpih arang & bintik abu
+        const a=(r>>>(i*4))%T, b=(r>>>(i*3+1))%T;
+        P(g,i%3===0?'#574f47':'#1b1613',px+a,py+b,1,1);
+      }
+      for(let i=0;i<2;i++){                                // serpih sedikit lebih besar
+        const a=(r>>>(i*6+2))%(T-3), b=(r>>>(i*5+3))%(T-2);
+        P(g,i?'#211c19':'#3b3631',px+a,py+b,2+((r>>>i)%2),1);
+      }
+      if(r%6===1){                                         // tunggul pakis hangus
+        const a=3+((r>>>7)%9);
+        P(g,'#17120f',px+a,py+8,1,6);
+        P(g,'#2b2320',px+a-1,py+9,3,1);P(g,'#2b2320',px+a-1,py+11,3,1);
+      }
+      if(r%11===4)P(g,'#17120f',px+2+((r>>>2)%8),py+6+((r>>>5)%6),4,1);  // ranting jatuh
+    }
+  }
+  jalanMulus(g,(x,y)=>BURN_PATH.has(x+','+y),'#524a42',()=>'#2b2724');
+  /* --- luka bakar besar: dicat SETELAH petak, pada koordinat piksel bebas.
+     Inilah yang memutus kisi: ia tak tahu ada petak, jadi tepinya jatuh di
+     mana saja. Tiga lapis mengecil supaya tepinya tidak lurus. --- */
+  for(let i=0;i<BURN_SCAR.length;i++){
+    const k=BURN_SCAR[i], rr=rnd(k.x,k.y);
+    /* Dicat BARIS DEMI BARIS dengan lebar elips plus goyangan, bukan satu
+       fillRect. Alas persegi tetap persegi berapa pun bintik yang ditaburkan
+       di tepinya — dan persegi di tanah hutan terbaca sebagai lubang galian,
+       bukan sebagai bekas api. */
+    const cx0=k.x+k.w/2, cy0=k.y+k.h/2;
+    for(let lap=0;lap<3;lap++){
+      const sk=1-lap*0.26, al=[0.50,0.42,0.36][lap];
+      for(let yy=0;yy<k.h*sk;yy++){
+        const t2=(yy/(k.h*sk))*2-1;
+        const lb=Math.round(k.w*sk*Math.sqrt(Math.max(0,1-t2*t2))*0.5);
+        const gy=((rnd(k.x+yy,k.y+lap)>>>3)%5)-2;
+        if(lb<1)continue;
+        P(g,'rgba(20,16,14,'+al+')',Math.round(cx0-lb+gy),Math.round(cy0-k.h*sk/2+yy),lb*2,1);
+      }
+    }
+    for(let j=0;j<6;j++){                                  // abu pucat menumpuk di tepi
+      const a=(rnd(k.x+j*3,k.y+5)>>>4)%k.w;
+      P(g,'rgba(92,84,76,.22)',k.x+a,k.y-2+((rnd(a,j)>>>2)%4),3,2);
+      P(g,'rgba(92,84,76,.18)',k.x+a,k.y+k.h-2,3,2);
+    }
+  }
+  /* --- batang rebah: silinder arang, punggungnya menangkap cahaya --- */
+  for(const l of BURN_LOGS){
+    const px=l.x*T, py=l.y*T+5, w=l.pjg*T;
+    P(g,'#0f0c0a',px-2,py+6,w+4,3);                        // bayangan di abu
+    P(g,'#1c1613',px,py,w,7);
+    P(g,'#2f2723',px,py,w,2);                              // punggung kena cahaya
+    P(g,'#0d0a09',px,py+6,w,1);
+    for(let i=4;i<w;i+=9)P(g,'#0d0a09',px+i,py+1,1,5);     // retak melintang
+    P(g,'#3a3029',px,py,2,7);P(g,'#241d19',px+w-2,py,2,7); // ujung patah
+  }
+  /* --- batang berdiri & tunggul --- */
+  for(const b of BURN_TREES){
+    const px=b.x*T+6, py=b.y*T+T;
+    if(b.tgg){
+      const h=30+((b.s*7)%14), mr=b.mr||0;
+      /* Dicat BARIS DEMI BARIS supaya batangnya bisa condong. Satu fillRect
+         tegak tak bisa miring, dan tanpa miring hutan ini barisan tiang. */
+      const ms=k=>Math.round(mr*(k/h)*(k/h));              // condong makin ke puncak
+      P(g,'#0f0c0a',px-5,py-2,10,3);                       // bayangan pangkal
+      for(let k=0;k<h;k++){
+        const dx=ms(k), yy=py-1-k;
+        P(g,'#191310',px-2+dx,yy,5,1);                     // batang
+        P(g,'#322a25',px-2+dx,yy,1,1);                     // sisi kena cahaya
+        P(g,'#0c0908',px+2+dx,yy,1,1);
+      }
+      P(g,'#241d19',px-3,py-3,7,3);                        // pangkal melebar
+      /* RANTING. Batang lurus tanpa apa pun di puncaknya terbaca sebagai
+         tiang pancang; pohon yang mati terbakar tetap punya ranting, dan
+         justru ranting telanjang itulah yang membuatnya terbaca sebagai
+         pohon. Tiap ranting menyerong naik lalu bercabang sekali. */
+      for(let i=0;i<4;i++){
+        const kk=h-5-i*Math.max(4,(h-10)>>2), yy=py-1-kk, bx=px+ms(kk);
+        const ar=(b.s+i)%2?1:-1, pj=5+((b.s+i*3)%5);
+        for(let k=0;k<pj;k++)                              // ranting utama, menyerong naik
+          P(g,'#191310',bx+ar*(2+k),yy-((k*3)>>2),1,1);
+        const ux=bx+ar*(2+pj-1), uy=yy-(((pj-1)*3)>>2);
+        for(let k=1;k<=2+((b.s+i)%2);k++)                  // cabang kecil di ujung
+          P(g,'#231c18',ux+ar*k,uy-k,1,1);
+        for(let k=1;k<=2;k++)                              // cabang balik, menyerong turun
+          P(g,'#231c18',ux-ar*k,uy+k,1,1);
+        P(g,'#322a25',bx+ar*2,yy,1,1);                     // pangkal ranting kena cahaya
+      }
+      P(g,'#0c0908',px-2+ms(h-1),py-h,5,2);                // puncak patah
+      P(g,'#2a221d',px-1+ms(h-1),py-h-1,2,1);
+      for(let k=1;k<=4;k++)                                // pucuk meranggas, menyerong
+        P(g,'#191310',px+ms(h-1)+(mr<0?-k:k),py-h-k,1,1);
+    }else{
+      P(g,'#0f0c0a',px-6,py-2,12,3);
+      P(g,'#191310',px-4,py-9,9,9);                        // tunggul pendek
+      P(g,'#322a25',px-4,py-9,1,9);
+      P(g,'#241d19',px-4,py-9,9,2);                        // bidang tebangan
+      P(g,'#120e0c',px-2,py-8,5,1);                        // lubang gosong di tengah
+      for(let i=0;i<4;i++)P(g,'#0c0908',px-3+i*2,py-7,1,5);
+    }
+  }
+  /* --- kawah bara: bagian GELAPNYA saja; pendarnya hidup per bingkai --- */
+  for(const e of BURN_EMBER){
+    const px=e.x*T+8, py=e.y*T+9;
+    P(g,'#241c17',px-6,py-4,12,8);
+    P(g,'#15100d',px-4,py-3,8,6);
+    P(g,'#4a3a2c',px-6,py-4,12,1);                         // bibir abu
+    P(g,'#6b2f12',px-2,py-1,4,2);                          // arang membara (dasar)
+  }
+  for(let k=0;k<10;k++){                                   // vinyet: hutan menutup di tepi
+    const a=(0.06*(1-k/10)).toFixed(3);
+    P(g,'rgba(8,6,5,'+a+')',k,0,1,H);P(g,'rgba(8,6,5,'+a+')',W-1-k,0,1,H);
+    P(g,'rgba(8,6,5,'+a+')',0,k,W,1);P(g,'rgba(8,6,5,'+a+')',0,H-1-k,W,1);
+  }
+}
+/* Bara menyala DI TANAH, jadi digambar sebelum dino: kaki dino menutupinya,
+   dan itulah yang membuat pendarnya terasa ada di permukaan. */
+function drawBara(g,t){
+  for(let i=0;i<BURN_EMBER.length;i++){
+    const e=BURN_EMBER[i];
+    const d=0.55+0.45*Math.sin(t/(520+i*90)+i*1.7);        // tiap bara berdenyut sendiri
+    g.globalAlpha=(0.22+0.3*d).toFixed(3)*1;
+    g.drawImage(BARA_GLOW,e.x*T+8-20,e.y*T+9-20);
+    g.globalAlpha=1;
+    P(g,d>0.7?'#f0923c':'#c9521f',e.x*T+6+((i*5)%5),e.y*T+8,2,1);
+    if(d>0.85)P(g,'#ffd08a',e.x*T+7+((i*3)%4),e.y*T+7,1,1);
+  }
+}
+/* Asap menggantung DI UDARA, jadi digambar di atas segalanya — termasuk dino.
+   Itu yang membedakannya dari kabut perang, yang justru membuka di sekitar
+   pemain: di sini asapnya lewat begitu saja menutupi siapa pun. */
+function drawAsap(g,t){
+  /* Alfa 0,05-0,095 praktis tak terlihat di atas tanah segelap ini, padahal
+     yang diminta hutan PENUH kabut asap. Dinaikkan, dan jumlah gumpalnya
+     ditambah supaya lapisannya saling menimpa — asap tebal itu bertumpuk,
+     bukan satu lapis yang lebih pekat. */
+  for(let i=0;i<32;i++){
+    const spr=ASAP[i%3];
+    const laju=0.006+((i%5)*0.0035);                       // lapisan jauh lebih lambat
+    const x=((i*131+t*laju)%(W+260))-130;
+    const y=(i*37)%H + Math.sin(t/2600+i)*9;
+    g.globalAlpha=(0.17+0.10*((i%4)+1)/4).toFixed(3)*1;
+    g.drawImage(spr,x-spr.width/2,y-spr.height/2);
+  }
+  /* Kabut rendah: asap kebakaran menggantung paling tebal justru DI BAWAH,
+     merayap di tanah. Gumpalnya dipipihkan supaya ia membentang mendatar,
+     bukan membulat seperti kepulan di udara. */
+  for(let i=0;i<7;i++){
+    const spr=ASAP[2], laju=0.004+((i%3)*0.0022);
+    const x=((i*197+t*laju)%(W+300))-150;
+    const y=H-26-((i*23)%46)+Math.sin(t/3400+i*1.4)*5;
+    g.globalAlpha=(0.14+0.05*(i%3)).toFixed(3)*1;
+    g.save();g.translate(x,y);g.scale(1.7,0.52);
+    g.drawImage(spr,-spr.width/2,-spr.height/2);g.restore();
+  }
+  g.globalAlpha=1;
+  /* Abu berjatuhan: lebih lambat dan lebih melayang daripada gerimis, dan
+     bergoyang menyamping — abu tidak jatuh lurus seperti air. */
+  g.fillStyle='rgba(206,198,190,.30)';
+  for(let i=0;i<34;i++){
+    const sp=0.09+((i*7)%5)*0.015;
+    const y=(((i*89)+t*sp)%(H+20))-10;
+    const x=((i*67)%W)+Math.round(Math.sin(t/900+i*1.3)*6);
+    g.fillRect(x|0,y|0,1,1);
+    if(i%3===0)g.fillRect((x+2)|0,(y+3)|0,1,1);
+  }
+  g.fillStyle='rgba(96,70,50,.21)';g.fillRect(0,0,W,H);    // kerudung hangat menyatukan
+}
+const bgBuild=[()=>buildBG(),()=>buildBG2(),()=>buildBG3(),()=>buildBG4()];
+const bgDirty=[false,false,false,false];
 function buildFloorBG(n){bgBuild[n]();bgDirty[n]=false;}
 function syncFloorBG(n){if(bgDirty[n])buildFloorBG(n);}
 function tickSky(){
@@ -5585,7 +6036,7 @@ function tickSky(){
   if(sNow!==season){season=sNow;repaintTrees();repaintSeasonal();skyBucket=-1;}
   const b=Math.round(curHour()*10);               // langit terpanggang ulang tiap ~6 menit
   if(b!==skyBucket){skyBucket=b;
-    bgDirty[0]=bgDirty[1]=bgDirty[2]=true;
+    bgDirty[0]=bgDirty[1]=bgDirty[2]=bgDirty[3]=true;
     buildFloorBG(floor);}                         // sisanya menyusul saat lantainya dibuka
 }
 tickSky();
@@ -5675,6 +6126,10 @@ window.HQDBG={player,keys,cam,goToTool,TOOLS,S,ptile,SPR,pet,bot,ROOMS:()=>ROOMS
               BIBIT_SEL,BIBIT_DENDA,TINGKAT,CACAT_NM,bibitLv,bibitSusunBabak,
               BENIH,benihRona,semaiDaun,bibitTinggi,bibitLabel,_bl,
               semaiCat,semaiSprite,SEMAI_SPR,GOYANG,dindingGaris,MAP,
+              MAP4,BURN_TREES,BURN_LOGS,BURN_EMBER,BURN_PATH,
+              buildBG4,drawAsap,drawBara,BURN_SCAR,gradeHangus,ksaT,
+              jalanMulus,tanggaSudut,OUT_PATH,
+              EAST_GATE,BURN_GATE,GATE_BURN,GATE_BACK,
               bingkai:(dt=1/60)=>{const ts=performance.now();   // tiruan setia loop()
                 tickSky();
                 if(bibit.on){bibitUpdate(dt);bibitDraw(cx,ts);}
