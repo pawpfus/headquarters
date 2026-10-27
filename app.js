@@ -2501,33 +2501,34 @@ FURNS.push(FURN);ANIMS.push(anims);
    OUT_PATH murni kosmetik (dipakai untuk menggambar & jenis bunyi langkah, bukan
    petak padat), jadi kelokan ini tidak mengubah keterjangkauan peta sama sekali.
 
-   Angka amplitudo/frekuensi/fase di bawah BUKAN selera: 12.000 calon diuji
-   terhadap peta kepadatan, dan hanya 84 yang tak satu pun petak jalurnya
-   jatuh di petak padat, 51 di antaranya yang sekaligus mendaratkan ujung
-   cabang kiri di cincin zona COOPERSTOWN. Yang dipakai ini salah satunya,
-   dipilih karena paling banyak pergantian arahnya. Mengubah angkanya tanpa
-   menguji ulang hampir pasti membuat jalan menembus pohon atau berhenti
-   sebelum tujuannya. */
+   Angka-angka di bawah adalah bentuk ASLI jalan ini. Sempat diundi ulang lalu
+   dikembalikan atas permintaan. Dua hal yang TERUKUR tentang bentuk ini,
+   dicatat supaya tidak hilang dari ingatan dan supaya tidak "diperbaiki"
+   tanpa sengaja oleh siapa pun yang menyentuh angkanya nanti:
+     - satu petak jalurnya jatuh di petak padat (jalan menembus benda);
+     - cabang kirinya berakhir di baris 9, sedangkan cincin zona COOPERSTOWN
+       ada di baris 10-12 — jadi jalannya berhenti satu petak sebelum tiangnya.
+   Keduanya bisa dibereskan tanpa mengubah bentuk jalannya sama sekali. */
 const OUT_PATH=new Set(), SPINE={}, BR_L={}, BR_R={};
 const addP=(x,y)=>OUT_PATH.add(x+','+y);
 let pv=null;
 for(let y=2;y<=16;y++){                                   // tulang tengah: meliuk antar kolom 11-13
   const ease=Math.min(1,(y-2)/3);                         // berangkat LURUS dari pintu, baru meliuk
-  const x=12+Math.round(1.2*ease*Math.sin(y*0.74+0.8));
+  const x=12+Math.round(1.4*ease*Math.sin(y*0.55+0.7));
   SPINE[y]=x; addP(x,y);
   if(pv!==null&&x!==pv)for(let i=Math.min(x,pv);i<=Math.max(x,pv);i++)addP(i,y); // sambung saat bergeser
   pv=x;
 }
 pv=null;
 for(let x=3;x<=12;x++){                                   // cabang kiri → AREA SAMPLING
-  const y=10+Math.round(1.1*Math.sin(x*0.56+1.5));
+  const y=10+Math.round(1.1*Math.sin(x*0.62+2.1));
   BR_L[x]=y; addP(x,y);
   if(pv!==null&&y!==pv)for(let j=Math.min(y,pv);j<=Math.max(y,pv);j++)addP(x,j);
   pv=y;
 }
 pv=null;
 for(let x=12;x<=19;x++){                                  // cabang kanan → tiang COOPERSTOWN
-  const y=8+Math.round(1.4*Math.sin(x*0.42-2));
+  const y=8+Math.round(1.1*Math.sin(x*0.5-1.2));
   BR_R[x]=y; addP(x,y);
   if(pv!==null&&y!==pv)for(let j=Math.min(y,pv);j<=Math.max(y,pv);j++)addP(x,j);
   pv=y;
