@@ -4575,7 +4575,12 @@ TOOLS.forEach(t=>{
   const mid=document.createElement('span');
   const nm=document.createElement('span');nm.className='nm';nm.textContent=t.name;
   const ds=document.createElement('span');ds.className='ds';
-  ds.textContent=t.desc+['',' · lantai 2',' · area luar'][t.floor||0];
+  /* Daftar ini HARUS sepanjang jumlah area. Ini kejadian ketiga dari pola
+     yang sama dalam satu sesi (floorName, papan nama tirai, dan baris menu
+     ini): larik berpatok tiga diindeks nomor lantai, lalu area keempat
+     ditambahkan. Yang ini paling kasar akibatnya karena hasilnya TERBACA
+     pemain — barisnya berbunyi 'Kerangka Sampel Areaundefined'. */
+  ds.textContent=t.desc+(['',' · lantai 2',' · area luar',' · hutan terbakar'][t.floor||0]||'');
   mid.append(nm,document.createElement('br'),ds);
   const ar=document.createElement('span');ar.className='arrow';ar.textContent='▸';
   a.append(sq,mid,ar);
