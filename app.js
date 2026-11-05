@@ -5772,8 +5772,89 @@ let last=0, skyBucket=-1, rafId=0;
 /* ===================== HUTAN TERBAKAR: LATAR & ATMOSFER ================== */
 /* Gumpal asap dipanggang sekali. Tiga ukuran supaya lapisannya tidak terbaca
    sebagai satu pola yang diulang. */
-const ASAP=[mkGlow(46,'168,160,154'),mkGlow(66,'146,138,132'),mkGlow(92,'120,113,108')];
-const BARA_GLOW=mkGlow(20,'232,120,42');
+/* Empat rona asap, dan HANYA empat. Inilah seluruh palet asap. */
+const ASAP_RONA=['#403a36','#4d4641','#5b534c','#6a6158'];
+/* Satu gumpal asap ber-dither. Piksel entah bercat penuh entah tembus pandang
+   sama sekali — tak ada campuran, jadi palet terkunci pada ASAP_RONA.
+
+   rx/ry terpisah supaya gumpal pipih DIPANGGANG pipih. Meregangkannya saat
+   menggambar (scale) akan meregangkan piksel dithernya jadi batang mendatar,
+   dan itu terbaca sebagai garis-garis, bukan kabut.
+
+   fase menggeser asal matriks Bayer tiap gumpal. Tanpa itu semua gumpal
+   sefase: begitu dua bertumpuk, polanya SEJAJAR dan saling menguatkan jadi
+   kisi yang makin tegas — persis anyaman kain.
+
+   Pangkat 2,6 membuat kerapatan jatuh cepat dari pusat. Dither terurut hanya
+   larut kalau kerapatannya BERUBAH; pada kerapatan nyaris rata, matriks 4x4
+   muncul apa adanya sebagai kisi. */
+const acakAmbang=(x,y,f)=>{let h=((x*374761393)^(y*668265263)^(f*2246822519))>>>0;
+  h=Math.imul(h^(h>>>13),1274126177)>>>0;return ((h^(h>>>16))>>>0)%16;};
+function gumpalAsap(rx,ry,rona,puncak,fase){
+  const c=document.createElement('canvas');c.width=rx*2;c.height=ry*2;
+  const g=c.getContext('2d');
+  const img=g.createImageData(rx*2,ry*2), d=img.data;
+  const [cr,cg,cb]=_hx(ASAP_RONA[rona]);
+  for(let y=0;y<ry*2;y++)for(let x=0;x<rx*2;x++){
+    const dx=(x-rx)/rx, dy=(y-ry)/ry, dd=Math.sqrt(dx*dx+dy*dy);
+    if(dd>=1)continue;
+    const hal=Math.pow(1-dd,2.6)*puncak;
+    /* AMBANG ACAK, bukan Bayer. Dither terurut hanya larut di tempat
+       kerapatannya BERUBAH — itulah sebabnya ia berhasil untuk pita air
+       kolam, yang kerapatannya menanjak 2/16 ke 14/16 dalam tujuh baris.
+       Asap adalah bidang BESAR yang kerapatannya nyaris rata, dan di sana
+       matriks 4x4 muncul apa adanya sebagai kisi: layarnya terbaca sebagai
+       anyaman kain. Ambang dari hash tidak berkala, jadi yang terbaca
+       bintik, bukan pola. Paletnya tetap terkunci empat rona — yang
+       diganti cara memilih piksel, bukan cara mewarnainya. */
+    if(acakAmbang(x,y,fase)>=hal*16)continue;
+    const i=(y*rx*2+x)*4;
+    d[i]=cr;d[i+1]=cg;d[i+2]=cb;d[i+3]=255;
+  }
+  g.putImageData(img,0,0);
+  return c;
+}
+/* melayang di udara: membulat */
+/* Puncak dinaikkan supaya INTI gumpal jauh lebih pekat daripada tepinya.
+   Dengan puncak rendah merata, bintiknya tersebar sama di seluruh layar dan
+   terbaca sebagai hamparan abu, bukan sebagai gumpalan: tak ada beda antara
+   'di dalam asap' dan 'udara bersih'. Pangkat 2,6 menjaga tepinya tetap
+   tipis, jadi yang menebal hanya pusatnya. */
+const ASAP=[gumpalAsap(46,46,0,0.62,0),gumpalAsap(66,66,1,0.52,1),
+            gumpalAsap(92,92,2,0.42,2),gumpalAsap(74,74,3,0.34,3)];
+/* merayap di tanah: dipanggang pipih, tidak diregangkan saat gambar */
+const ASAP_RENDAH=[gumpalAsap(120,34,2,0.46,1),gumpalAsap(96,28,3,0.38,2)];
+/* Tiga rona bara, dan HANYA tiga. */
+const BARA_RONA=['#6b2f12','#a04a18','#c96a24'];
+/* Empat tingkat kerapatan dipanggang di muka. Denyut bara nanti MEMILIH
+   tingkat, bukan mengubah alfa — itulah yang menjaga paletnya terkunci
+   sementara nyalanya tetap hidup. */
+function gumpalBara(r,tingkat){
+  const c=document.createElement('canvas');c.width=c.height=r*2;
+  const g=c.getContext('2d');
+  const img=g.createImageData(r*2,r*2), d=img.data;
+  for(let y=0;y<r*2;y++)for(let x=0;x<r*2;x++){
+    const dx=(x-r)/r, dy=(y-r)/r, dd=Math.sqrt(dx*dx+dy*dy);
+    if(dd>=1)continue;
+    /* Inti nyaris PEJAL lalu jatuh cepat. Dengan puncak rendah dan lereng
+       landai, pendarnya jadi taburan oranye yang tercerai — bukan nyala.
+       Pendar perlu inti pejal; yang boleh renggang hanya tepinya. */
+    /* Rentang tingkat harus jatuh DI BAWAH jenuh. Dengan 0,80+0,20*tingkat,
+       tiga dari empat tingkat melewati 1,0 dan jadi kembar pejal — baranya
+       berhenti berdenyut (terukur: rentang piksel oranye cuma 13 dari ~426).
+       0,52+0,16 menjaga inti tetap pejal setengah lebih, tapi tiap tingkat
+       benar-benar berbeda. */
+    const k=1-dd, hal=Math.pow(k,1.5)*(0.52+0.16*tingkat);
+    if(acakAmbang(x,y,tingkat+7)>=hal*16)continue;
+    /* rona ikut jarak: inti paling terang, tepi paling tua */
+    const rn=BARA_RONA[k>0.72?2:k>0.40?1:0], [cr,cg,cb]=_hx(rn);
+    const i=(y*r*2+x)*4;
+    d[i]=cr;d[i+1]=cg;d[i+2]=cb;d[i+3]=255;
+  }
+  g.putImageData(img,0,0);
+  return c;
+}
+const BARA_SPR=[gumpalBara(20,0),gumpalBara(20,1),gumpalBara(20,2),gumpalBara(20,3)];
 function buildBG4(){
   const g=bg4c;
   P(g,'#36322f',0,0,W,H);                                  // dasar abu
@@ -5856,13 +5937,18 @@ function buildBG4(){
         const lb=Math.round(k.w*sk*Math.sqrt(Math.max(0,1-t2*t2))*0.5);
         const gy=((rnd(k.x+yy,k.y+lap)>>>3)%5)-2;
         if(lb<1)continue;
-        P(g,'rgba(20,16,14,'+al+')',Math.round(cx0-lb+gy),Math.round(cy0-k.h*sk/2+yy),lb*2,1);
+        /* Dicat piksel demi piksel dengan ambang acak, bukan satu batang
+           beralfa: batang beralfa melahirkan satu warna campuran baru untuk
+           tiap warna tanah yang dilewatinya, dan tanah hutan ini bertekstur. */
+        const yl=Math.round(cy0-k.h*sk/2+yy), xl=Math.round(cx0-lb+gy);
+        for(let xx=0;xx<lb*2;xx++)
+          if(acakAmbang(xl+xx,yl,lap+3)<al*16)P(g,'#17120f',xl+xx,yl,1,1);
       }
     }
     for(let j=0;j<6;j++){                                  // abu pucat menumpuk di tepi
       const a=(rnd(k.x+j*3,k.y+5)>>>4)%k.w;
-      P(g,'rgba(92,84,76,.22)',k.x+a,k.y-2+((rnd(a,j)>>>2)%4),3,2);
-      P(g,'rgba(92,84,76,.18)',k.x+a,k.y+k.h-2,3,2);
+      P(g,'#4a443e',k.x+a,k.y-2+((rnd(a,j)>>>2)%4),3,1);   // abu menumpuk di tepi, pekat
+      P(g,'#413b36',k.x+a,k.y+k.h-2,3,1);
     }
   }
   /* --- batang rebah: silinder arang, punggungnya menangkap cahaya --- */
@@ -5928,10 +6014,20 @@ function buildBG4(){
     P(g,'#4a3a2c',px-6,py-4,12,1);                         // bibir abu
     P(g,'#6b2f12',px-2,py-1,4,2);                          // arang membara (dasar)
   }
-  for(let k=0;k<10;k++){                                   // vinyet: hutan menutup di tepi
-    const a=(0.06*(1-k/10)).toFixed(3);
-    P(g,'rgba(8,6,5,'+a+')',k,0,1,H);P(g,'rgba(8,6,5,'+a+')',W-1-k,0,1,H);
-    P(g,'rgba(8,6,5,'+a+')',0,k,W,1);P(g,'rgba(8,6,5,'+a+')',0,H-1-k,W,1);
+  /* Vinyet: gradasi berambang, bukan sepuluh pita beralfa. Sepuluh pita
+     beralfa melahirkan sepuluh warna baru untuk TIAP warna yang ada di tepi
+     layar — dan tepi layar justru tempat tanah, rumpun dan batang berkumpul. */
+  const LBR=14;
+  for(let k=0;k<LBR;k++){
+    const hal=0.62*Math.pow(1-k/LBR,1.8);
+    for(let y=0;y<H;y++){
+      if(acakAmbang(k,y,11)<hal*16)P(g,'#0a0806',k,y,1,1);
+      if(acakAmbang(W-1-k,y,11)<hal*16)P(g,'#0a0806',W-1-k,y,1,1);
+    }
+    for(let x=0;x<W;x++){
+      if(acakAmbang(x,k,13)<hal*16)P(g,'#0a0806',x,k,1,1);
+      if(acakAmbang(x,H-1-k,13)<hal*16)P(g,'#0a0806',x,H-1-k,1,1);
+    }
   }
 }
 /* Bara menyala DI TANAH, jadi digambar sebelum dino: kaki dino menutupinya,
@@ -5940,9 +6036,10 @@ function drawBara(g,t){
   for(let i=0;i<BURN_EMBER.length;i++){
     const e=BURN_EMBER[i];
     const d=0.55+0.45*Math.sin(t/(520+i*90)+i*1.7);        // tiap bara berdenyut sendiri
-    g.globalAlpha=(0.22+0.3*d).toFixed(3)*1;
-    g.drawImage(BARA_GLOW,e.x*T+8-20,e.y*T+9-20);
-    g.globalAlpha=1;
+    /* Denyutnya MEMILIH tingkat kerapatan, bukan mengubah alfa. Alfa yang
+       berdenyut melahirkan satu deret warna campuran baru tiap bingkai. */
+    const spr=BARA_SPR[Math.min(3,Math.max(0,Math.floor(d*4)))];
+    g.drawImage(spr,e.x*T+8-20,e.y*T+9-20);
     P(g,d>0.7?'#f0923c':'#c9521f',e.x*T+6+((i*5)%5),e.y*T+8,2,1);
     if(d>0.85)P(g,'#ffd08a',e.x*T+7+((i*3)%4),e.y*T+7,1,1);
   }
@@ -5951,37 +6048,35 @@ function drawBara(g,t){
    Itu yang membedakannya dari kabut perang, yang justru membuka di sekitar
    pemain: di sini asapnya lewat begitu saja menutupi siapa pun. */
 function drawAsap(g,t){
-  /* Alfa 0,05-0,095 praktis tak terlihat di atas tanah segelap ini, padahal
-     yang diminta hutan PENUH kabut asap. Dinaikkan, dan jumlah gumpalnya
-     ditambah supaya lapisannya saling menimpa — asap tebal itu bertumpuk,
-     bukan satu lapis yang lebih pekat. */
-  for(let i=0;i<32;i++){
-    const spr=ASAP[i%3];
+  /* Gumpalnya PEKAT, jadi jumlahnya harus jauh lebih sedikit: dua pola 40%
+     yang bergeser fase saling menutup jadi ~64%, tiga jadi ~78%. Dengan 32
+     gumpal seperti versi beralfa, layar akan tertutup rapat. */
+  for(let i=0;i<13;i++){
+    const spr=ASAP[i%4];
     const laju=0.006+((i%5)*0.0035);                       // lapisan jauh lebih lambat
-    const x=((i*131+t*laju)%(W+260))-130;
-    const y=(i*37)%H + Math.sin(t/2600+i)*9;
-    g.globalAlpha=(0.17+0.10*((i%4)+1)/4).toFixed(3)*1;
-    g.drawImage(spr,x-spr.width/2,y-spr.height/2);
+    const x=((i*157+t*laju)%(W+260))-130;
+    const y=(i*61)%H + Math.sin(t/2600+i)*9;
+    g.drawImage(spr,Math.round(x-spr.width/2),Math.round(y-spr.height/2));
   }
   /* Kabut rendah: asap kebakaran menggantung paling tebal justru DI BAWAH,
      merayap di tanah. Gumpalnya dipipihkan supaya ia membentang mendatar,
      bukan membulat seperti kepulan di udara. */
-  for(let i=0;i<7;i++){
-    const spr=ASAP[2], laju=0.004+((i%3)*0.0022);
-    const x=((i*197+t*laju)%(W+300))-150;
+  for(let i=0;i<5;i++){
+    const spr=ASAP_RENDAH[i%2], laju=0.004+((i%3)*0.0022);
+    const x=((i*197+t*laju)%(W+360))-180;
     const y=H-26-((i*23)%46)+Math.sin(t/3400+i*1.4)*5;
-    g.globalAlpha=(0.14+0.05*(i%3)).toFixed(3)*1;
-    g.save();g.translate(x,y);g.scale(1.7,0.52);
-    g.drawImage(spr,-spr.width/2,-spr.height/2);g.restore();
+    g.drawImage(spr,Math.round(x-spr.width/2),Math.round(y-spr.height/2));
   }
-  g.globalAlpha=1;
   /* Abu berjatuhan: lebih lambat dan lebih melayang daripada gerimis, dan
      bergoyang menyamping — abu tidak jatuh lurus seperti air. */
-  g.fillStyle='rgba(206,198,190,.30)';
+  /* Abu PEKAT, dua rona. Titik beralfa 1 px pun melahirkan satu warna baru
+     untuk tiap warna tanah yang ditimpanya — 34 titik di atas tanah
+     bertekstur jadi puluhan warna, untuk hal sekecil ini. */
   for(let i=0;i<34;i++){
     const sp=0.09+((i*7)%5)*0.015;
     const y=(((i*89)+t*sp)%(H+20))-10;
     const x=((i*67)%W)+Math.round(Math.sin(t/900+i*1.3)*6);
+    g.fillStyle=i%3?'#6e665e':'#8a8178';
     g.fillRect(x|0,y|0,1,1);
     if(i%3===0)g.fillRect((x+2)|0,(y+3)|0,1,1);
   }
